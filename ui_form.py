@@ -16,10 +16,11 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
-    QMainWindow, QMenu, QMenuBar, QPlainTextEdit,
-    QPushButton, QSizePolicy, QStackedWidget, QStatusBar,
-    QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QHeaderView,
+    QLabel, QMainWindow, QMenu, QMenuBar,
+    QPlainTextEdit, QPushButton, QSizePolicy, QStackedWidget,
+    QStatusBar, QTabWidget, QTableWidget, QTableWidgetItem,
+    QVBoxLayout, QWidget)
 
 from modules.plot_widget import PlotWidget
 
@@ -106,6 +107,35 @@ class Ui_MainWindow(object):
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.RulesLayout = QVBoxLayout()
         self.RulesLayout.setObjectName(u"RulesLayout")
+        self.RemoveRuleButton = QPushButton(self.RulesTab)
+        self.RemoveRuleButton.setObjectName(u"RemoveRuleButton")
+
+        self.RulesLayout.addWidget(self.RemoveRuleButton)
+
+        self.AddRuleButton = QPushButton(self.RulesTab)
+        self.AddRuleButton.setObjectName(u"AddRuleButton")
+
+        self.RulesLayout.addWidget(self.AddRuleButton)
+
+        self.RulesTable = QTableWidget(self.RulesTab)
+        if (self.RulesTable.columnCount() < 6):
+            self.RulesTable.setColumnCount(6)
+        __qtablewidgetitem = QTableWidgetItem()
+        self.RulesTable.setHorizontalHeaderItem(0, __qtablewidgetitem)
+        __qtablewidgetitem1 = QTableWidgetItem()
+        self.RulesTable.setHorizontalHeaderItem(1, __qtablewidgetitem1)
+        __qtablewidgetitem2 = QTableWidgetItem()
+        self.RulesTable.setHorizontalHeaderItem(2, __qtablewidgetitem2)
+        __qtablewidgetitem3 = QTableWidgetItem()
+        self.RulesTable.setHorizontalHeaderItem(3, __qtablewidgetitem3)
+        __qtablewidgetitem4 = QTableWidgetItem()
+        self.RulesTable.setHorizontalHeaderItem(4, __qtablewidgetitem4)
+        __qtablewidgetitem5 = QTableWidgetItem()
+        self.RulesTable.setHorizontalHeaderItem(5, __qtablewidgetitem5)
+        self.RulesTable.setObjectName(u"RulesTable")
+
+        self.RulesLayout.addWidget(self.RulesTable)
+
 
         self.verticalLayout_7.addLayout(self.RulesLayout)
 
@@ -120,6 +150,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.Plot)
 
+        self.horizontalLayout_2.setStretch(0, 1)
         self.horizontalLayout_2.setStretch(1, 1)
 
         self.mainSplit.addWidget(self.RightFrame)
@@ -176,6 +207,20 @@ class Ui_MainWindow(object):
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.DisconnectButton.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.ConsoleTab), QCoreApplication.translate("MainWindow", u"Console", None))
+        self.RemoveRuleButton.setText(QCoreApplication.translate("MainWindow", u"Add rule", None))
+        self.AddRuleButton.setText(QCoreApplication.translate("MainWindow", u"Remove rule", None))
+        ___qtablewidgetitem = self.RulesTable.horizontalHeaderItem(0)
+        ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"Enable", None))
+        ___qtablewidgetitem1 = self.RulesTable.horizontalHeaderItem(1)
+        ___qtablewidgetitem1.setText(QCoreApplication.translate("MainWindow", u"Use as X counter", None))
+        ___qtablewidgetitem2 = self.RulesTable.horizontalHeaderItem(2)
+        ___qtablewidgetitem2.setText(QCoreApplication.translate("MainWindow", u"Label", None))
+        ___qtablewidgetitem3 = self.RulesTable.horizontalHeaderItem(3)
+        ___qtablewidgetitem3.setText(QCoreApplication.translate("MainWindow", u"Find method", None))
+        ___qtablewidgetitem4 = self.RulesTable.horizontalHeaderItem(4)
+        ___qtablewidgetitem4.setText(QCoreApplication.translate("MainWindow", u"Extra setting", None))
+        ___qtablewidgetitem5 = self.RulesTable.horizontalHeaderItem(5)
+        ___qtablewidgetitem5.setText(QCoreApplication.translate("MainWindow", u"Position", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.RulesTab), QCoreApplication.translate("MainWindow", u"Rules", None))
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
         self.menuSettings.setTitle(QCoreApplication.translate("MainWindow", u"Settings", None))

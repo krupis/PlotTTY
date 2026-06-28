@@ -72,7 +72,7 @@
               <property name="frameShadow">
                <enum>QFrame::Shadow::Raised</enum>
               </property>
-              <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
+              <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,1">
                <item>
                 <widget class="QTabWidget" name="tabWidget">
                  <property name="currentIndex">
@@ -98,7 +98,56 @@
                   </attribute>
                   <layout class="QVBoxLayout" name="verticalLayout_7">
                    <item>
-                    <layout class="QVBoxLayout" name="RulesLayout"/>
+                    <layout class="QVBoxLayout" name="RulesLayout">
+                     <item>
+                      <widget class="QPushButton" name="RemoveRuleButton">
+                       <property name="text">
+                        <string>Add rule</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="AddRuleButton">
+                       <property name="text">
+                        <string>Remove rule</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QTableWidget" name="RulesTable">
+                       <column>
+                        <property name="text">
+                         <string>Enable</string>
+                        </property>
+                       </column>
+                       <column>
+                        <property name="text">
+                         <string>Use as X counter</string>
+                        </property>
+                       </column>
+                       <column>
+                        <property name="text">
+                         <string>Label</string>
+                        </property>
+                       </column>
+                       <column>
+                        <property name="text">
+                         <string>Find method</string>
+                        </property>
+                       </column>
+                       <column>
+                        <property name="text">
+                         <string>Extra setting</string>
+                        </property>
+                       </column>
+                       <column>
+                        <property name="text">
+                         <string>Position</string>
+                        </property>
+                       </column>
+                      </widget>
+                     </item>
+                    </layout>
                    </item>
                   </layout>
                  </widget>
