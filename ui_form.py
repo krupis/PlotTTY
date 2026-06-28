@@ -58,15 +58,15 @@ class Ui_MainWindow(object):
 
         self.TopNavBar.addWidget(self.plainTextEdit)
 
-        self.pushButton_4 = QPushButton(self.page1)
-        self.pushButton_4.setObjectName(u"pushButton_4")
+        self.ConnectButton = QPushButton(self.page1)
+        self.ConnectButton.setObjectName(u"ConnectButton")
 
-        self.TopNavBar.addWidget(self.pushButton_4)
+        self.TopNavBar.addWidget(self.ConnectButton)
 
-        self.pushButton_5 = QPushButton(self.page1)
-        self.pushButton_5.setObjectName(u"pushButton_5")
+        self.DisconnectButton = QPushButton(self.page1)
+        self.DisconnectButton.setObjectName(u"DisconnectButton")
 
-        self.TopNavBar.addWidget(self.pushButton_5)
+        self.TopNavBar.addWidget(self.DisconnectButton)
 
 
         self.verticalLayout.addLayout(self.TopNavBar)
@@ -89,10 +89,10 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.ConsoleLayout = QVBoxLayout()
         self.ConsoleLayout.setObjectName(u"ConsoleLayout")
-        self.Console = QPlainTextEdit(self.ConsoleTab)
-        self.Console.setObjectName(u"Console")
+        self.ConsoleTextEdit = QPlainTextEdit(self.ConsoleTab)
+        self.ConsoleTextEdit.setObjectName(u"ConsoleTextEdit")
 
-        self.ConsoleLayout.addWidget(self.Console)
+        self.ConsoleLayout.addWidget(self.ConsoleTextEdit)
 
 
         self.horizontalLayout.addLayout(self.ConsoleLayout)
@@ -162,7 +162,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -171,8 +171,8 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Port:", None))
-        self.pushButton_4.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
-        self.pushButton_5.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))
+        self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
+        self.DisconnectButton.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.ConsoleTab), QCoreApplication.translate("MainWindow", u"Console", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.RulesTab), QCoreApplication.translate("MainWindow", u"Rules", None))
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))

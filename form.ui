@@ -45,14 +45,14 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="pushButton_4">
+           <widget class="QPushButton" name="ConnectButton">
             <property name="text">
              <string>Connect</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="pushButton_5">
+           <widget class="QPushButton" name="DisconnectButton">
             <property name="text">
              <string>Disconnect</string>
             </property>
@@ -76,7 +76,7 @@
                <item>
                 <widget class="QTabWidget" name="tabWidget">
                  <property name="currentIndex">
-                  <number>0</number>
+                  <number>1</number>
                  </property>
                  <widget class="QWidget" name="ConsoleTab">
                   <attribute name="title">
@@ -86,7 +86,7 @@
                    <item>
                     <layout class="QVBoxLayout" name="ConsoleLayout">
                      <item>
-                      <widget class="QPlainTextEdit" name="Console"/>
+                      <widget class="QPlainTextEdit" name="ConsoleTextEdit"/>
                      </item>
                     </layout>
                    </item>
