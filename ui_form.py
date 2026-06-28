@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
     QPushButton, QSizePolicy, QStackedWidget, QStatusBar,
     QTabWidget, QVBoxLayout, QWidget)
 
+from modules.plot_widget import PlotWidget
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -111,7 +113,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.tabWidget)
 
-        self.Plot = QWidget(self.RightFrame)
+        self.Plot = PlotWidget(self.RightFrame)
         self.Plot.setObjectName(u"Plot")
         self.verticalLayout_4 = QVBoxLayout(self.Plot)
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")

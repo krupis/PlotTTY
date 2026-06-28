@@ -13,7 +13,6 @@ from ui_form import Ui_MainWindow
 
 from modules.extraction import ExtractionEngine
 from modules.line_decoder import LineDecoder
-from modules.plot_widget import PlotWidget
 from modules.serial_transport import SerialSettings, SerialTransport
 
 
@@ -27,14 +26,13 @@ class MainWindow(QMainWindow):
         self.line_decoder = LineDecoder()
         self.engine = ExtractionEngine()
 
-        self.plot = PlotWidget(self)
+        self.plot = self.ui.Plot
         self.port_combo = QComboBox(self)
         self.baud_combo = QComboBox(self)
         self.refresh_ports_button = QPushButton("Refresh", self)
 
         self._install_connection_controls()
         self._configure_console()
-        self._install_plot_widget()
         self._connect_signals()
         self._set_connected(False)
 
@@ -60,9 +58,6 @@ class MainWindow(QMainWindow):
         self.ui.ConsoleTextEdit.setReadOnly(True)
         self.ui.ConsoleTextEdit.setLineWrapMode(self.ui.ConsoleTextEdit.LineWrapMode.NoWrap)
         self.ui.ConsoleTextEdit.document().setMaximumBlockCount(2_000)
-
-    def _install_plot_widget(self) -> None:
-        self.ui.verticalLayout_4.addWidget(self.plot)
 
     def _connect_signals(self) -> None:
         self.refresh_ports_button.clicked.connect(self.refresh_ports)
