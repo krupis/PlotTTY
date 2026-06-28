@@ -1,5 +1,6 @@
 # This Python file uses the following encoding: utf-8
 import sys
+from pathlib import Path
 
 from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtGui import QTextCursor
@@ -7,6 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
+    QFileDialog,
     QHeaderView,
     QLabel,
     QMessageBox,
@@ -24,6 +26,7 @@ from ui_form import Ui_MainWindow
 from modules.extraction import ExtractionEngine
 from modules.line_decoder import LineDecoder
 from modules.models import ExtractionMode, ExtractionRule
+from modules.profiles import AppProfile, load_profile, save_profile
 from modules.serial_transport import SerialSettings, SerialTransport
 
 
@@ -45,6 +48,7 @@ class MainWindow(QMainWindow):
         self.transport: SerialTransport | None = None
         self.line_decoder = LineDecoder()
         self.engine = ExtractionEngine()
+        self.profile_path: Path | None = None
 
         self.plot = self.ui.Plot
         self._updating_rules_table = False
@@ -55,6 +59,7 @@ class MainWindow(QMainWindow):
         self._install_connection_controls()
         self._configure_console()
         self._configure_rules_table()
+        self._configure_file_menu()
         self._connect_signals()
         self._seed_default_rules()
         self._set_connected(False)
@@ -99,6 +104,15 @@ class MainWindow(QMainWindow):
         table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
+    def _configure_file_menu(self) -> None:
+        self.save_profile_action = getattr(self.ui, "actionSave_profile", None)
+        if self.save_profile_action is None:
+            self.save_profile_action = self.ui.menuFile.addAction("Save profile")
+
+        self.open_profile_action = getattr(self.ui, "actionOpen_profile", None)
+        if self.open_profile_action is None:
+            self.open_profile_action = self.ui.menuFile.addAction("Open profile")
+
     def _connect_signals(self) -> None:
         self.refresh_ports_button.clicked.connect(self.refresh_ports)
         self.ui.ConnectButton.clicked.connect(self.connect_serial)
@@ -106,6 +120,8 @@ class MainWindow(QMainWindow):
         self.ui.AddRuleButton.clicked.connect(self.add_rule)
         self.ui.RemoveRuleButton.clicked.connect(self.remove_selected_rules)
         self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
+        self.save_profile_action.triggered.connect(self.save_profile_as)
+        self.open_profile_action.triggered.connect(self.open_profile)
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
@@ -117,6 +133,46 @@ class MainWindow(QMainWindow):
 
     def _refresh_engine(self) -> None:
         self.engine = ExtractionEngine(self.rules_from_table())
+
+    def open_profile(self) -> None:
+        path, _selected_filter = QFileDialog.getOpenFileName(self, "Open Profile", "", "PlotTTY Profile (*.json)")
+        if not path:
+            return
+
+        try:
+            profile = load_profile(path)
+        except Exception as exc:
+            QMessageBox.warning(self, "Open Profile Failed", str(exc))
+            return
+
+        self.profile_path = Path(path)
+        self.set_rules(profile.rules or [ExtractionRule(label="Auto key/value", mode="auto_key_value")])
+        self.statusBar().showMessage(f"Loaded {self.profile_path.name}")
+
+    def save_profile_as(self) -> None:
+        default_path = str(self.profile_path or Path("profile.json"))
+        path, _selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Save Profile",
+            default_path,
+            "PlotTTY Profile (*.json)",
+        )
+        if not path:
+            return
+
+        profile = AppProfile(
+            name=Path(path).stem,
+            rules=self.rules_from_table(),
+        )
+
+        try:
+            save_profile(profile, path)
+        except Exception as exc:
+            QMessageBox.warning(self, "Save Profile Failed", str(exc))
+            return
+
+        self.profile_path = Path(path)
+        self.statusBar().showMessage(f"Saved {self.profile_path.name}")
 
     def add_rule(self, rule: ExtractionRule | None = None) -> None:
         rule = rule or ExtractionRule(label="value", mode="first_number")
@@ -247,13 +303,12 @@ class MainWindow(QMainWindow):
                 self.port_combo.setEditText(selected_port)
 
     def connect_serial(self) -> None:
-        port = self._selected_port()
+        settings = self._serial_settings_from_ui()
+        port = settings.port
         if not port:
             QMessageBox.warning(self, "No Port", "Enter a serial port first.")
             return
 
-        baudrate = int(self.baud_combo.currentData() or 115200)
-        settings = SerialSettings(port=port, baudrate=baudrate)
         try:
             self.transport = SerialTransport(settings, self)
             self.line_decoder = LineDecoder(settings.encoding)
@@ -266,8 +321,8 @@ class MainWindow(QMainWindow):
             return
 
         self._set_connected(True)
-        self._append_console_text(f"[connected to {port} at {baudrate} baud]\n")
-        self.statusBar().showMessage(f"Connected to {port} at {baudrate} baud")
+        self._append_console_text(f"[connected to {settings.port} at {settings.baudrate} baud]\n")
+        self.statusBar().showMessage(f"Connected to {settings.port} at {settings.baudrate} baud")
 
     def disconnect_serial(self) -> None:
         was_connected = bool(self.transport and self.transport.is_open)
@@ -302,6 +357,12 @@ class MainWindow(QMainWindow):
 
     def _selected_port(self) -> str:
         return str(self.port_combo.currentData() or self.port_combo.currentText()).strip()
+
+    def _serial_settings_from_ui(self) -> SerialSettings:
+        return SerialSettings(
+            port=self._selected_port(),
+            baudrate=int(self.baud_combo.currentData() or 115200),
+        )
 
     def _append_console_text(self, text: str) -> None:
         if not text:
