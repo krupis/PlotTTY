@@ -100,14 +100,14 @@
                    <item>
                     <layout class="QVBoxLayout" name="RulesLayout">
                      <item>
-                      <widget class="QPushButton" name="RemoveRuleButton">
+                      <widget class="QPushButton" name="AddRuleButton">
                        <property name="text">
                         <string>Add rule</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="AddRuleButton">
+                      <widget class="QPushButton" name="RemoveRuleButton">
                        <property name="text">
                         <string>Remove rule</string>
                        </property>
@@ -154,9 +154,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="PlotWidget" name="Plot" native="true">
-                 <layout class="QVBoxLayout" name="verticalLayout_4"/>
-                </widget>
+                <widget class="PlotWidget" name="Plot" native="true"/>
                </item>
               </layout>
              </widget>

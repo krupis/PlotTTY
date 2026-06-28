@@ -3,7 +3,17 @@ import sys
 
 from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtGui import QTextCursor
-from PySide6.QtWidgets import QApplication, QComboBox, QLabel, QMessageBox, QMainWindow, QPushButton
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QMainWindow,
+    QPushButton,
+    QTableWidgetItem,
+)
 
 # Important:
 # You need to run the following command to generate the ui_form.py file
@@ -13,7 +23,17 @@ from ui_form import Ui_MainWindow
 
 from modules.extraction import ExtractionEngine
 from modules.line_decoder import LineDecoder
+from modules.models import ExtractionMode, ExtractionRule
 from modules.serial_transport import SerialSettings, SerialTransport
+
+
+MODE_LABELS: dict[str, ExtractionMode] = {
+    "Auto key/value": "auto_key_value",
+    "First number": "first_number",
+    "Regex": "regex",
+    "Delimiter column": "delimiter_column",
+}
+MODE_NAMES_BY_VALUE = {value: label for label, value in MODE_LABELS.items()}
 
 
 class MainWindow(QMainWindow):
@@ -27,13 +47,16 @@ class MainWindow(QMainWindow):
         self.engine = ExtractionEngine()
 
         self.plot = self.ui.Plot
+        self._updating_rules_table = False
         self.port_combo = QComboBox(self)
         self.baud_combo = QComboBox(self)
         self.refresh_ports_button = QPushButton("Refresh", self)
 
         self._install_connection_controls()
         self._configure_console()
+        self._configure_rules_table()
         self._connect_signals()
+        self._seed_default_rules()
         self._set_connected(False)
 
     def _install_connection_controls(self) -> None:
@@ -59,10 +82,127 @@ class MainWindow(QMainWindow):
         self.ui.ConsoleTextEdit.setLineWrapMode(self.ui.ConsoleTextEdit.LineWrapMode.NoWrap)
         self.ui.ConsoleTextEdit.document().setMaximumBlockCount(2_000)
 
+    def _configure_rules_table(self) -> None:
+        table = self.ui.RulesTable
+        table.setColumnCount(6)
+        table.setHorizontalHeaderLabels(
+            ["Enable", "Use as X counter", "Label", "Find method", "Extra setting", "Position"]
+        )
+        table.verticalHeader().setVisible(False)
+        table.setAlternatingRowColors(True)
+        table.setSelectionBehavior(table.SelectionBehavior.SelectRows)
+        table.setSelectionMode(table.SelectionMode.ExtendedSelection)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+
     def _connect_signals(self) -> None:
         self.refresh_ports_button.clicked.connect(self.refresh_ports)
         self.ui.ConnectButton.clicked.connect(self.connect_serial)
         self.ui.DisconnectButton.clicked.connect(self.disconnect_serial)
+        self.ui.AddRuleButton.clicked.connect(self.add_rule)
+        self.ui.RemoveRuleButton.clicked.connect(self.remove_selected_rules)
+        self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
+
+    def _seed_default_rules(self) -> None:
+        self.set_rules(
+            [
+                ExtractionRule(label="Auto key/value", mode="auto_key_value"),
+            ]
+        )
+        self._refresh_engine()
+
+    def _refresh_engine(self) -> None:
+        self.engine = ExtractionEngine(self.rules_from_table())
+
+    def add_rule(self, rule: ExtractionRule | None = None) -> None:
+        rule = rule or ExtractionRule(label="value", mode="first_number")
+        row = self.ui.RulesTable.rowCount()
+        self.ui.RulesTable.insertRow(row)
+        self._set_rule_row(row, rule)
+        self._refresh_engine()
+
+    def remove_selected_rules(self) -> None:
+        table = self.ui.RulesTable
+        rows = sorted({index.row() for index in table.selectedIndexes()}, reverse=True)
+        if not rows and table.currentRow() >= 0:
+            rows = [table.currentRow()]
+
+        for row in rows:
+            table.removeRow(row)
+
+        if rows:
+            self._refresh_engine()
+
+    def set_rules(self, rules: list[ExtractionRule]) -> None:
+        self._updating_rules_table = True
+        self.ui.RulesTable.setRowCount(0)
+        for rule in rules:
+            row = self.ui.RulesTable.rowCount()
+            self.ui.RulesTable.insertRow(row)
+            self._set_rule_row(row, rule)
+        self._updating_rules_table = False
+        self._refresh_engine()
+
+    def rules_from_table(self) -> list[ExtractionRule]:
+        rules = []
+        for row in range(self.ui.RulesTable.rowCount()):
+            rules.append(
+                ExtractionRule(
+                    enabled=self._rule_checked(row, 0),
+                    sample_counter=self._rule_checked(row, 1),
+                    label=self._rule_text(row, 2).strip() or "value",
+                    mode=self._rule_mode(row),
+                    extra_setting=self._rule_text(row, 4).strip(),
+                    delimiter=self._rule_text(row, 5).strip() or ",",
+                )
+            )
+        return rules
+
+    def _set_rule_row(self, row: int, rule: ExtractionRule) -> None:
+        self._updating_rules_table = True
+        self.ui.RulesTable.setItem(row, 0, _checkbox_item(rule.enabled))
+        self.ui.RulesTable.setItem(row, 1, _checkbox_item(rule.sample_counter))
+        self.ui.RulesTable.setItem(row, 2, QTableWidgetItem(rule.label))
+        self.ui.RulesTable.setCellWidget(row, 3, self._rule_mode_combo(rule.mode))
+        self.ui.RulesTable.setItem(row, 4, QTableWidgetItem(rule.extra_setting))
+        self.ui.RulesTable.setItem(row, 5, QTableWidgetItem(rule.delimiter))
+        self._updating_rules_table = False
+
+    def _rule_mode_combo(self, mode: ExtractionMode) -> QComboBox:
+        combo = QComboBox(self.ui.RulesTable)
+        for label, value in MODE_LABELS.items():
+            combo.addItem(label, value)
+        combo.setCurrentText(MODE_NAMES_BY_VALUE.get(mode, "Auto key/value"))
+        combo.currentIndexChanged.connect(self._handle_rule_mode_changed)
+        return combo
+
+    def _rule_mode(self, row: int) -> ExtractionMode:
+        combo = self.ui.RulesTable.cellWidget(row, 3)
+        if isinstance(combo, QComboBox):
+            return combo.currentData()
+        return "auto_key_value"
+
+    def _rule_text(self, row: int, column: int) -> str:
+        item = self.ui.RulesTable.item(row, column)
+        if item is None:
+            return ""
+        return item.text()
+
+    def _rule_checked(self, row: int, column: int) -> bool:
+        item = self.ui.RulesTable.item(row, column)
+        return bool(item and item.checkState() == Qt.CheckState.Checked)
+
+    def _handle_rule_item_changed(self, _item: QTableWidgetItem) -> None:
+        if not self._updating_rules_table:
+            self._refresh_engine()
+
+    def _handle_rule_mode_changed(self) -> None:
+        if not self._updating_rules_table:
+            self._refresh_engine()
 
     def refresh_ports(self) -> None:
         selected_port = self._selected_port()
@@ -149,6 +289,13 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         self.disconnect_serial()
         super().closeEvent(event)
+
+
+def _checkbox_item(checked: bool) -> QTableWidgetItem:
+    item = QTableWidgetItem()
+    item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+    item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+    return item
 
 
 if __name__ == "__main__":

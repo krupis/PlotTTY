@@ -107,15 +107,15 @@ class Ui_MainWindow(object):
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.RulesLayout = QVBoxLayout()
         self.RulesLayout.setObjectName(u"RulesLayout")
-        self.RemoveRuleButton = QPushButton(self.RulesTab)
-        self.RemoveRuleButton.setObjectName(u"RemoveRuleButton")
-
-        self.RulesLayout.addWidget(self.RemoveRuleButton)
-
         self.AddRuleButton = QPushButton(self.RulesTab)
         self.AddRuleButton.setObjectName(u"AddRuleButton")
 
         self.RulesLayout.addWidget(self.AddRuleButton)
+
+        self.RemoveRuleButton = QPushButton(self.RulesTab)
+        self.RemoveRuleButton.setObjectName(u"RemoveRuleButton")
+
+        self.RulesLayout.addWidget(self.RemoveRuleButton)
 
         self.RulesTable = QTableWidget(self.RulesTab)
         if (self.RulesTable.columnCount() < 6):
@@ -145,8 +145,6 @@ class Ui_MainWindow(object):
 
         self.Plot = PlotWidget(self.RightFrame)
         self.Plot.setObjectName(u"Plot")
-        self.verticalLayout_4 = QVBoxLayout(self.Plot)
-        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
 
         self.horizontalLayout_2.addWidget(self.Plot)
 
@@ -207,8 +205,8 @@ class Ui_MainWindow(object):
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.DisconnectButton.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.ConsoleTab), QCoreApplication.translate("MainWindow", u"Console", None))
-        self.RemoveRuleButton.setText(QCoreApplication.translate("MainWindow", u"Add rule", None))
-        self.AddRuleButton.setText(QCoreApplication.translate("MainWindow", u"Remove rule", None))
+        self.AddRuleButton.setText(QCoreApplication.translate("MainWindow", u"Add rule", None))
+        self.RemoveRuleButton.setText(QCoreApplication.translate("MainWindow", u"Remove rule", None))
         ___qtablewidgetitem = self.RulesTable.horizontalHeaderItem(0)
         ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"Enable", None))
         ___qtablewidgetitem1 = self.RulesTable.horizontalHeaderItem(1)

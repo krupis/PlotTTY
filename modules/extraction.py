@@ -25,12 +25,15 @@ class ExtractionEngine:
 
     def extract(self, text: str, timestamp: float | None = None) -> list[CapturedValue]:
         value_timestamp = timestamp if timestamp is not None else time()
+        sample_counter_timestamp = _sample_counter_timestamp(self.rules, text)
         captured_values = []
 
         for rule in self.rules:
             if not rule.enabled or rule.sample_counter:
                 continue
-            captured_values.extend(_extract_with_rule(rule, text, value_timestamp))
+
+            rule_timestamp = sample_counter_timestamp if sample_counter_timestamp is not None else value_timestamp
+            captured_values.extend(_extract_with_rule(rule, text, rule_timestamp))
 
         return captured_values
 
@@ -79,6 +82,18 @@ def _extract_with_rule(rule: ExtractionRule, text: str, timestamp: float) -> lis
                 )
 
     return captured_values
+
+
+def _sample_counter_timestamp(rules: Iterable[ExtractionRule], text: str) -> float | None:
+    for rule in rules:
+        if not rule.enabled or not rule.sample_counter:
+            continue
+
+        values = _extract_with_rule(rule, text, 0.0)
+        if values:
+            return values[0].value
+
+    return None
 
 
 def _captured_value(timestamp: float, label: str, value: float, unit: str, raw_text: str) -> CapturedValue:

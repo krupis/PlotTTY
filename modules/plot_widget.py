@@ -36,10 +36,10 @@ class PlotWidget(QWidget):
         self.graph = pg.GraphicsLayoutWidget()
         self.graph.setBackground("#fbfcfc")
 
-        self.max_points = QSpinBox()
-        self.max_points.setRange(100, 100_000)
-        self.max_points.setValue(5_000)
-        self.max_points.valueChanged.connect(self._refresh_visible_data)
+        self.max_buckets = QSpinBox()
+        self.max_buckets.setRange(100, 100_000)
+        self.max_buckets.setValue(5_000)
+        self.max_buckets.valueChanged.connect(self._refresh_visible_data)
 
         self.visible_points_label = QLabel("Visible points: 0")
 
@@ -56,8 +56,8 @@ class PlotWidget(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
         toolbar.addStretch()
-        toolbar.addWidget(QLabel("Max points"))
-        toolbar.addWidget(self.max_points)
+        toolbar.addWidget(QLabel("Max buckets"))
+        toolbar.addWidget(self.max_buckets)
         toolbar.addWidget(self.visible_points_label)
         toolbar.addWidget(self.series_button)
         toolbar.addWidget(self.auto_scroll_button)
@@ -92,7 +92,7 @@ class PlotWidget(QWidget):
 
     def clear_values(self) -> None:
         for series in self._series.values():
-            series.clear()
+            series.close()
         self._series.clear()
         self._plots.clear()
         self._curves.clear()
@@ -219,7 +219,7 @@ class PlotWidget(QWidget):
                 continue
 
             visible_counts.append(series.count_visible_samples(start_time, end_time))
-            x_values, y_values = series.read_visible_samples(start_time, end_time, self.max_points.value())
+            x_values, y_values = series.read_visible_samples(start_time, end_time, self.max_buckets.value())
             self._curves[label].setData(x_values, y_values)
 
         visible_point_count = max(visible_counts, default=0)
@@ -227,6 +227,11 @@ class PlotWidget(QWidget):
 
     def _refresh_visible_data(self) -> None:
         self._update_visible_curve_data()
+
+    def closeEvent(self, event) -> None:
+        for series in self._series.values():
+            series.close()
+        super().closeEvent(event)
 
 
 def _color_for_index(index: int) -> str:
