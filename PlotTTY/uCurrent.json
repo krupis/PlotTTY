@@ -1,0 +1,69 @@
+{
+  "name": "Untitled Profile",
+  "serial": {
+    "port": "COM15",
+    "baudrate": 115200,
+    "data_bits": 8,
+    "parity": "N",
+    "stop_bits": 1,
+    "encoding": "utf-8",
+    "line_ending": "\n"
+  },
+  "commands": [],
+  "rules": [
+    {
+      "label": "Sample Counter",
+      "mode": "delimiter_column",
+      "enabled": true,
+      "sample_counter": true,
+      "extra_setting": "0",
+      "delimiter": ",",
+      "unit": ""
+    },
+    {
+      "label": "Type",
+      "mode": "delimiter_column",
+      "enabled": true,
+      "sample_counter": false,
+      "extra_setting": "1",
+      "delimiter": ",",
+      "unit": ""
+    },
+    {
+      "label": "Voltage 1",
+      "mode": "delimiter_column",
+      "enabled": true,
+      "sample_counter": false,
+      "extra_setting": "2",
+      "delimiter": ",",
+      "unit": ""
+    },
+    {
+      "label": "Current 1",
+      "mode": "delimiter_column",
+      "enabled": true,
+      "sample_counter": false,
+      "extra_setting": "3",
+      "delimiter": ",",
+      "unit": ""
+    },
+    {
+      "label": "Voltage 2",
+      "mode": "delimiter_column",
+      "enabled": true,
+      "sample_counter": false,
+      "extra_setting": "4",
+      "delimiter": ",",
+      "unit": ""
+    },
+    {
+      "label": "Current 2",
+      "mode": "delimiter_column",
+      "enabled": true,
+      "sample_counter": false,
+      "extra_setting": "5",
+      "delimiter": ",",
+      "unit": ""
+    }
+  ]
+}

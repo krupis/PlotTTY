@@ -1,0 +1,11 @@
+*.orig
+build-*-Desktop_Qt_6_4_0_MinGW_64_bit-Debug
+build-*-Desktop_Qt_6_4_0_MinGW_64_bit-Profile
+build-*-Desktop_Qt_6_4_0_MinGW_64_bit-Release
+build
+__pycache__
+_internal
+*/Users*
+runtime_data
+~*
+Serial-Studio-master
