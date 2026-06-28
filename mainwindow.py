@@ -28,10 +28,10 @@ from modules.serial_transport import SerialSettings, SerialTransport
 
 
 MODE_LABELS: dict[str, ExtractionMode] = {
-    "Auto key/value": "auto_key_value",
+    "Named values": "auto_key_value",
+    "Delimited values": "delimiter_column",
+    "Regex pattern": "regex",
     "First number": "first_number",
-    "Regex": "regex",
-    "Delimiter column": "delimiter_column",
 }
 MODE_NAMES_BY_VALUE = {value: label for label, value in MODE_LABELS.items()}
 
@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
         table = self.ui.RulesTable
         table.setColumnCount(6)
         table.setHorizontalHeaderLabels(
-            ["Enable", "Use as X counter", "Label", "Find method", "Extra setting", "Position"]
+            ["Plot", "Use as X", "Label", "Find method", "Extra setting", "Index"]
         )
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(True)
@@ -150,14 +150,15 @@ class MainWindow(QMainWindow):
     def rules_from_table(self) -> list[ExtractionRule]:
         rules = []
         for row in range(self.ui.RulesTable.rowCount()):
+            mode = self._rule_mode(row)
             rules.append(
                 ExtractionRule(
                     enabled=self._rule_checked(row, 0),
                     sample_counter=self._rule_checked(row, 1),
                     label=self._rule_text(row, 2).strip() or "value",
-                    mode=self._rule_mode(row),
-                    extra_setting=self._rule_text(row, 4).strip(),
-                    delimiter=self._rule_text(row, 5).strip() or ",",
+                    mode=mode,
+                    extra_setting=self._extra_setting_from_row(row, mode),
+                    delimiter=self._delimiter_from_row(row, mode),
                 )
             )
         return rules
@@ -168,8 +169,8 @@ class MainWindow(QMainWindow):
         self.ui.RulesTable.setItem(row, 1, _checkbox_item(rule.sample_counter))
         self.ui.RulesTable.setItem(row, 2, QTableWidgetItem(rule.label))
         self.ui.RulesTable.setCellWidget(row, 3, self._rule_mode_combo(rule.mode))
-        self.ui.RulesTable.setItem(row, 4, QTableWidgetItem(rule.extra_setting))
-        self.ui.RulesTable.setItem(row, 5, QTableWidgetItem(rule.delimiter))
+        self.ui.RulesTable.setItem(row, 4, QTableWidgetItem(self._extra_text_for_rule(rule)))
+        self.ui.RulesTable.setItem(row, 5, QTableWidgetItem(self._position_text_for_rule(rule)))
         self._updating_rules_table = False
 
     def _rule_mode_combo(self, mode: ExtractionMode) -> QComboBox:
@@ -203,6 +204,30 @@ class MainWindow(QMainWindow):
     def _handle_rule_mode_changed(self) -> None:
         if not self._updating_rules_table:
             self._refresh_engine()
+
+    def _extra_setting_from_row(self, row: int, mode: ExtractionMode) -> str:
+        if mode == "delimiter_column":
+            return self._rule_text(row, 5).strip()
+        if mode == "regex":
+            return self._rule_text(row, 4).strip()
+        return ""
+
+    def _delimiter_from_row(self, row: int, mode: ExtractionMode) -> str:
+        if mode != "delimiter_column":
+            return ","
+        return (self._rule_text(row, 4).strip() or ",").replace(r"\t", "\t")
+
+    def _extra_text_for_rule(self, rule: ExtractionRule) -> str:
+        if rule.mode == "delimiter_column":
+            return rule.delimiter.replace("\t", r"\t")
+        if rule.mode == "regex":
+            return rule.extra_setting
+        return ""
+
+    def _position_text_for_rule(self, rule: ExtractionRule) -> str:
+        if rule.mode != "delimiter_column":
+            return ""
+        return rule.extra_setting
 
     def refresh_ports(self) -> None:
         selected_port = self._selected_port()

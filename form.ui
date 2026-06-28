@@ -117,12 +117,12 @@
                       <widget class="QTableWidget" name="RulesTable">
                        <column>
                         <property name="text">
-                         <string>Enable</string>
+                         <string>Plot</string>
                         </property>
                        </column>
                        <column>
                         <property name="text">
-                         <string>Use as X counter</string>
+                         <string>Use as X</string>
                         </property>
                        </column>
                        <column>
@@ -142,7 +142,7 @@
                        </column>
                        <column>
                         <property name="text">
-                         <string>Position</string>
+                         <string>Index</string>
                         </property>
                        </column>
                       </widget>

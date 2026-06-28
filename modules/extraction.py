@@ -73,6 +73,9 @@ def _extract_with_rule(rule: ExtractionRule, text: str, timestamp: float) -> lis
             return captured_values
 
         delimiter = rule.delimiter.replace(r"\t", "\t")
+        if not delimiter:
+            return captured_values
+
         parts = [part.strip() for part in text.split(delimiter)]
         if 0 <= column < len(parts):
             match = FIRST_NUMBER_RE.search(parts[column])
@@ -86,7 +89,7 @@ def _extract_with_rule(rule: ExtractionRule, text: str, timestamp: float) -> lis
 
 def _sample_counter_timestamp(rules: Iterable[ExtractionRule], text: str) -> float | None:
     for rule in rules:
-        if not rule.enabled or not rule.sample_counter:
+        if not rule.sample_counter:
             continue
 
         values = _extract_with_rule(rule, text, 0.0)
