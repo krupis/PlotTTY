@@ -189,6 +189,8 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionSave_profile"/>
+    <addaction name="actionOpen_profile"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
@@ -199,6 +201,16 @@
    <addaction name="menuSettings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionSave_profile">
+   <property name="text">
+    <string>Save profile</string>
+   </property>
+  </action>
+  <action name="actionOpen_profile">
+   <property name="text">
+    <string>Open profile</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
