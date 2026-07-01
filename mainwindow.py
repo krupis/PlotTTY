@@ -2,7 +2,6 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtGui import QTextCursor
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -10,7 +9,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QHeaderView,
-    QLabel,
     QMessageBox,
     QMainWindow,
     QPushButton,
@@ -28,6 +26,7 @@ from modules.line_decoder import LineDecoder
 from modules.models import ExtractionMode, ExtractionRule
 from modules.profiles import AppProfile, load_profile, save_profile
 from modules.rule_suggestion_dialog import RuleSuggestionDialog
+from modules.serial_settings_dialog import SerialSettingsDialog
 from modules.serial_transport import SerialSettings, SerialTransport
 
 
@@ -47,43 +46,22 @@ class MainWindow(QMainWindow):
         self.ui.setupUi(self)
 
         self.transport: SerialTransport | None = None
+        self.serial_settings = SerialSettings()
         self.line_decoder = LineDecoder()
         self.engine = ExtractionEngine()
         self.profile_path: Path | None = None
 
         self.plot = self.ui.Plot
         self._updating_rules_table = False
-        self.port_combo = QComboBox(self)
-        self.baud_combo = QComboBox(self)
-        self.refresh_ports_button = QPushButton("Refresh", self)
         self.detect_rules_button = QPushButton("Detect rules", self)
 
-        self._install_connection_controls()
         self._configure_console()
         self._configure_rules_table()
         self._install_rules_controls()
-        self._configure_file_menu()
+        self._configure_menus()
         self._connect_signals()
         self._seed_default_rules()
         self._set_connected(False)
-
-    def _install_connection_controls(self) -> None:
-        self.port_combo.setEditable(True)
-        self.port_combo.setMinimumWidth(180)
-
-        for baudrate in (9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600):
-            self.baud_combo.addItem(str(baudrate), baudrate)
-        self.baud_combo.setCurrentText("115200")
-
-        self.ui.TopNavBar.replaceWidget(self.ui.plainTextEdit, self.port_combo)
-        self.ui.plainTextEdit.deleteLater()
-
-        connect_button_index = self.ui.TopNavBar.indexOf(self.ui.ConnectButton)
-        self.ui.TopNavBar.insertWidget(connect_button_index, QLabel("Baud:", self))
-        self.ui.TopNavBar.insertWidget(connect_button_index + 1, self.baud_combo)
-        self.ui.TopNavBar.insertWidget(connect_button_index + 2, self.refresh_ports_button)
-
-        self.refresh_ports()
 
     def _configure_console(self) -> None:
         self.ui.ConsoleTextEdit.setReadOnly(True)
@@ -110,7 +88,7 @@ class MainWindow(QMainWindow):
     def _install_rules_controls(self) -> None:
         self.ui.RulesLayout.insertWidget(0, self.detect_rules_button)
 
-    def _configure_file_menu(self) -> None:
+    def _configure_menus(self) -> None:
         self.save_profile_action = getattr(self.ui, "actionSave_profile", None)
         if self.save_profile_action is None:
             self.save_profile_action = self.ui.menuFile.addAction("Save profile")
@@ -119,8 +97,9 @@ class MainWindow(QMainWindow):
         if self.open_profile_action is None:
             self.open_profile_action = self.ui.menuFile.addAction("Open profile")
 
+        self.serial_settings_action = self.ui.menuSettings.addAction("Serial port...")
+
     def _connect_signals(self) -> None:
-        self.refresh_ports_button.clicked.connect(self.refresh_ports)
         self.ui.ConnectButton.clicked.connect(self.connect_serial)
         self.ui.DisconnectButton.clicked.connect(self.disconnect_serial)
         self.ui.AddRuleButton.clicked.connect(self.add_rule)
@@ -129,6 +108,7 @@ class MainWindow(QMainWindow):
         self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
         self.save_profile_action.triggered.connect(self.save_profile_as)
         self.open_profile_action.triggered.connect(self.open_profile)
+        self.serial_settings_action.triggered.connect(self.open_serial_settings)
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
@@ -192,6 +172,14 @@ class MainWindow(QMainWindow):
 
         self.set_rules(rules)
         self.statusBar().showMessage(f"Detected {len(rules)} rule(s)")
+
+    def open_serial_settings(self) -> None:
+        dialog = SerialSettingsDialog(self.serial_settings, self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+
+        self.serial_settings = dialog.selected_settings()
+        self._update_port_status_label(False)
 
     def add_rule(self, rule: ExtractionRule | None = None) -> None:
         rule = rule or ExtractionRule(label="value", mode="first_number")
@@ -304,28 +292,11 @@ class MainWindow(QMainWindow):
             return ""
         return rule.extra_setting
 
-    def refresh_ports(self) -> None:
-        selected_port = self._selected_port()
-        self.port_combo.clear()
-
-        for port in QSerialPortInfo.availablePorts():
-            label = port.portName()
-            if port.description():
-                label = f"{label} - {port.description()}"
-            self.port_combo.addItem(label, port.portName())
-
-        if selected_port:
-            index = self.port_combo.findData(selected_port)
-            if index >= 0:
-                self.port_combo.setCurrentIndex(index)
-            else:
-                self.port_combo.setEditText(selected_port)
-
     def connect_serial(self) -> None:
-        settings = self._serial_settings_from_ui()
+        settings = self.serial_settings
         port = settings.port
         if not port:
-            QMessageBox.warning(self, "No Port", "Enter a serial port first.")
+            QMessageBox.warning(self, "No Port", "Open Settings > Serial port... and choose a serial port first.")
             return
 
         try:
@@ -341,7 +312,6 @@ class MainWindow(QMainWindow):
 
         self._set_connected(True)
         self._append_console_text(f"[connected to {settings.port} at {settings.baudrate} baud]\n")
-        self.statusBar().showMessage(f"Connected to {settings.port} at {settings.baudrate} baud")
 
     def disconnect_serial(self) -> None:
         was_connected = bool(self.transport and self.transport.is_open)
@@ -352,7 +322,6 @@ class MainWindow(QMainWindow):
         self._set_connected(False)
         if was_connected:
             self._append_console_text("[disconnected]\n")
-        self.statusBar().showMessage("Disconnected")
 
     def handle_received_data(self, data: bytes, received_at: float | None = None) -> None:
         self._append_console_text(data.decode(self.line_decoder.encoding, errors="replace"))
@@ -370,18 +339,14 @@ class MainWindow(QMainWindow):
     def _set_connected(self, connected: bool) -> None:
         self.ui.ConnectButton.setEnabled(not connected)
         self.ui.DisconnectButton.setEnabled(connected)
-        self.port_combo.setEnabled(not connected)
-        self.baud_combo.setEnabled(not connected)
-        self.refresh_ports_button.setEnabled(not connected)
+        self.serial_settings_action.setEnabled(not connected)
+        self._update_port_status_label(connected)
 
-    def _selected_port(self) -> str:
-        return str(self.port_combo.currentData() or self.port_combo.currentText()).strip()
-
-    def _serial_settings_from_ui(self) -> SerialSettings:
-        return SerialSettings(
-            port=self._selected_port(),
-            baudrate=int(self.baud_combo.currentData() or 115200),
-        )
+    def _update_port_status_label(self, connected: bool) -> None:
+        port = self.serial_settings.port or "No port"
+        color = "#1f8f3a" if connected else "#c62828"
+        self.ui.PortStatusLabel.setText(port)
+        self.ui.PortStatusLabel.setStyleSheet(f"color: {color}; font-weight: 600;")
 
     def _append_console_text(self, text: str) -> None:
         if not text:
