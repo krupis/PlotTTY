@@ -29,6 +29,10 @@ class Ui_MainWindow(object):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(800, 600)
+        self.actionSave_profile = QAction(MainWindow)
+        self.actionSave_profile.setObjectName(u"actionSave_profile")
+        self.actionOpen_profile = QAction(MainWindow)
+        self.actionOpen_profile.setObjectName(u"actionOpen_profile")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout_5 = QVBoxLayout(self.centralwidget)
@@ -190,6 +194,8 @@ class Ui_MainWindow(object):
 
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuSettings.menuAction())
+        self.menuFile.addAction(self.actionSave_profile)
+        self.menuFile.addAction(self.actionOpen_profile)
 
         self.retranslateUi(MainWindow)
 
@@ -201,6 +207,8 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
+        self.actionSave_profile.setText(QCoreApplication.translate("MainWindow", u"Save profile", None))
+        self.actionOpen_profile.setText(QCoreApplication.translate("MainWindow", u"Open profile", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Port:", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.DisconnectButton.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))

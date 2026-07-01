@@ -27,6 +27,7 @@ from modules.extraction import ExtractionEngine
 from modules.line_decoder import LineDecoder
 from modules.models import ExtractionMode, ExtractionRule
 from modules.profiles import AppProfile, load_profile, save_profile
+from modules.rule_suggestion_dialog import RuleSuggestionDialog
 from modules.serial_transport import SerialSettings, SerialTransport
 
 
@@ -55,10 +56,12 @@ class MainWindow(QMainWindow):
         self.port_combo = QComboBox(self)
         self.baud_combo = QComboBox(self)
         self.refresh_ports_button = QPushButton("Refresh", self)
+        self.detect_rules_button = QPushButton("Detect rules", self)
 
         self._install_connection_controls()
         self._configure_console()
         self._configure_rules_table()
+        self._install_rules_controls()
         self._configure_file_menu()
         self._connect_signals()
         self._seed_default_rules()
@@ -104,6 +107,9 @@ class MainWindow(QMainWindow):
         table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
+    def _install_rules_controls(self) -> None:
+        self.ui.RulesLayout.insertWidget(0, self.detect_rules_button)
+
     def _configure_file_menu(self) -> None:
         self.save_profile_action = getattr(self.ui, "actionSave_profile", None)
         if self.save_profile_action is None:
@@ -119,6 +125,7 @@ class MainWindow(QMainWindow):
         self.ui.DisconnectButton.clicked.connect(self.disconnect_serial)
         self.ui.AddRuleButton.clicked.connect(self.add_rule)
         self.ui.RemoveRuleButton.clicked.connect(self.remove_selected_rules)
+        self.detect_rules_button.clicked.connect(self.detect_rules)
         self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
         self.save_profile_action.triggered.connect(self.save_profile_as)
         self.open_profile_action.triggered.connect(self.open_profile)
@@ -173,6 +180,18 @@ class MainWindow(QMainWindow):
 
         self.profile_path = Path(path)
         self.statusBar().showMessage(f"Saved {self.profile_path.name}")
+
+    def detect_rules(self) -> None:
+        dialog = RuleSuggestionDialog(self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+
+        rules = dialog.selected_rules()
+        if not rules:
+            return
+
+        self.set_rules(rules)
+        self.statusBar().showMessage(f"Detected {len(rules)} rule(s)")
 
     def add_rule(self, rule: ExtractionRule | None = None) -> None:
         rule = rule or ExtractionRule(label="value", mode="first_number")

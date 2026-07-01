@@ -13,5 +13,7 @@ files = [
     "modules/plot_widget.py",
     "modules/plotter.py",
     "modules/profiles.py",
+    "modules/rule_suggestion_dialog.py",
+    "modules/rule_suggestions.py",
     "modules/serial_transport.py",
 ]
