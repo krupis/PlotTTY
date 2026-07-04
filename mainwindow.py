@@ -21,13 +21,13 @@ from PySide6.QtWidgets import (
 #     pyside2-uic form.ui -o ui_form.py
 from ui_form import Ui_MainWindow
 
-from modules.extraction import ExtractionEngine
-from modules.line_decoder import LineDecoder
-from modules.models import ExtractionMode, ExtractionRule
-from modules.profiles import AppProfile, load_profile, save_profile
-from modules.rule_suggestion_dialog import RuleSuggestionDialog
-from modules.serial_settings_dialog import SerialSettingsDialog
-from modules.serial_transport import SerialSettings, SerialTransport
+from modules.core.extraction import ExtractionEngine
+from modules.core.line_decoder import LineDecoder
+from modules.core.models import ExtractionMode, ExtractionRule
+from modules.core.profiles import AppProfile, load_profile, save_profile
+from modules.core.serial_transport import SerialSettings, SerialTransport
+from modules.widgets.rule_suggestion_dialog import RuleSuggestionDialog
+from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 
 
 MODE_LABELS: dict[str, ExtractionMode] = {

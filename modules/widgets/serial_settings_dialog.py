@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from .serial_transport import SerialSettings
+from ..core.serial_transport import SerialSettings
 
 
 class SerialSettingsDialog(QDialog):

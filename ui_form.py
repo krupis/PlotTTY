@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QHeaderView,
     QStatusBar, QTabWidget, QTableWidget, QTableWidgetItem,
     QVBoxLayout, QWidget)
 
-from modules.plot_widget import PlotWidget
+from modules.widgets.plot_widget import PlotWidget
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):

@@ -16,9 +16,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from .extraction import ExtractionEngine
-from .models import ExtractionRule
-from .rule_suggestions import RuleSuggestion, suggest_rules_from_samples
+from ..core.extraction import ExtractionEngine
+from ..core.models import ExtractionRule
+from ..core.rule_suggestions import RuleSuggestion, suggest_rules_from_samples
 
 
 class RuleSuggestionDialog(QDialog):

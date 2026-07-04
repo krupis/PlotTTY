@@ -9,8 +9,8 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QSpinBox, QVBoxLayout, QWidget
 
-from .models import CapturedValue
-from .plotter import Plotter
+from ..core.models import CapturedValue
+from ..core.plotter import Plotter
 
 
 PLOT_REFRESH_INTERVAL_MS = 100

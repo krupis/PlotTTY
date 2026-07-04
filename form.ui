@@ -200,7 +200,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QWidget</extends>
-   <header>modules.plot_widget</header>
+   <header>modules.widgets.plot_widget</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
