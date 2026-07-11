@@ -64,7 +64,6 @@ class MainWindow(QMainWindow):
 
         self._configure_console()
         self._configure_rules_table()
-        self._configure_menus()
         self._connect_signals()
         self._seed_default_rules()
         self._set_connected(False)
@@ -94,17 +93,6 @@ class MainWindow(QMainWindow):
         table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
-    def _configure_menus(self) -> None:
-        self.save_profile_action = getattr(self.ui, "actionSave_profile", None)
-        if self.save_profile_action is None:
-            self.save_profile_action = self.ui.menuFile.addAction("Save profile")
-
-        self.open_profile_action = getattr(self.ui, "actionOpen_profile", None)
-        if self.open_profile_action is None:
-            self.open_profile_action = self.ui.menuFile.addAction("Open profile")
-
-        self.load_log_action = self.ui.actionLoad_log
-
     def _connect_signals(self) -> None:
         self.ui.ConnectButton.clicked.connect(self.toggle_serial_connection)
         self.ui.pushButton.clicked.connect(self.open_serial_settings)
@@ -113,9 +101,9 @@ class MainWindow(QMainWindow):
         self.ui.RemoveRuleButton.clicked.connect(self.remove_selected_rules)
         self.ui.GenerateRulesButton.clicked.connect(self.generate_rules_from_sample)
         self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
-        self.save_profile_action.triggered.connect(self.save_profile_as)
-        self.open_profile_action.triggered.connect(self.open_profile)
-        self.load_log_action.triggered.connect(self.load_log_into_console)
+        self.ui.actionSave_profile.triggered.connect(self.save_profile_as)
+        self.ui.actionOpen_profile.triggered.connect(self.open_profile)
+        self.ui.actionLoad_log.triggered.connect(self.load_log_into_console)
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
@@ -212,8 +200,12 @@ class MainWindow(QMainWindow):
     def add_rule(self, rule: ExtractionRule | None = None) -> None:
         rule = rule or ExtractionRule(label="value", mode="first_number")
         row = self.ui.RulesTable.rowCount()
-        self.ui.RulesTable.insertRow(row)
-        self._set_rule_row(row, rule)
+        self._updating_rules_table = True
+        try:
+            self.ui.RulesTable.insertRow(row)
+            self._set_rule_row(row, rule)
+        finally:
+            self._updating_rules_table = False
         self._refresh_engine()
 
     def remove_selected_rules(self) -> None:
@@ -230,12 +222,14 @@ class MainWindow(QMainWindow):
 
     def set_rules(self, rules: list[ExtractionRule]) -> None:
         self._updating_rules_table = True
-        self.ui.RulesTable.setRowCount(0)
-        for rule in rules:
-            row = self.ui.RulesTable.rowCount()
-            self.ui.RulesTable.insertRow(row)
-            self._set_rule_row(row, rule)
-        self._updating_rules_table = False
+        try:
+            self.ui.RulesTable.setRowCount(0)
+            for rule in rules:
+                row = self.ui.RulesTable.rowCount()
+                self.ui.RulesTable.insertRow(row)
+                self._set_rule_row(row, rule)
+        finally:
+            self._updating_rules_table = False
         self._refresh_engine()
 
     def rules_from_table(self) -> list[ExtractionRule]:
@@ -255,14 +249,12 @@ class MainWindow(QMainWindow):
         return rules
 
     def _set_rule_row(self, row: int, rule: ExtractionRule) -> None:
-        self._updating_rules_table = True
         self.ui.RulesTable.setItem(row, 0, _checkbox_item(rule.enabled))
         self.ui.RulesTable.setItem(row, 1, _checkbox_item(rule.sample_counter))
         self.ui.RulesTable.setItem(row, 2, QTableWidgetItem(rule.label))
         self.ui.RulesTable.setCellWidget(row, 3, self._rule_mode_combo(rule.mode))
         self.ui.RulesTable.setItem(row, 4, QTableWidgetItem(self._extra_text_for_rule(rule)))
         self.ui.RulesTable.setItem(row, 5, QTableWidgetItem(self._position_text_for_rule(rule)))
-        self._updating_rules_table = False
 
     def _rule_mode_combo(self, mode: ExtractionMode) -> QComboBox:
         combo = QComboBox(self.ui.RulesTable)
@@ -480,7 +472,7 @@ def _checkbox_item(checked: bool) -> QTableWidgetItem:
 
 
 def _color_for_log_event(event_type: str) -> QColor:
-    if event_type.startswith("RX"):
+    if event_type == "RX":
         return RECEIVED_TEXT_COLOR
     if event_type == "TX":
         return SENT_TEXT_COLOR

@@ -10,7 +10,6 @@ from typing import TextIO
 
 @dataclass(frozen=True)
 class SerialLogEvent:
-    timestamp: str
     event_type: str
     text: str
 
@@ -20,10 +19,6 @@ class SerialSessionLog:
         self.log_dir = Path(log_dir)
         self.path: Path | None = None
         self._file: TextIO | None = None
-
-    @property
-    def is_open(self) -> bool:
-        return self._file is not None
 
     def start(self, port: str, baudrate: int) -> Path:
         self.close()
@@ -66,16 +61,13 @@ class SerialSessionLog:
 
 
 def parse_serial_log(text: str) -> list[SerialLogEvent]:
-    return [
-        _parse_plain_log_line(line)
-        for line in text.splitlines(keepends=True)
-    ]
+    return [_parse_plain_log_line(line) for line in text.splitlines(keepends=True)]
 
 
 def _parse_plain_log_line(line: str) -> SerialLogEvent:
     if line.startswith("[TX] "):
-        return SerialLogEvent("", "TX", line[5:])
-    return SerialLogEvent("", _plain_log_event_type(line), line)
+        return SerialLogEvent("TX", line[5:])
+    return SerialLogEvent(_plain_log_event_type(line), line)
 
 
 def _plain_log_event_type(line: str) -> str:
