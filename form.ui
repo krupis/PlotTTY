@@ -97,7 +97,7 @@
            <item>
             <widget class="QTabWidget" name="tabWidget">
              <property name="currentIndex">
-              <number>0</number>
+              <number>1</number>
              </property>
              <widget class="QWidget" name="ConsoleTab">
               <attribute name="title">
@@ -180,8 +180,16 @@
                 <layout class="QVBoxLayout" name="RulesLayout">
                  <item>
                   <widget class="QLabel" name="AutomaticLabel">
+                   <property name="font">
+                    <font>
+                     <bold>true</bold>
+                    </font>
+                   </property>
                    <property name="text">
                     <string>Automatic:</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::TextFormat::AutoText</enum>
                    </property>
                   </widget>
                  </item>
@@ -204,6 +212,11 @@
                  </item>
                  <item>
                   <widget class="QLabel" name="ManualLabel">
+                   <property name="font">
+                    <font>
+                     <bold>true</bold>
+                    </font>
+                   </property>
                    <property name="text">
                     <string>Manual:</string>
                    </property>

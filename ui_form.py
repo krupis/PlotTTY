@@ -146,6 +146,10 @@ class Ui_MainWindow(object):
         self.RulesLayout.setObjectName(u"RulesLayout")
         self.AutomaticLabel = QLabel(self.RulesTab)
         self.AutomaticLabel.setObjectName(u"AutomaticLabel")
+        font = QFont()
+        font.setBold(True)
+        self.AutomaticLabel.setFont(font)
+        self.AutomaticLabel.setTextFormat(Qt.TextFormat.AutoText)
 
         self.RulesLayout.addWidget(self.AutomaticLabel)
 
@@ -166,6 +170,7 @@ class Ui_MainWindow(object):
 
         self.ManualLabel = QLabel(self.RulesTab)
         self.ManualLabel.setObjectName(u"ManualLabel")
+        self.ManualLabel.setFont(font)
 
         self.RulesLayout.addWidget(self.ManualLabel)
 
@@ -241,7 +246,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
