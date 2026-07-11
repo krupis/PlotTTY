@@ -14,6 +14,9 @@ from ..core.plotter import Plotter
 
 
 PLOT_REFRESH_INTERVAL_MS = 100
+PLOT_BACKGROUND = "#1f2328"
+PLOT_AXIS = "#5c6370"
+PLOT_TEXT = "#dce3ea"
 
 
 class PlotWidget(QWidget):
@@ -34,7 +37,7 @@ class PlotWidget(QWidget):
         self._is_setting_time_range = False
 
         self.graph = pg.GraphicsLayoutWidget()
-        self.graph.setBackground("#fbfcfc")
+        self.graph.setBackground(PLOT_BACKGROUND)
 
         bucket_count_tooltip = (
             "Maximum target number of displayed bucket groups for the visible time range. "
@@ -198,7 +201,7 @@ class PlotWidget(QWidget):
 
         for row, label in enumerate(label for label in self._series if label in self._visible_labels):
             plot = self.graph.addPlot(row=row, col=0, title=label)
-            self._configure_plot(plot)
+            self._configure_plot(plot, label)
             curve = plot.plot(pen=pg.mkPen(_color_for_index(row), width=2))
             curve.setClipToView(True)
             curve.setDownsampling(auto=True, method="peak")
@@ -208,13 +211,20 @@ class PlotWidget(QWidget):
         if self._auto_scroll_enabled:
             self._show_recent_data()
 
-    def _configure_plot(self, plot: pg.PlotItem) -> None:
-        plot.showGrid(x=True, y=True, alpha=0.28)
+    def _configure_plot(self, plot: pg.PlotItem, title: str) -> None:
+        axis_pen = pg.mkPen(PLOT_AXIS)
+        plot.setTitle(title, color=PLOT_TEXT, size="10pt")
+        plot.showGrid(x=True, y=True, alpha=0.22)
         plot.setLabel("bottom", "Time", units="s")
         plot.setLabel("left", "Value")
+        plot.getAxis("bottom").setPen(axis_pen)
+        plot.getAxis("left").setPen(axis_pen)
+        plot.getAxis("bottom").setTextPen(PLOT_TEXT)
+        plot.getAxis("left").setTextPen(PLOT_TEXT)
         plot.setMouseEnabled(x=True, y=True)
         plot.enableAutoRange(axis="x", enable=False)
         plot.enableAutoRange(axis="y", enable=True)
+        plot.getViewBox().setBackgroundColor(PLOT_BACKGROUND)
         plot.getViewBox().sigXRangeChanged.connect(self._handle_x_range_changed)
 
     def _latest_sample_time(self) -> float:
@@ -274,7 +284,7 @@ class PlotWidget(QWidget):
 
 
 def _color_for_index(index: int) -> str:
-    colors = ["#1d9bd1", "#ef7d00", "#16a34a", "#dc2626", "#7c3aed", "#0f766e"]
+    colors = ["#7cd1a8", "#89b4fa", "#f9c74f", "#f7768e", "#cba6f7", "#4dd0e1"]
     return colors[index % len(colors)]
 
 

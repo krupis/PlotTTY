@@ -68,7 +68,7 @@ macos.permissions =
 mode = onefile
 
 # specify any extra nuitka arguments
-extra_args = --quiet --noinclude-qt-translations --windows-console-mode=disable --force-stdout-spec=PlotTTY.out.txt --force-stderr-spec=PlotTTY.err.txt
+extra_args = --quiet --noinclude-qt-translations --windows-console-mode=disable --force-stdout-spec=PlotTTY.out.txt --force-stderr-spec=PlotTTY.err.txt --include-data-files=styles/application.qss=styles/application.qss
 
 [buildozer]
 

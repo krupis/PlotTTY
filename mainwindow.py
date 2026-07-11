@@ -42,6 +42,14 @@ RECEIVED_TEXT_COLOR = QColor("#1f8f3a")
 SENT_TEXT_COLOR = QColor("#b58900")
 STATUS_TEXT_COLOR = QColor("#1f6feb")
 MAX_CONSOLE_BLOCKS = 10_000
+STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
+
+
+def apply_application_style(app: QApplication) -> None:
+    try:
+        app.setStyleSheet(STYLESHEET_PATH.read_text(encoding="utf-8"))
+    except OSError:
+        app.setStyleSheet("")
 
 
 class MainWindow(QMainWindow):
@@ -481,6 +489,7 @@ def _color_for_log_event(event_type: str) -> QColor:
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    apply_application_style(app)
     widget = MainWindow()
     widget.show()
     sys.exit(app.exec())

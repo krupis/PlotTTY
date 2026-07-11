@@ -19,4 +19,5 @@ files = [
     "modules/widgets/__init__.py",
     "modules/widgets/plot_widget.py",
     "modules/widgets/serial_settings_dialog.py",
+    "styles/application.qss",
 ]
