@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(800, 600)
+        MainWindow.resize(798, 600)
         self.actionSave_profile = QAction(MainWindow)
         self.actionSave_profile.setObjectName(u"actionSave_profile")
         self.actionOpen_profile = QAction(MainWindow)
@@ -59,6 +59,11 @@ class Ui_MainWindow(object):
         self.DisconnectButton.setObjectName(u"DisconnectButton")
 
         self.TopNavBar.addWidget(self.DisconnectButton)
+
+        self.pushButton = QPushButton(self.page1)
+        self.pushButton.setObjectName(u"pushButton")
+
+        self.TopNavBar.addWidget(self.pushButton)
 
 
         self.verticalLayout.addLayout(self.TopNavBar)
@@ -96,6 +101,31 @@ class Ui_MainWindow(object):
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.RulesLayout = QVBoxLayout()
         self.RulesLayout.setObjectName(u"RulesLayout")
+        self.AutomaticLabel = QLabel(self.RulesTab)
+        self.AutomaticLabel.setObjectName(u"AutomaticLabel")
+
+        self.RulesLayout.addWidget(self.AutomaticLabel)
+
+        self.PasteSampleLabel = QLabel(self.RulesTab)
+        self.PasteSampleLabel.setObjectName(u"PasteSampleLabel")
+
+        self.RulesLayout.addWidget(self.PasteSampleLabel)
+
+        self.SampleOutputTextEdit = QPlainTextEdit(self.RulesTab)
+        self.SampleOutputTextEdit.setObjectName(u"SampleOutputTextEdit")
+
+        self.RulesLayout.addWidget(self.SampleOutputTextEdit)
+
+        self.GenerateRulesButton = QPushButton(self.RulesTab)
+        self.GenerateRulesButton.setObjectName(u"GenerateRulesButton")
+
+        self.RulesLayout.addWidget(self.GenerateRulesButton)
+
+        self.ManualLabel = QLabel(self.RulesTab)
+        self.ManualLabel.setObjectName(u"ManualLabel")
+
+        self.RulesLayout.addWidget(self.ManualLabel)
+
         self.AddRuleButton = QPushButton(self.RulesTab)
         self.AddRuleButton.setObjectName(u"AddRuleButton")
 
@@ -167,7 +197,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 800, 22))
+        self.menubar.setGeometry(QRect(0, 0, 798, 22))
         self.menuFile = QMenu(self.menubar)
         self.menuFile.setObjectName(u"menuFile")
         self.menuSettings = QMenu(self.menubar)
@@ -197,7 +227,12 @@ class Ui_MainWindow(object):
         self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"No port", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.DisconnectButton.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))
+        self.pushButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.ConsoleTab), QCoreApplication.translate("MainWindow", u"Console", None))
+        self.AutomaticLabel.setText(QCoreApplication.translate("MainWindow", u"Automatic:", None))
+        self.PasteSampleLabel.setText(QCoreApplication.translate("MainWindow", u"Paste sample device output:", None))
+        self.GenerateRulesButton.setText(QCoreApplication.translate("MainWindow", u"Auto generate rules", None))
+        self.ManualLabel.setText(QCoreApplication.translate("MainWindow", u"Manual:", None))
         self.AddRuleButton.setText(QCoreApplication.translate("MainWindow", u"Add rule", None))
         self.RemoveRuleButton.setText(QCoreApplication.translate("MainWindow", u"Remove rule", None))
         ___qtablewidgetitem = self.RulesTable.horizontalHeaderItem(0)

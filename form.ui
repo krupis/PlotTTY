@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>798</width>
     <height>600</height>
    </rect>
   </property>
@@ -39,6 +39,13 @@
            <widget class="QPushButton" name="DisconnectButton">
             <property name="text">
              <string>Disconnect</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushButton">
+            <property name="text">
+             <string>Settings</string>
             </property>
            </widget>
           </item>
@@ -83,6 +90,37 @@
                   <layout class="QVBoxLayout" name="verticalLayout_7">
                    <item>
                     <layout class="QVBoxLayout" name="RulesLayout">
+                     <item>
+                      <widget class="QLabel" name="AutomaticLabel">
+                       <property name="text">
+                        <string>Automatic:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="PasteSampleLabel">
+                       <property name="text">
+                        <string>Paste sample device output:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPlainTextEdit" name="SampleOutputTextEdit"/>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="GenerateRulesButton">
+                       <property name="text">
+                        <string>Auto generate rules</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="ManualLabel">
+                       <property name="text">
+                        <string>Manual:</string>
+                       </property>
+                      </widget>
+                     </item>
                      <item>
                       <widget class="QPushButton" name="AddRuleButton">
                        <property name="text">
@@ -165,7 +203,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>798</width>
      <height>22</height>
     </rect>
    </property>
