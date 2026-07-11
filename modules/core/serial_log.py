@@ -10,6 +10,7 @@ from typing import TextIO
 
 @dataclass(frozen=True)
 class SerialLogEvent:
+    timestamp: str
     event_type: str
     text: str
 
@@ -37,41 +38,51 @@ class SerialSessionLog:
         self._file = None
 
     def write_status(self, message: str) -> None:
-        self._write_text(message)
+        self._write_event("STATUS", message)
 
     def write_sent(self, command: str) -> None:
-        self._write_text(f"[TX] {command}")
+        self._write_event("TX", command)
 
     def write_received(self, data: bytes, encoding: str) -> None:
         if self._file is None or not data:
             return
 
         text = data.decode(encoding, errors="replace")
-        self._write_text(text)
+        self._write_event("RX", text)
 
-    def _write_text(self, text: str) -> None:
+    def _write_event(self, event_type: str, text: str) -> None:
         if self._file is None:
             return
 
         normalized_text = text.replace("\r\n", "\n").replace("\r", "\n")
-        self._file.write(normalized_text)
-        if not normalized_text.endswith("\n"):
-            self._file.write("\n")
+        timestamp = datetime.now().isoformat(timespec="milliseconds")
+        for line in normalized_text.splitlines() or [""]:
+            self._file.write(f"[{timestamp}] {event_type} {line}\n")
         self._file.flush()
 
 
 def parse_serial_log(text: str) -> list[SerialLogEvent]:
-    return [_parse_plain_log_line(line) for line in text.splitlines(keepends=True)]
+    events = []
+    for line in text.splitlines():
+        event = _parse_timestamped_line(line)
+        if event is not None:
+            events.append(event)
+    return events
 
 
-def _parse_plain_log_line(line: str) -> SerialLogEvent:
-    if line.startswith("[TX] "):
-        return SerialLogEvent("TX", line[5:])
-    return SerialLogEvent(_plain_log_event_type(line), line)
+def _parse_timestamped_line(line: str) -> SerialLogEvent | None:
+    if not line.startswith("["):
+        return None
 
+    timestamp_end = line.find("]")
+    if timestamp_end <= 1:
+        return None
 
-def _plain_log_event_type(line: str) -> str:
-    stripped_line = line.strip()
-    if stripped_line.startswith("[connected") or stripped_line.startswith("[disconnected"):
-        return "STATUS"
-    return "RX"
+    timestamp = line[1:timestamp_end]
+    rest = line[timestamp_end + 1 :].lstrip()
+    for event_type in ("STATUS", "TX", "RX"):
+        if rest == event_type:
+            return SerialLogEvent(timestamp, event_type, "\n")
+        if rest.startswith(f"{event_type} "):
+            return SerialLogEvent(timestamp, event_type, f"{rest[len(event_type) + 1:]}\n")
+    return None
