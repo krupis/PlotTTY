@@ -2,7 +2,7 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtGui import QTextCursor
+from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -36,6 +36,8 @@ MODE_LABELS: dict[str, ExtractionMode] = {
     "First number": "first_number",
 }
 MODE_NAMES_BY_VALUE = {value: label for label, value in MODE_LABELS.items()}
+RECEIVED_TEXT_COLOR = QColor("#1f8f3a")
+SENT_TEXT_COLOR = QColor("#b58900")
 
 
 class MainWindow(QMainWindow):
@@ -319,7 +321,10 @@ class MainWindow(QMainWindow):
             self._append_console_text("[disconnected]\n")
 
     def handle_received_data(self, data: bytes, received_at: float | None = None) -> None:
-        self._append_console_text(data.decode(self.line_decoder.encoding, errors="replace"))
+        self._append_console_text(
+            data.decode(self.line_decoder.encoding, errors="replace"),
+            RECEIVED_TEXT_COLOR,
+        )
 
         for line in self.line_decoder.feed(data):
             captured_values = self.engine.extract(line, timestamp=received_at)
@@ -347,7 +352,7 @@ class MainWindow(QMainWindow):
             return
 
         self.ui.SendCommandTextEdit.clear()
-        self._append_console_text(f"> {command}\n")
+        self._append_console_text(f"> {command}\n", SENT_TEXT_COLOR)
 
     def eventFilter(self, watched, event) -> bool:
         if (
@@ -373,12 +378,16 @@ class MainWindow(QMainWindow):
         self.ui.PortStatusLabel.setText(port)
         self.ui.PortStatusLabel.setStyleSheet(f"color: {color}; font-weight: 600;")
 
-    def _append_console_text(self, text: str) -> None:
+    def _append_console_text(self, text: str, color: QColor | None = None) -> None:
         if not text:
             return
 
         self.ui.ConsoleTextEdit.moveCursor(QTextCursor.MoveOperation.End)
-        self.ui.ConsoleTextEdit.insertPlainText(text.replace("\r\n", "\n").replace("\r", "\n"))
+        cursor = self.ui.ConsoleTextEdit.textCursor()
+        text_format = QTextCharFormat()
+        if color is not None:
+            text_format.setForeground(color)
+        cursor.insertText(text.replace("\r\n", "\n").replace("\r", "\n"), text_format)
         self.ui.ConsoleTextEdit.ensureCursorVisible()
 
     def closeEvent(self, event) -> None:
