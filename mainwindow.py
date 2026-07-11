@@ -426,6 +426,9 @@ class MainWindow(QMainWindow):
 
     def _set_connected(self, connected: bool) -> None:
         self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
+        self.ui.ConnectButton.setObjectName("red_button" if connected else "green_button")
+        self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
+        self.ui.ConnectButton.style().polish(self.ui.ConnectButton)
         self.ui.pushButton.setEnabled(not connected)
         self.ui.SendCommandTextEdit.setEnabled(connected)
         self._update_port_status_label(connected)

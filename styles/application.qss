@@ -104,20 +104,6 @@ QPushButton:disabled {
     color: #777f89;
 }
 
-QPushButton#ConnectButton {
-    background-color: #3cb371;
-    border-color: #2e8b57;
-    color: #101418;
-}
-
-QPushButton#ConnectButton:hover {
-    background-color: #5dc88d;
-}
-
-QPushButton#ConnectButton:pressed {
-    background-color: #31965e;
-}
-
 QPushButton#RemoveRuleButton {
     color: #f4b3bc;
 }
@@ -221,13 +207,12 @@ QTabWidget::pane {
     background-color: #303841;
     border: 1px solid #4b5561;
     border-radius: 6px;
-    top: -1px;
+    top: 0;
 }
 
 QTabBar::tab {
     background-color: #252b32;
     border: 1px solid #4b5561;
-    border-bottom: none;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
     color: #a6accd;
@@ -238,6 +223,7 @@ QTabBar::tab {
 
 QTabBar::tab:selected {
     background-color: #303841;
+    border-bottom-color: #303841;
     color: #ffffff;
 }
 
@@ -345,4 +331,33 @@ QDialog QLabel {
 
 QDialogButtonBox QPushButton {
     min-width: 78px;
+}
+
+QPushButton#green_button {
+    background-color: #3cb371;
+    border-color: #2e8b57;
+    color: #101418;
+}
+
+QPushButton#green_button:hover {
+    background-color: #5dc88d;
+}
+
+QPushButton#green_button:pressed {
+    background-color: #31965e;
+}
+
+QPushButton#red_button {
+    background-color: #5a3038;
+    border-color: #8b3a46;
+    color: #ffffff;
+}
+
+QPushButton#red_button:hover {
+    background-color: #7a3d4a;
+    border-color: #f7768e;
+}
+
+QPushButton#red_button:pressed {
+    background-color: #4a252c;
 }

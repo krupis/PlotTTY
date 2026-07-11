@@ -10,8 +10,10 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QHBoxLayout,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from ..core.serial_transport import SerialSettings
@@ -60,12 +62,20 @@ class SerialSettingsDialog(QDialog):
         for label, value in (("LF", "\n"), ("CR", "\r"), ("CRLF", "\r\n"), ("None", "")):
             self.line_ending_combo.addItem(label, value)
 
-        self.refresh_button = QPushButton("Refresh Ports")
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.refresh_button = QPushButton("Refresh")
+        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setObjectName("green_button")
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setObjectName("red_button")
+
+        port_row = QWidget()
+        port_layout = QHBoxLayout(port_row)
+        port_layout.setContentsMargins(0, 0, 0, 0)
+        port_layout.setSpacing(6)
+        port_layout.addWidget(self.port_combo, 1)
+        port_layout.addWidget(self.refresh_button)
 
         form = QFormLayout()
-        form.addRow("Port", self.port_combo)
-        form.addRow("", self.refresh_button)
+        form.addRow("Port", port_row)
         form.addRow("Baud", self.baud_combo)
         form.addRow("Data bits", self.data_bits_combo)
         form.addRow("Parity", self.parity_combo)
