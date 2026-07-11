@@ -38,6 +38,7 @@ MODE_LABELS: dict[str, ExtractionMode] = {
 MODE_NAMES_BY_VALUE = {value: label for label, value in MODE_LABELS.items()}
 RECEIVED_TEXT_COLOR = QColor("#1f8f3a")
 SENT_TEXT_COLOR = QColor("#b58900")
+STATUS_TEXT_COLOR = QColor("#1f6feb")
 
 
 class MainWindow(QMainWindow):
@@ -96,18 +97,18 @@ class MainWindow(QMainWindow):
         if self.open_profile_action is None:
             self.open_profile_action = self.ui.menuFile.addAction("Open profile")
 
-        self.serial_settings_action = self.ui.menuSettings.addAction("Serial port...")
+        self.ui.menubar.removeAction(self.ui.menuSettings.menuAction())
 
     def _connect_signals(self) -> None:
         self.ui.ConnectButton.clicked.connect(self.connect_serial)
         self.ui.DisconnectButton.clicked.connect(self.disconnect_serial)
+        self.ui.pushButton.clicked.connect(self.open_serial_settings)
         self.ui.AddRuleButton.clicked.connect(self.add_rule)
         self.ui.RemoveRuleButton.clicked.connect(self.remove_selected_rules)
         self.ui.GenerateRulesButton.clicked.connect(self.generate_rules_from_sample)
         self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
         self.save_profile_action.triggered.connect(self.save_profile_as)
         self.open_profile_action.triggered.connect(self.open_profile)
-        self.serial_settings_action.triggered.connect(self.open_serial_settings)
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
@@ -293,7 +294,7 @@ class MainWindow(QMainWindow):
         settings = self.serial_settings
         port = settings.port
         if not port:
-            QMessageBox.warning(self, "No Port", "Open Settings > Serial port... and choose a serial port first.")
+            QMessageBox.warning(self, "No Port", "Use the Settings button and choose a serial port first.")
             return
 
         try:
@@ -308,7 +309,10 @@ class MainWindow(QMainWindow):
             return
 
         self._set_connected(True)
-        self._append_console_text(f"[connected to {settings.port} at {settings.baudrate} baud]\n")
+        self._append_console_text(
+            f"[connected to {settings.port} at {settings.baudrate} baud]\n",
+            STATUS_TEXT_COLOR,
+        )
 
     def disconnect_serial(self) -> None:
         was_connected = bool(self.transport and self.transport.is_open)
@@ -318,7 +322,7 @@ class MainWindow(QMainWindow):
 
         self._set_connected(False)
         if was_connected:
-            self._append_console_text("[disconnected]\n")
+            self._append_console_text("[disconnected]\n", STATUS_TEXT_COLOR)
 
     def handle_received_data(self, data: bytes, received_at: float | None = None) -> None:
         self._append_console_text(
@@ -352,7 +356,7 @@ class MainWindow(QMainWindow):
             return
 
         self.ui.SendCommandTextEdit.clear()
-        self._append_console_text(f"> {command}\n", SENT_TEXT_COLOR)
+        self._append_console_text(f"{command}\n", SENT_TEXT_COLOR)
 
     def eventFilter(self, watched, event) -> bool:
         if (
@@ -368,8 +372,8 @@ class MainWindow(QMainWindow):
     def _set_connected(self, connected: bool) -> None:
         self.ui.ConnectButton.setEnabled(not connected)
         self.ui.DisconnectButton.setEnabled(connected)
+        self.ui.pushButton.setEnabled(not connected)
         self.ui.SendCommandTextEdit.setEnabled(connected)
-        self.serial_settings_action.setEnabled(not connected)
         self._update_port_status_label(connected)
 
     def _update_port_status_label(self, connected: bool) -> None:
