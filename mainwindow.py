@@ -26,7 +26,7 @@ from modules.core.line_decoder import LineDecoder
 from modules.core.models import ExtractionMode, ExtractionRule
 from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.core.rule_suggestions import suggest_rules_from_samples
-from modules.core.serial_log import SerialSessionLog
+from modules.core.serial_log import SerialLogEvent, SerialSessionLog, parse_serial_log
 from modules.core.serial_transport import SerialSettings, SerialTransport
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 
@@ -41,6 +41,7 @@ MODE_NAMES_BY_VALUE = {value: label for label, value in MODE_LABELS.items()}
 RECEIVED_TEXT_COLOR = QColor("#1f8f3a")
 SENT_TEXT_COLOR = QColor("#b58900")
 STATUS_TEXT_COLOR = QColor("#1f6feb")
+MAX_CONSOLE_BLOCKS = 2_000
 
 
 class MainWindow(QMainWindow):
@@ -71,7 +72,7 @@ class MainWindow(QMainWindow):
     def _configure_console(self) -> None:
         self.ui.ConsoleTextEdit.setReadOnly(True)
         self.ui.ConsoleTextEdit.setLineWrapMode(self.ui.ConsoleTextEdit.LineWrapMode.NoWrap)
-        self.ui.ConsoleTextEdit.document().setMaximumBlockCount(2_000)
+        self.ui.ConsoleTextEdit.document().setMaximumBlockCount(MAX_CONSOLE_BLOCKS)
         self.ui.SendCommandTextEdit.setLineWrapMode(self.ui.SendCommandTextEdit.LineWrapMode.NoWrap)
         self.ui.SendCommandTextEdit.setPlaceholderText("Type command and press Enter")
         self.ui.SendCommandTextEdit.installEventFilter(self)
@@ -184,7 +185,9 @@ class MainWindow(QMainWindow):
             return
 
         self.ui.ConsoleTextEdit.document().setMaximumBlockCount(0)
-        self.ui.ConsoleTextEdit.setPlainText(text)
+        self.ui.ConsoleTextEdit.clear()
+        for event in parse_serial_log(text):
+            self._append_log_event(event)
         self.ui.ConsoleTextEdit.moveCursor(QTextCursor.MoveOperation.Start)
         self.statusBar().showMessage(f"Loaded log {Path(path).name}")
 
@@ -342,7 +345,7 @@ class MainWindow(QMainWindow):
             return
 
         # Limit the console to 2,000 lines to prevent excessive memory usage
-        self.ui.ConsoleTextEdit.document().setMaximumBlockCount(2_000)
+        self.ui.ConsoleTextEdit.document().setMaximumBlockCount(MAX_CONSOLE_BLOCKS)
         self._reset_receive_rate()
         log_path = self.serial_log.start(settings.port, settings.baudrate)
         self._set_connected(True)
@@ -448,6 +451,10 @@ class MainWindow(QMainWindow):
     def _update_data_received_label(self, bytes_per_second: float) -> None:
         self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
 
+    def _append_log_event(self, event: SerialLogEvent) -> None:
+        color = _color_for_log_event(event.event_type)
+        self._append_console_text(event.text, color)
+
     def _append_console_text(self, text: str, color: QColor | None = None) -> None:
         if not text:
             return
@@ -470,6 +477,14 @@ def _checkbox_item(checked: bool) -> QTableWidgetItem:
     item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
     item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
     return item
+
+
+def _color_for_log_event(event_type: str) -> QColor:
+    if event_type.startswith("RX"):
+        return RECEIVED_TEXT_COLOR
+    if event_type == "TX":
+        return SENT_TEXT_COLOR
+    return STATUS_TEXT_COLOR
 
 
 if __name__ == "__main__":
