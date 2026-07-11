@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(798, 600)
+        MainWindow.resize(1191, 907)
         self.actionSave_profile = QAction(MainWindow)
         self.actionSave_profile.setObjectName(u"actionSave_profile")
         self.actionOpen_profile = QAction(MainWindow)
@@ -43,11 +43,21 @@ class Ui_MainWindow(object):
         self.TopNavBar.setObjectName(u"TopNavBar")
         self.PortStatusLabel = QLabel(self.centralwidget)
         self.PortStatusLabel.setObjectName(u"PortStatusLabel")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.PortStatusLabel.sizePolicy().hasHeightForWidth())
+        self.PortStatusLabel.setSizePolicy(sizePolicy)
 
         self.TopNavBar.addWidget(self.PortStatusLabel)
 
         self.ConnectButton = QPushButton(self.centralwidget)
         self.ConnectButton.setObjectName(u"ConnectButton")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.ConnectButton.sizePolicy().hasHeightForWidth())
+        self.ConnectButton.setSizePolicy(sizePolicy1)
 
         self.TopNavBar.addWidget(self.ConnectButton)
 
@@ -58,10 +68,12 @@ class Ui_MainWindow(object):
 
         self.DataReceivedLabel = QLabel(self.centralwidget)
         self.DataReceivedLabel.setObjectName(u"DataReceivedLabel")
+        sizePolicy.setHeightForWidth(self.DataReceivedLabel.sizePolicy().hasHeightForWidth())
+        self.DataReceivedLabel.setSizePolicy(sizePolicy)
 
         self.TopNavBar.addWidget(self.DataReceivedLabel)
 
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Minimum)
 
         self.TopNavBar.addItem(self.horizontalSpacer)
 
@@ -88,11 +100,11 @@ class Ui_MainWindow(object):
         self.ConsoleLayout.setObjectName(u"ConsoleLayout")
         self.ConsoleTextEdit = QPlainTextEdit(self.ConsoleTab)
         self.ConsoleTextEdit.setObjectName(u"ConsoleTextEdit")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.ConsoleTextEdit.sizePolicy().hasHeightForWidth())
-        self.ConsoleTextEdit.setSizePolicy(sizePolicy)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.ConsoleTextEdit.sizePolicy().hasHeightForWidth())
+        self.ConsoleTextEdit.setSizePolicy(sizePolicy2)
         self.ConsoleTextEdit.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.ConsoleLayout.addWidget(self.ConsoleTextEdit)
@@ -101,11 +113,11 @@ class Ui_MainWindow(object):
         self.ConsoleBottomLayout.setObjectName(u"ConsoleBottomLayout")
         self.SendCommandTextEdit = QPlainTextEdit(self.ConsoleTab)
         self.SendCommandTextEdit.setObjectName(u"SendCommandTextEdit")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.SendCommandTextEdit.sizePolicy().hasHeightForWidth())
-        self.SendCommandTextEdit.setSizePolicy(sizePolicy1)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.SendCommandTextEdit.sizePolicy().hasHeightForWidth())
+        self.SendCommandTextEdit.setSizePolicy(sizePolicy3)
         self.SendCommandTextEdit.setMinimumSize(QSize(0, 25))
         self.SendCommandTextEdit.setMaximumSize(QSize(16777215, 25))
         self.SendCommandTextEdit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -214,7 +226,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 798, 22))
+        self.menubar.setGeometry(QRect(0, 0, 1191, 22))
         self.menuFile = QMenu(self.menubar)
         self.menuFile.setObjectName(u"menuFile")
         MainWindow.setMenuBar(self.menubar)

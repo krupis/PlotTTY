@@ -45,7 +45,7 @@ class SerialSessionLog:
         self._write_text(message)
 
     def write_sent(self, command: str) -> None:
-        self._write_text(command)
+        self._write_text(f"[TX] {command}")
 
     def write_received(self, data: bytes, encoding: str) -> None:
         if self._file is None or not data:
@@ -67,9 +67,15 @@ class SerialSessionLog:
 
 def parse_serial_log(text: str) -> list[SerialLogEvent]:
     return [
-        SerialLogEvent("", _plain_log_event_type(line), line)
+        _parse_plain_log_line(line)
         for line in text.splitlines(keepends=True)
     ]
+
+
+def _parse_plain_log_line(line: str) -> SerialLogEvent:
+    if line.startswith("[TX] "):
+        return SerialLogEvent("", "TX", line[5:])
+    return SerialLogEvent("", _plain_log_event_type(line), line)
 
 
 def _plain_log_event_type(line: str) -> str:
