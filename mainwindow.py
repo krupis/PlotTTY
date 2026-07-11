@@ -100,9 +100,9 @@ class MainWindow(QMainWindow):
         self.ui.menubar.removeAction(self.ui.menuSettings.menuAction())
 
     def _connect_signals(self) -> None:
-        self.ui.ConnectButton.clicked.connect(self.connect_serial)
-        self.ui.DisconnectButton.clicked.connect(self.disconnect_serial)
+        self.ui.ConnectButton.clicked.connect(self.toggle_serial_connection)
         self.ui.pushButton.clicked.connect(self.open_serial_settings)
+        self.ui.ClearConsoleButton.clicked.connect(self.clear_console_and_plot)
         self.ui.AddRuleButton.clicked.connect(self.add_rule)
         self.ui.RemoveRuleButton.clicked.connect(self.remove_selected_rules)
         self.ui.GenerateRulesButton.clicked.connect(self.generate_rules_from_sample)
@@ -290,6 +290,12 @@ class MainWindow(QMainWindow):
             return ""
         return rule.extra_setting
 
+    def toggle_serial_connection(self) -> None:
+        if self.transport and self.transport.is_open:
+            self.disconnect_serial()
+        else:
+            self.connect_serial()
+
     def connect_serial(self) -> None:
         settings = self.serial_settings
         port = settings.port
@@ -323,6 +329,11 @@ class MainWindow(QMainWindow):
         self._set_connected(False)
         if was_connected:
             self._append_console_text("[disconnected]\n", STATUS_TEXT_COLOR)
+
+    def clear_console_and_plot(self) -> None:
+        self.ui.ConsoleTextEdit.clear()
+        self.plot.clear_values()
+        self.statusBar().showMessage("Cleared console and plot data")
 
     def handle_received_data(self, data: bytes, received_at: float | None = None) -> None:
         self._append_console_text(
@@ -370,8 +381,7 @@ class MainWindow(QMainWindow):
         return super().eventFilter(watched, event)
 
     def _set_connected(self, connected: bool) -> None:
-        self.ui.ConnectButton.setEnabled(not connected)
-        self.ui.DisconnectButton.setEnabled(connected)
+        self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
         self.ui.pushButton.setEnabled(not connected)
         self.ui.SendCommandTextEdit.setEnabled(connected)
         self._update_port_status_label(connected)

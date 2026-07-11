@@ -97,6 +97,8 @@ class Ui_MainWindow(object):
 
         self.ConsoleLayout.addWidget(self.ConsoleTextEdit)
 
+        self.ConsoleBottomLayout = QHBoxLayout()
+        self.ConsoleBottomLayout.setObjectName(u"ConsoleBottomLayout")
         self.SendCommandTextEdit = QPlainTextEdit(self.ConsoleTab)
         self.SendCommandTextEdit.setObjectName(u"SendCommandTextEdit")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -108,7 +110,17 @@ class Ui_MainWindow(object):
         self.SendCommandTextEdit.setMaximumSize(QSize(16777215, 25))
         self.SendCommandTextEdit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        self.ConsoleLayout.addWidget(self.SendCommandTextEdit)
+        self.ConsoleBottomLayout.addWidget(self.SendCommandTextEdit)
+
+        self.ClearConsoleButton = QPushButton(self.ConsoleTab)
+        self.ClearConsoleButton.setObjectName(u"ClearConsoleButton")
+        self.ClearConsoleButton.setMinimumSize(QSize(50, 0))
+        self.ClearConsoleButton.setMaximumSize(QSize(50, 16777215))
+
+        self.ConsoleBottomLayout.addWidget(self.ClearConsoleButton)
+
+
+        self.ConsoleLayout.addLayout(self.ConsoleBottomLayout)
 
 
         self.horizontalLayout.addLayout(self.ConsoleLayout)
@@ -247,6 +259,7 @@ class Ui_MainWindow(object):
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.DisconnectButton.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))
         self.pushButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
+        self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.ConsoleTab), QCoreApplication.translate("MainWindow", u"Console", None))
         self.AutomaticLabel.setText(QCoreApplication.translate("MainWindow", u"Automatic:", None))
         self.PasteSampleLabel.setText(QCoreApplication.translate("MainWindow", u"Paste sample device output:", None))
