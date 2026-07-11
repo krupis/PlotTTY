@@ -41,7 +41,7 @@ MODE_NAMES_BY_VALUE = {value: label for label, value in MODE_LABELS.items()}
 RECEIVED_TEXT_COLOR = QColor("#1f8f3a")
 SENT_TEXT_COLOR = QColor("#b58900")
 STATUS_TEXT_COLOR = QColor("#1f6feb")
-MAX_CONSOLE_BLOCKS = 2_000
+MAX_CONSOLE_BLOCKS = 10_000
 
 
 class MainWindow(QMainWindow):
