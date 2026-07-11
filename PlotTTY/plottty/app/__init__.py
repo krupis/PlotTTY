@@ -1,1 +1,0 @@
-"""PlotTTY application entry points."""

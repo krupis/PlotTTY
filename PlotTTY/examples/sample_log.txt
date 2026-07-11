@@ -1,5 +1,0 @@
-Boot complete
-Temperature:30.7 C
-Humidity:50%
-Voltage=3.31 V
-Motor speed: 1250 rpm
