@@ -26,6 +26,7 @@ from modules.core.line_decoder import LineDecoder
 from modules.core.models import ExtractionMode, ExtractionRule
 from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.core.rule_suggestions import suggest_rules_from_samples
+from modules.core.serial_log import SerialSessionLog
 from modules.core.serial_transport import SerialSettings, SerialTransport
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 
@@ -52,6 +53,7 @@ class MainWindow(QMainWindow):
         self.serial_settings = SerialSettings()
         self.line_decoder = LineDecoder()
         self.engine = ExtractionEngine()
+        self.serial_log = SerialSessionLog()
         self.profile_path: Path | None = None
 
         self.plot = self.ui.Plot
@@ -100,6 +102,8 @@ class MainWindow(QMainWindow):
         if self.open_profile_action is None:
             self.open_profile_action = self.ui.menuFile.addAction("Open profile")
 
+        self.load_log_action = self.ui.actionLoad_log
+
     def _connect_signals(self) -> None:
         self.ui.ConnectButton.clicked.connect(self.toggle_serial_connection)
         self.ui.pushButton.clicked.connect(self.open_serial_settings)
@@ -110,6 +114,7 @@ class MainWindow(QMainWindow):
         self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
         self.save_profile_action.triggered.connect(self.save_profile_as)
         self.open_profile_action.triggered.connect(self.open_profile)
+        self.load_log_action.triggered.connect(self.load_log_into_console)
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
@@ -161,6 +166,27 @@ class MainWindow(QMainWindow):
 
         self.profile_path = Path(path)
         self.statusBar().showMessage(f"Saved {self.profile_path.name}")
+
+    def load_log_into_console(self) -> None:
+        path, _selected_filter = QFileDialog.getOpenFileName(
+            self,
+            "Load Serial Log",
+            str(self.serial_log.log_dir),
+            "Serial Logs (*.log);;Text Files (*.txt);;All Files (*)",
+        )
+        if not path:
+            return
+
+        try:
+            text = Path(path).read_text(encoding="utf-8", errors="replace")
+        except Exception as exc:
+            QMessageBox.warning(self, "Load Log Failed", str(exc))
+            return
+
+        self.ui.ConsoleTextEdit.document().setMaximumBlockCount(0)
+        self.ui.ConsoleTextEdit.setPlainText(text)
+        self.ui.ConsoleTextEdit.moveCursor(QTextCursor.MoveOperation.Start)
+        self.statusBar().showMessage(f"Loaded log {Path(path).name}")
 
     def generate_rules_from_sample(self) -> None:
         suggestions = suggest_rules_from_samples(self.ui.SampleOutputTextEdit.toPlainText())
@@ -315,12 +341,15 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Connection Failed", str(exc))
             return
 
+        # Limit the console to 2,000 lines to prevent excessive memory usage
+        self.ui.ConsoleTextEdit.document().setMaximumBlockCount(2_000)
         self._reset_receive_rate()
+        log_path = self.serial_log.start(settings.port, settings.baudrate)
         self._set_connected(True)
-        self._append_console_text(
-            f"[connected to {settings.port} at {settings.baudrate} baud]\n",
-            STATUS_TEXT_COLOR,
-        )
+        message = f"[connected to {settings.port} at {settings.baudrate} baud]"
+        self.serial_log.write_status(message)
+        self._append_console_text(f"{message}\n", STATUS_TEXT_COLOR)
+        self.statusBar().showMessage(f"Logging to {log_path}")
 
     def disconnect_serial(self) -> None:
         was_connected = bool(self.transport and self.transport.is_open)
@@ -330,7 +359,9 @@ class MainWindow(QMainWindow):
 
         self._set_connected(False)
         if was_connected:
+            self.serial_log.write_status("[disconnected]")
             self._append_console_text("[disconnected]\n", STATUS_TEXT_COLOR)
+            self.serial_log.close()
 
     def clear_console_and_plot(self) -> None:
         self.ui.ConsoleTextEdit.clear()
@@ -340,6 +371,7 @@ class MainWindow(QMainWindow):
 
     def handle_received_data(self, data: bytes, received_at: float | None = None) -> None:
         self._record_received_bytes(len(data))
+        self.serial_log.write_received(data, self.line_decoder.encoding)
         self._append_console_text(
             data.decode(self.line_decoder.encoding, errors="replace"),
             RECEIVED_TEXT_COLOR,
@@ -371,6 +403,7 @@ class MainWindow(QMainWindow):
             return
 
         self.ui.SendCommandTextEdit.clear()
+        self.serial_log.write_sent(command)
         self._append_console_text(f"{command}\n", SENT_TEXT_COLOR)
 
     def eventFilter(self, watched, event) -> bool:

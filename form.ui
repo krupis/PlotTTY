@@ -14,7 +14,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,10,0">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,10">
     <item>
      <layout class="QHBoxLayout" name="TopNavBar">
       <item>
@@ -269,6 +269,7 @@
     </property>
     <addaction name="actionSave_profile"/>
     <addaction name="actionOpen_profile"/>
+    <addaction name="actionLoad_log"/>
    </widget>
    <addaction name="menuFile"/>
   </widget>
@@ -281,6 +282,11 @@
   <action name="actionOpen_profile">
    <property name="text">
     <string>Open profile</string>
+   </property>
+  </action>
+  <action name="actionLoad_log">
+   <property name="text">
+    <string>Load log</string>
    </property>
   </action>
  </widget>

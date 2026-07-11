@@ -33,6 +33,8 @@ class Ui_MainWindow(object):
         self.actionSave_profile.setObjectName(u"actionSave_profile")
         self.actionOpen_profile = QAction(MainWindow)
         self.actionOpen_profile.setObjectName(u"actionOpen_profile")
+        self.actionLoad_log = QAction(MainWindow)
+        self.actionLoad_log.setObjectName(u"actionLoad_log")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
@@ -223,6 +225,7 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuFile.menuAction())
         self.menuFile.addAction(self.actionSave_profile)
         self.menuFile.addAction(self.actionOpen_profile)
+        self.menuFile.addAction(self.actionLoad_log)
 
         self.retranslateUi(MainWindow)
 
@@ -236,6 +239,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.actionSave_profile.setText(QCoreApplication.translate("MainWindow", u"Save profile", None))
         self.actionOpen_profile.setText(QCoreApplication.translate("MainWindow", u"Open profile", None))
+        self.actionLoad_log.setText(QCoreApplication.translate("MainWindow", u"Load log", None))
         self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"No port", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.pushButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))

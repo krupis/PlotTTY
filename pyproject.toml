@@ -14,6 +14,7 @@ files = [
     "modules/core/plotter.py",
     "modules/core/profiles.py",
     "modules/core/rule_suggestions.py",
+    "modules/core/serial_log.py",
     "modules/core/serial_transport.py",
     "modules/widgets/__init__.py",
     "modules/widgets/plot_widget.py",
