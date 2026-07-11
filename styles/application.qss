@@ -153,7 +153,7 @@ QPlainTextEdit#ConsoleTextEdit {
 
 QPlainTextEdit#SendCommandTextEdit {
     background-color: #1c2229;
-    padding: 3px 7px;
+    padding: 2px 7px;
 }
 
 QPlainTextEdit:focus,
@@ -183,15 +183,15 @@ QSpinBox::up-button,
 QSpinBox::down-button {
     background-color: #3a4048;
     border-left: 1px solid #555e68;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
     width: 22px;
 }
 
 QComboBox::down-arrow {
-    image: none;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid #dce3ea;
-    margin-right: 6px;
+    image: url(":/icons/arrow-down.svg");
+    width: 12px;
+    height: 12px;
 }
 
 QComboBox QAbstractItemView {
@@ -200,6 +200,21 @@ QComboBox QAbstractItemView {
     color: #f0f4f8;
     selection-background-color: #2e8b57;
     selection-color: #ffffff;
+}
+
+QTableWidget QComboBox {
+    margin: 2px 3px;
+    min-height: 0;
+    padding: 0 6px;
+}
+
+QTableWidget QComboBox::drop-down {
+    width: 20px;
+}
+
+QTableWidget QComboBox::down-arrow {
+    width: 10px;
+    height: 10px;
 }
 
 QTabWidget::pane {
@@ -231,21 +246,33 @@ QTabBar::tab:hover:!selected {
     color: #dce3ea;
 }
 
-QTableWidget,
-QTableView {
+QTableWidget {
     background-color: #1f2328;
     alternate-background-color: #262c33;
     border: 1px solid #444a53;
     color: #e0e0e0;
-    font-size: 9px;
+    font-size: 9pt;
     gridline-color: #333942;
     selection-background-color: #2e8b57;
     selection-color: #ffffff;
 }
 
-QTableWidget::item,
-QTableView::item {
-    padding: 4px;
+QTableWidget::indicator {
+    background-color: #444a53;
+    border: 1px solid #68727f;
+    border-radius: 4px;
+    height: 16px;
+    width: 16px;
+}
+
+QTableWidget::indicator:unchecked {
+    image: url(":/icons/x.svg");
+}
+
+QTableWidget::indicator:checked {
+    background-color: #3cb371;
+    border-color: #2e8b57;
+    image: url(":/icons/check.svg");
 }
 
 QHeaderView::section {
@@ -296,6 +323,15 @@ QStatusBar {
     background-color: #20262d;
     border-top: 1px solid #3b444e;
     color: #a6accd;
+}
+
+QToolTip {
+    background-color: #151a20;
+    border: 1px solid #7cd1a8;
+    border-radius: 4px;
+    color: #f0f4f8;
+    font-size: 9pt;
+    padding: 6px 8px;
 }
 
 QDialog {

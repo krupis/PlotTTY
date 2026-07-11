@@ -29,6 +29,7 @@ from modules.core.rule_suggestions import suggest_rules_from_samples
 from modules.core.serial_log import SerialLogEvent, SerialSessionLog, parse_serial_log
 from modules.core.serial_transport import SerialSettings, SerialTransport
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
+import resources_rc  # noqa: F401
 
 
 MODE_LABELS: dict[str, ExtractionMode] = {
@@ -47,9 +48,12 @@ STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
 
 def apply_application_style(app: QApplication) -> None:
     try:
-        app.setStyleSheet(STYLESHEET_PATH.read_text(encoding="utf-8"))
+        stylesheet = STYLESHEET_PATH.read_text(encoding="utf-8")
     except OSError:
         app.setStyleSheet("")
+        return
+
+    app.setStyleSheet(stylesheet)
 
 
 class MainWindow(QMainWindow):

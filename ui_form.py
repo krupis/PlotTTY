@@ -118,8 +118,8 @@ class Ui_MainWindow(object):
         sizePolicy3.setVerticalStretch(0)
         sizePolicy3.setHeightForWidth(self.SendCommandTextEdit.sizePolicy().hasHeightForWidth())
         self.SendCommandTextEdit.setSizePolicy(sizePolicy3)
-        self.SendCommandTextEdit.setMinimumSize(QSize(0, 25))
-        self.SendCommandTextEdit.setMaximumSize(QSize(16777215, 25))
+        self.SendCommandTextEdit.setMinimumSize(QSize(0, 0))
+        self.SendCommandTextEdit.setMaximumSize(QSize(16777215, 32))
         self.SendCommandTextEdit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.ConsoleBottomLayout.addWidget(self.SendCommandTextEdit)
@@ -246,7 +246,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
