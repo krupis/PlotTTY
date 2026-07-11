@@ -97,8 +97,6 @@ class MainWindow(QMainWindow):
         if self.open_profile_action is None:
             self.open_profile_action = self.ui.menuFile.addAction("Open profile")
 
-        self.ui.menubar.removeAction(self.ui.menuSettings.menuAction())
-
     def _connect_signals(self) -> None:
         self.ui.ConnectButton.clicked.connect(self.toggle_serial_connection)
         self.ui.pushButton.clicked.connect(self.open_serial_settings)

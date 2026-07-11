@@ -18,7 +18,7 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QHeaderView,
     QLabel, QMainWindow, QMenu, QMenuBar,
-    QPlainTextEdit, QPushButton, QSizePolicy, QStackedWidget,
+    QPlainTextEdit, QPushButton, QSizePolicy, QSpacerItem,
     QStatusBar, QTabWidget, QTableWidget, QTableWidgetItem,
     QVBoxLayout, QWidget)
 
@@ -35,35 +35,28 @@ class Ui_MainWindow(object):
         self.actionOpen_profile.setObjectName(u"actionOpen_profile")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        self.verticalLayout_5 = QVBoxLayout(self.centralwidget)
-        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
-        self.stackedWidget = QStackedWidget(self.centralwidget)
-        self.stackedWidget.setObjectName(u"stackedWidget")
-        self.page1 = QWidget()
-        self.page1.setObjectName(u"page1")
-        self.verticalLayout = QVBoxLayout(self.page1)
+        self.verticalLayout = QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.TopNavBar = QHBoxLayout()
         self.TopNavBar.setObjectName(u"TopNavBar")
-        self.PortStatusLabel = QLabel(self.page1)
+        self.PortStatusLabel = QLabel(self.centralwidget)
         self.PortStatusLabel.setObjectName(u"PortStatusLabel")
 
         self.TopNavBar.addWidget(self.PortStatusLabel)
 
-        self.ConnectButton = QPushButton(self.page1)
+        self.ConnectButton = QPushButton(self.centralwidget)
         self.ConnectButton.setObjectName(u"ConnectButton")
 
         self.TopNavBar.addWidget(self.ConnectButton)
 
-        self.DisconnectButton = QPushButton(self.page1)
-        self.DisconnectButton.setObjectName(u"DisconnectButton")
-
-        self.TopNavBar.addWidget(self.DisconnectButton)
-
-        self.pushButton = QPushButton(self.page1)
+        self.pushButton = QPushButton(self.centralwidget)
         self.pushButton.setObjectName(u"pushButton")
 
         self.TopNavBar.addWidget(self.pushButton)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.TopNavBar.addItem(self.horizontalSpacer)
 
 
         self.verticalLayout.addLayout(self.TopNavBar)
@@ -72,7 +65,7 @@ class Ui_MainWindow(object):
         self.main.setObjectName(u"main")
         self.mainSplit = QHBoxLayout()
         self.mainSplit.setObjectName(u"mainSplit")
-        self.RightFrame = QFrame(self.page1)
+        self.RightFrame = QFrame(self.centralwidget)
         self.RightFrame.setObjectName(u"RightFrame")
         self.RightFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.RightFrame.setFrameShadow(QFrame.Shadow.Raised)
@@ -211,35 +204,18 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.setStretch(0, 1)
         self.verticalLayout.setStretch(1, 10)
-        self.stackedWidget.addWidget(self.page1)
-        self.page_2 = QWidget()
-        self.page_2.setObjectName(u"page_2")
-        self.verticalLayout_2 = QVBoxLayout(self.page_2)
-        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.test = QVBoxLayout()
-        self.test.setObjectName(u"test")
-
-        self.verticalLayout_2.addLayout(self.test)
-
-        self.stackedWidget.addWidget(self.page_2)
-
-        self.verticalLayout_5.addWidget(self.stackedWidget)
-
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
         self.menubar.setGeometry(QRect(0, 0, 798, 22))
         self.menuFile = QMenu(self.menubar)
         self.menuFile.setObjectName(u"menuFile")
-        self.menuSettings = QMenu(self.menubar)
-        self.menuSettings.setObjectName(u"menuSettings")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")
         MainWindow.setStatusBar(self.statusbar)
 
         self.menubar.addAction(self.menuFile.menuAction())
-        self.menubar.addAction(self.menuSettings.menuAction())
         self.menuFile.addAction(self.actionSave_profile)
         self.menuFile.addAction(self.actionOpen_profile)
 
@@ -257,7 +233,6 @@ class Ui_MainWindow(object):
         self.actionOpen_profile.setText(QCoreApplication.translate("MainWindow", u"Open profile", None))
         self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"No port", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
-        self.DisconnectButton.setText(QCoreApplication.translate("MainWindow", u"Disconnect", None))
         self.pushButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
         self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.ConsoleTab), QCoreApplication.translate("MainWindow", u"Console", None))
@@ -281,6 +256,5 @@ class Ui_MainWindow(object):
         ___qtablewidgetitem5.setText(QCoreApplication.translate("MainWindow", u"Index", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.RulesTab), QCoreApplication.translate("MainWindow", u"Rules", None))
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
-        self.menuSettings.setTitle(QCoreApplication.translate("MainWindow", u"Settings", None))
     # retranslateUi
 

@@ -14,245 +14,236 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_5">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,10">
     <item>
-     <widget class="QStackedWidget" name="stackedWidget">
-      <widget class="QWidget" name="page1">
-       <layout class="QVBoxLayout" name="verticalLayout" stretch="1,10">
+     <layout class="QHBoxLayout" name="TopNavBar">
+      <item>
+       <widget class="QLabel" name="PortStatusLabel">
+        <property name="text">
+         <string>No port</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="ConnectButton">
+        <property name="text">
+         <string>Connect</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton">
+        <property name="text">
+         <string>Settings</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QVBoxLayout" name="main">
+      <item>
+       <layout class="QHBoxLayout" name="mainSplit" stretch="0">
         <item>
-         <layout class="QHBoxLayout" name="TopNavBar">
-          <item>
-           <widget class="QLabel" name="PortStatusLabel">
-            <property name="text">
-             <string>No port</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="ConnectButton">
-            <property name="text">
-             <string>Connect</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="DisconnectButton">
-            <property name="text">
-             <string>Disconnect</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pushButton">
-            <property name="text">
-             <string>Settings</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="main">
-          <item>
-           <layout class="QHBoxLayout" name="mainSplit" stretch="0">
-            <item>
-             <widget class="QFrame" name="RightFrame">
-              <property name="frameShape">
-               <enum>QFrame::Shape::StyledPanel</enum>
-              </property>
-              <property name="frameShadow">
-               <enum>QFrame::Shadow::Raised</enum>
-              </property>
-              <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,1">
+         <widget class="QFrame" name="RightFrame">
+          <property name="frameShape">
+           <enum>QFrame::Shape::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Shadow::Raised</enum>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,1">
+           <item>
+            <widget class="QTabWidget" name="tabWidget">
+             <property name="currentIndex">
+              <number>0</number>
+             </property>
+             <widget class="QWidget" name="ConsoleTab">
+              <attribute name="title">
+               <string>Console</string>
+              </attribute>
+              <layout class="QHBoxLayout" name="horizontalLayout">
                <item>
-                <widget class="QTabWidget" name="tabWidget">
-                 <property name="currentIndex">
-                  <number>0</number>
-                 </property>
-                 <widget class="QWidget" name="ConsoleTab">
-                  <attribute name="title">
-                   <string>Console</string>
-                  </attribute>
-                  <layout class="QHBoxLayout" name="horizontalLayout">
+                <layout class="QVBoxLayout" name="ConsoleLayout" stretch="0,0">
+                 <item>
+                  <widget class="QPlainTextEdit" name="ConsoleTextEdit">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="horizontalScrollBarPolicy">
+                    <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="ConsoleBottomLayout">
                    <item>
-                    <layout class="QVBoxLayout" name="ConsoleLayout" stretch="0,0">
-                     <item>
-                      <widget class="QPlainTextEdit" name="ConsoleTextEdit">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="horizontalScrollBarPolicy">
-                        <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="ConsoleBottomLayout">
-                       <item>
-                        <widget class="QPlainTextEdit" name="SendCommandTextEdit">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>25</height>
-                          </size>
-                         </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>16777215</width>
-                           <height>25</height>
-                          </size>
-                         </property>
-                         <property name="verticalScrollBarPolicy">
-                          <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="ClearConsoleButton">
-                         <property name="minimumSize">
-                          <size>
-                           <width>50</width>
-                           <height>0</height>
-                          </size>
-                         </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>50</width>
-                           <height>16777215</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>Clear</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
+                    <widget class="QPlainTextEdit" name="SendCommandTextEdit">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>25</height>
+                      </size>
+                     </property>
+                     <property name="maximumSize">
+                      <size>
+                       <width>16777215</width>
+                       <height>25</height>
+                      </size>
+                     </property>
+                     <property name="verticalScrollBarPolicy">
+                      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="ClearConsoleButton">
+                     <property name="minimumSize">
+                      <size>
+                       <width>50</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="maximumSize">
+                      <size>
+                       <width>50</width>
+                       <height>16777215</height>
+                      </size>
+                     </property>
+                     <property name="text">
+                      <string>Clear</string>
+                     </property>
+                    </widget>
                    </item>
                   </layout>
-                 </widget>
-                 <widget class="QWidget" name="RulesTab">
-                  <attribute name="title">
-                   <string>Rules</string>
-                  </attribute>
-                  <layout class="QVBoxLayout" name="verticalLayout_7">
-                   <item>
-                    <layout class="QVBoxLayout" name="RulesLayout">
-                     <item>
-                      <widget class="QLabel" name="AutomaticLabel">
-                       <property name="text">
-                        <string>Automatic:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="PasteSampleLabel">
-                       <property name="text">
-                        <string>Paste sample device output:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPlainTextEdit" name="SampleOutputTextEdit"/>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="GenerateRulesButton">
-                       <property name="text">
-                        <string>Auto generate rules</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="ManualLabel">
-                       <property name="text">
-                        <string>Manual:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="AddRuleButton">
-                       <property name="text">
-                        <string>Add rule</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="RemoveRuleButton">
-                       <property name="text">
-                        <string>Remove rule</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QTableWidget" name="RulesTable">
-                       <column>
-                        <property name="text">
-                         <string>Plot</string>
-                        </property>
-                       </column>
-                       <column>
-                        <property name="text">
-                         <string>Use as X</string>
-                        </property>
-                       </column>
-                       <column>
-                        <property name="text">
-                         <string>Label</string>
-                        </property>
-                       </column>
-                       <column>
-                        <property name="text">
-                         <string>Find method</string>
-                        </property>
-                       </column>
-                       <column>
-                        <property name="text">
-                         <string>Extra setting</string>
-                        </property>
-                       </column>
-                       <column>
-                        <property name="text">
-                         <string>Index</string>
-                        </property>
-                       </column>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </widget>
-                </widget>
-               </item>
-               <item>
-                <widget class="PlotWidget" name="Plot" native="true"/>
+                 </item>
+                </layout>
                </item>
               </layout>
              </widget>
-            </item>
-           </layout>
-          </item>
-         </layout>
+             <widget class="QWidget" name="RulesTab">
+              <attribute name="title">
+               <string>Rules</string>
+              </attribute>
+              <layout class="QVBoxLayout" name="verticalLayout_7">
+               <item>
+                <layout class="QVBoxLayout" name="RulesLayout">
+                 <item>
+                  <widget class="QLabel" name="AutomaticLabel">
+                   <property name="text">
+                    <string>Automatic:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="PasteSampleLabel">
+                   <property name="text">
+                    <string>Paste sample device output:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPlainTextEdit" name="SampleOutputTextEdit"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="GenerateRulesButton">
+                   <property name="text">
+                    <string>Auto generate rules</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="ManualLabel">
+                   <property name="text">
+                    <string>Manual:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="AddRuleButton">
+                   <property name="text">
+                    <string>Add rule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="RemoveRuleButton">
+                   <property name="text">
+                    <string>Remove rule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QTableWidget" name="RulesTable">
+                   <column>
+                    <property name="text">
+                     <string>Plot</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>Use as X</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>Label</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>Find method</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>Extra setting</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>Index</string>
+                    </property>
+                   </column>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+           <item>
+            <widget class="PlotWidget" name="Plot" native="true"/>
+           </item>
+          </layout>
+         </widget>
         </item>
        </layout>
-      </widget>
-      <widget class="QWidget" name="page_2">
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <layout class="QVBoxLayout" name="test"/>
-        </item>
-       </layout>
-      </widget>
-     </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -272,13 +263,7 @@
     <addaction name="actionSave_profile"/>
     <addaction name="actionOpen_profile"/>
    </widget>
-   <widget class="QMenu" name="menuSettings">
-    <property name="title">
-     <string>Settings</string>
-    </property>
-   </widget>
    <addaction name="menuFile"/>
-   <addaction name="menuSettings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSave_profile">
