@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtGui import QTextCursor
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -64,6 +64,9 @@ class MainWindow(QMainWindow):
         self.ui.ConsoleTextEdit.setReadOnly(True)
         self.ui.ConsoleTextEdit.setLineWrapMode(self.ui.ConsoleTextEdit.LineWrapMode.NoWrap)
         self.ui.ConsoleTextEdit.document().setMaximumBlockCount(2_000)
+        self.ui.SendCommandTextEdit.setLineWrapMode(self.ui.SendCommandTextEdit.LineWrapMode.NoWrap)
+        self.ui.SendCommandTextEdit.setPlaceholderText("Type command and press Enter")
+        self.ui.SendCommandTextEdit.installEventFilter(self)
 
     def _configure_rules_table(self) -> None:
         table = self.ui.RulesTable
@@ -328,9 +331,39 @@ class MainWindow(QMainWindow):
             self.disconnect_serial()
         QMessageBox.warning(self, "Serial Error", message)
 
+    def send_command(self) -> None:
+        command = self.ui.SendCommandTextEdit.toPlainText().strip()
+        if not command:
+            return
+
+        if not self.transport or not self.transport.is_open:
+            self.statusBar().showMessage("Connect to a serial port before sending commands")
+            return
+
+        try:
+            self.transport.write_text(command)
+        except Exception as exc:
+            QMessageBox.warning(self, "Send Command Failed", str(exc))
+            return
+
+        self.ui.SendCommandTextEdit.clear()
+        self._append_console_text(f"> {command}\n")
+
+    def eventFilter(self, watched, event) -> bool:
+        if (
+            watched is self.ui.SendCommandTextEdit
+            and event.type() == QEvent.Type.KeyPress
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        ):
+            self.send_command()
+            return True
+
+        return super().eventFilter(watched, event)
+
     def _set_connected(self, connected: bool) -> None:
         self.ui.ConnectButton.setEnabled(not connected)
         self.ui.DisconnectButton.setEnabled(connected)
+        self.ui.SendCommandTextEdit.setEnabled(connected)
         self.serial_settings_action.setEnabled(not connected)
         self._update_port_status_label(connected)
 

@@ -88,8 +88,26 @@ class Ui_MainWindow(object):
         self.ConsoleLayout.setObjectName(u"ConsoleLayout")
         self.ConsoleTextEdit = QPlainTextEdit(self.ConsoleTab)
         self.ConsoleTextEdit.setObjectName(u"ConsoleTextEdit")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.ConsoleTextEdit.sizePolicy().hasHeightForWidth())
+        self.ConsoleTextEdit.setSizePolicy(sizePolicy)
 
         self.ConsoleLayout.addWidget(self.ConsoleTextEdit)
+
+        self.SendCommandTextEdit = QPlainTextEdit(self.ConsoleTab)
+        self.SendCommandTextEdit.setObjectName(u"SendCommandTextEdit")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.SendCommandTextEdit.sizePolicy().hasHeightForWidth())
+        self.SendCommandTextEdit.setSizePolicy(sizePolicy1)
+        self.SendCommandTextEdit.setMinimumSize(QSize(0, 25))
+        self.SendCommandTextEdit.setMaximumSize(QSize(16777215, 25))
+        self.SendCommandTextEdit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self.ConsoleLayout.addWidget(self.SendCommandTextEdit)
 
 
         self.horizontalLayout.addLayout(self.ConsoleLayout)
@@ -214,7 +232,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)

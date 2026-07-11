@@ -50,6 +50,17 @@ class SerialTransport(QObject):
         if self._serial.isOpen():
             self._serial.close()
 
+    def write_text(self, text: str) -> None:
+        if not self._serial.isOpen():
+            raise RuntimeError("Serial port is not open.")
+
+        data = f"{text}{self.settings.line_ending}".encode(self.settings.encoding)
+        bytes_written = self._serial.write(data)
+        if bytes_written == -1:
+            message = self._serial.errorString() or "Could not write to serial port."
+            raise RuntimeError(message)
+        self._serial.flush()
+
     def _handle_ready_read(self) -> None:
         received_at = time()
         data = bytes(self._serial.readAll())
