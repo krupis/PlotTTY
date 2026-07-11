@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QMessageBox,
     QMainWindow,
-    QPushButton,
     QTableWidgetItem,
 )
 
@@ -25,8 +24,8 @@ from modules.core.extraction import ExtractionEngine
 from modules.core.line_decoder import LineDecoder
 from modules.core.models import ExtractionMode, ExtractionRule
 from modules.core.profiles import AppProfile, load_profile, save_profile
+from modules.core.rule_suggestions import suggest_rules_from_samples
 from modules.core.serial_transport import SerialSettings, SerialTransport
-from modules.widgets.rule_suggestion_dialog import RuleSuggestionDialog
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 
 
@@ -53,11 +52,9 @@ class MainWindow(QMainWindow):
 
         self.plot = self.ui.Plot
         self._updating_rules_table = False
-        self.detect_rules_button = QPushButton("Detect rules", self)
 
         self._configure_console()
         self._configure_rules_table()
-        self._install_rules_controls()
         self._configure_menus()
         self._connect_signals()
         self._seed_default_rules()
@@ -85,9 +82,6 @@ class MainWindow(QMainWindow):
         table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
-    def _install_rules_controls(self) -> None:
-        self.ui.RulesLayout.insertWidget(0, self.detect_rules_button)
-
     def _configure_menus(self) -> None:
         self.save_profile_action = getattr(self.ui, "actionSave_profile", None)
         if self.save_profile_action is None:
@@ -104,7 +98,7 @@ class MainWindow(QMainWindow):
         self.ui.DisconnectButton.clicked.connect(self.disconnect_serial)
         self.ui.AddRuleButton.clicked.connect(self.add_rule)
         self.ui.RemoveRuleButton.clicked.connect(self.remove_selected_rules)
-        self.detect_rules_button.clicked.connect(self.detect_rules)
+        self.ui.GenerateRulesButton.clicked.connect(self.generate_rules_from_sample)
         self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
         self.save_profile_action.triggered.connect(self.save_profile_as)
         self.open_profile_action.triggered.connect(self.open_profile)
@@ -161,17 +155,15 @@ class MainWindow(QMainWindow):
         self.profile_path = Path(path)
         self.statusBar().showMessage(f"Saved {self.profile_path.name}")
 
-    def detect_rules(self) -> None:
-        dialog = RuleSuggestionDialog(self)
-        if dialog.exec() != dialog.DialogCode.Accepted:
+    def generate_rules_from_sample(self) -> None:
+        suggestions = suggest_rules_from_samples(self.ui.SampleOutputTextEdit.toPlainText())
+        if not suggestions:
+            self.statusBar().showMessage("No numeric values found in sample output")
             return
 
-        rules = dialog.selected_rules()
-        if not rules:
-            return
-
+        rules = [suggestion.rule for suggestion in suggestions]
         self.set_rules(rules)
-        self.statusBar().showMessage(f"Detected {len(rules)} rule(s)")
+        self.statusBar().showMessage(f"Generated {len(rules)} rule(s) from sample output")
 
     def open_serial_settings(self) -> None:
         dialog = SerialSettingsDialog(self.serial_settings, self)

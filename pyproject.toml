@@ -17,6 +17,5 @@ files = [
     "modules/core/serial_transport.py",
     "modules/widgets/__init__.py",
     "modules/widgets/plot_widget.py",
-    "modules/widgets/rule_suggestion_dialog.py",
     "modules/widgets/serial_settings_dialog.py",
 ]
