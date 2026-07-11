@@ -93,6 +93,7 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.ConsoleTextEdit.sizePolicy().hasHeightForWidth())
         self.ConsoleTextEdit.setSizePolicy(sizePolicy)
+        self.ConsoleTextEdit.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.ConsoleLayout.addWidget(self.ConsoleTextEdit)
 

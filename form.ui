@@ -84,6 +84,9 @@
                          <verstretch>0</verstretch>
                         </sizepolicy>
                        </property>
+                       <property name="horizontalScrollBarPolicy">
+                        <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+                       </property>
                       </widget>
                      </item>
                      <item>
