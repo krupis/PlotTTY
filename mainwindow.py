@@ -1,6 +1,7 @@
 # This Python file uses the following encoding: utf-8
 import sys
 from pathlib import Path
+from time import monotonic
 
 from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor
 from PySide6.QtCore import QEvent, Qt
@@ -55,6 +56,8 @@ class MainWindow(QMainWindow):
 
         self.plot = self.ui.Plot
         self._updating_rules_table = False
+        self._received_byte_count = 0
+        self._receive_started_at: float | None = None
 
         self._configure_console()
         self._configure_rules_table()
@@ -312,6 +315,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Connection Failed", str(exc))
             return
 
+        self._reset_receive_rate()
         self._set_connected(True)
         self._append_console_text(
             f"[connected to {settings.port} at {settings.baudrate} baud]\n",
@@ -331,9 +335,11 @@ class MainWindow(QMainWindow):
     def clear_console_and_plot(self) -> None:
         self.ui.ConsoleTextEdit.clear()
         self.plot.clear_values()
+        self._reset_receive_rate()
         self.statusBar().showMessage("Cleared console and plot data")
 
     def handle_received_data(self, data: bytes, received_at: float | None = None) -> None:
+        self._record_received_bytes(len(data))
         self._append_console_text(
             data.decode(self.line_decoder.encoding, errors="replace"),
             RECEIVED_TEXT_COLOR,
@@ -389,6 +395,25 @@ class MainWindow(QMainWindow):
         color = "#1f8f3a" if connected else "#c62828"
         self.ui.PortStatusLabel.setText(port)
         self.ui.PortStatusLabel.setStyleSheet(f"color: {color}; font-weight: 600;")
+
+    def _reset_receive_rate(self) -> None:
+        self._received_byte_count = 0
+        self._receive_started_at = monotonic()
+        self._update_data_received_label(0.0)
+
+    def _record_received_bytes(self, byte_count: int) -> None:
+        if byte_count <= 0:
+            return
+
+        if self._receive_started_at is None:
+            self._receive_started_at = monotonic()
+
+        self._received_byte_count += byte_count
+        elapsed = max(monotonic() - self._receive_started_at, 0.001)
+        self._update_data_received_label(self._received_byte_count / elapsed)
+
+    def _update_data_received_label(self, bytes_per_second: float) -> None:
+        self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
 
     def _append_console_text(self, text: str, color: QColor | None = None) -> None:
         if not text:

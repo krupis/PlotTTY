@@ -14,7 +14,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,10">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,10,0">
     <item>
      <layout class="QHBoxLayout" name="TopNavBar">
       <item>
@@ -35,6 +35,13 @@
        <widget class="QPushButton" name="pushButton">
         <property name="text">
          <string>Settings</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="DataReceivedLabel">
+        <property name="text">
+         <string>0 B/s</string>
         </property>
        </widget>
       </item>

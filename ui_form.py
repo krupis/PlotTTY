@@ -54,6 +54,11 @@ class Ui_MainWindow(object):
 
         self.TopNavBar.addWidget(self.pushButton)
 
+        self.DataReceivedLabel = QLabel(self.centralwidget)
+        self.DataReceivedLabel.setObjectName(u"DataReceivedLabel")
+
+        self.TopNavBar.addWidget(self.DataReceivedLabel)
+
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.TopNavBar.addItem(self.horizontalSpacer)
@@ -234,6 +239,7 @@ class Ui_MainWindow(object):
         self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"No port", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.pushButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
+        self.DataReceivedLabel.setText(QCoreApplication.translate("MainWindow", u"0 B/s", None))
         self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.ConsoleTab), QCoreApplication.translate("MainWindow", u"Console", None))
         self.AutomaticLabel.setText(QCoreApplication.translate("MainWindow", u"Automatic:", None))
