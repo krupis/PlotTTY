@@ -1,5 +1,6 @@
 # This Python file uses the following encoding: utf-8
 import sys
+from collections import deque
 from collections.abc import Callable
 from pathlib import Path
 from time import monotonic
@@ -51,6 +52,7 @@ STATUS_TEXT_COLOR = QColor("#1f6feb")
 MAX_CONSOLE_BLOCKS = 10_000
 CONSOLE_FLUSH_INTERVAL_MS = 50
 RECEIVE_RATE_REFRESH_INTERVAL_MS = 100
+RECEIVE_RATE_WINDOW_SECONDS = 1.0
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
 LOAD_PROGRESS_UPDATE_ROWS = 10_000
 
@@ -81,9 +83,7 @@ class MainWindow(QMainWindow):
 
         self.plot = self.ui.Plot
         self._updating_rules_table = False
-        self._received_byte_count = 0
-        self._receive_started_at: float | None = None
-        self._latest_receive_rate = 0.0
+        self._receive_rate_samples: deque[tuple[float, int]] = deque()
         self._pending_console_text: list[tuple[str, QColor | None]] = []
 
         self._configure_console()
@@ -496,24 +496,28 @@ class MainWindow(QMainWindow):
         self.ui.PortStatusLabel.setStyleSheet(f"color: {color}; font-weight: 600;")
 
     def _reset_receive_rate(self) -> None:
-        self._received_byte_count = 0
-        self._receive_started_at = monotonic()
-        self._latest_receive_rate = 0.0
-        self._refresh_receive_rate_label()
+        self._receive_rate_samples.clear()
+        self.ui.DataReceivedLabel.setText("0 B/s")
 
     def _record_received_bytes(self, byte_count: int) -> None:
         if byte_count <= 0:
             return
 
-        if self._receive_started_at is None:
-            self._receive_started_at = monotonic()
-
-        self._received_byte_count += byte_count
-        elapsed = max(monotonic() - self._receive_started_at, 0.001)
-        self._latest_receive_rate = self._received_byte_count / elapsed
+        self._receive_rate_samples.append((monotonic(), byte_count))
 
     def _refresh_receive_rate_label(self) -> None:
-        self.ui.DataReceivedLabel.setText(f"{self._latest_receive_rate:,.0f} B/s")
+        now = monotonic()
+        cutoff = now - RECEIVE_RATE_WINDOW_SECONDS
+        while self._receive_rate_samples and self._receive_rate_samples[0][0] < cutoff:
+            self._receive_rate_samples.popleft()
+
+        if not self._receive_rate_samples:
+            bytes_per_second = 0.0
+        else:
+            byte_count = sum(byte_count for _timestamp, byte_count in self._receive_rate_samples)
+            bytes_per_second = byte_count / RECEIVE_RATE_WINDOW_SECONDS
+
+        self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
 
     def _append_console_text(self, text: str, color: QColor | None = None) -> None:
         if not text:
