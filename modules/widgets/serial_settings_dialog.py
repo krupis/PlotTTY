@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QIntValidator
 from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -22,7 +23,7 @@ from ..core.serial_transport import SerialSettings
 class SerialSettingsDialog(QDialog):
     def __init__(self, settings: SerialSettings, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Serial Port Settings")
+        self.setWindowTitle("Settings")
         self.setModal(True)
         self.setFixedWidth(360)
 
@@ -62,6 +63,9 @@ class SerialSettingsDialog(QDialog):
         for label, value in (("LF", "\n"), ("CR", "\r"), ("CRLF", "\r\n"), ("None", "")):
             self.line_ending_combo.addItem(label, value)
 
+        self.log_to_file_checkbox = QCheckBox("Log received data to file")
+        self.raw_capture_mode_checkbox = QCheckBox("Raw capture mode")
+
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.refresh_button = QPushButton("Refresh")
         self.buttons.button(QDialogButtonBox.StandardButton.Ok).setObjectName("green_button")
@@ -82,6 +86,8 @@ class SerialSettingsDialog(QDialog):
         form.addRow("Stop bits", self.stop_bits_combo)
         form.addRow("Encoding", self.encoding_combo)
         form.addRow("Line ending", self.line_ending_combo)
+        form.addRow("Log to file", self.log_to_file_checkbox)
+        form.addRow("Raw capture", self.raw_capture_mode_checkbox)
 
         layout = QVBoxLayout(self)
         layout.addLayout(form)
@@ -103,6 +109,8 @@ class SerialSettingsDialog(QDialog):
             stop_bits=float(self.stop_bits_combo.currentData() or 1.0),
             encoding=self.encoding_combo.currentText().strip() or "utf-8",
             line_ending=str(self.line_ending_combo.currentData() or ""),
+            log_to_file=self.log_to_file_checkbox.isChecked(),
+            raw_capture_mode=self.raw_capture_mode_checkbox.isChecked(),
         )
 
     def selected_port(self) -> str:
@@ -130,6 +138,8 @@ class SerialSettingsDialog(QDialog):
         _select_data(self.stop_bits_combo, settings.stop_bits)
         _select_text(self.encoding_combo, settings.encoding)
         _select_data(self.line_ending_combo, settings.line_ending)
+        self.log_to_file_checkbox.setChecked(settings.log_to_file)
+        self.raw_capture_mode_checkbox.setChecked(settings.raw_capture_mode)
 
 
 def _select_data(combo: QComboBox, value: object) -> None:

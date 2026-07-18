@@ -351,12 +351,16 @@ class MainWindow(QMainWindow):
         # Limit the console to 2,000 lines to prevent excessive memory usage
         self.ui.ConsoleTextEdit.document().setMaximumBlockCount(MAX_CONSOLE_BLOCKS)
         self._reset_receive_rate()
-        log_path = self.serial_log.start(settings.port, settings.baudrate)
         self._set_connected(True)
         message = f"[connected to {settings.port} at {settings.baudrate} baud]"
-        self.serial_log.write_status(message)
+        if settings.log_to_file:
+            log_path = self.serial_log.start(settings.port, settings.baudrate)
+            self.serial_log.write_status(message)
+            self.statusBar().showMessage(f"Logging to {log_path}")
+        else:
+            self.serial_log.close()
+            self.statusBar().showMessage("File logging disabled")
         self._append_console_text(f"{message}\n", STATUS_TEXT_COLOR)
-        self.statusBar().showMessage(f"Logging to {log_path}")
 
     def disconnect_serial(self) -> None:
         was_connected = bool(self.transport and self.transport.is_open)
@@ -366,7 +370,8 @@ class MainWindow(QMainWindow):
 
         self._set_connected(False)
         if was_connected:
-            self.serial_log.write_status("[disconnected]")
+            if self.serial_settings.log_to_file:
+                self.serial_log.write_status("[disconnected]")
             self._append_console_text("[disconnected]\n", STATUS_TEXT_COLOR)
             self.serial_log.close()
 
@@ -378,7 +383,8 @@ class MainWindow(QMainWindow):
 
     def handle_received_data(self, data: bytes, received_at: float | None = None) -> None:
         self._record_received_bytes(len(data))
-        self.serial_log.write_received(data, self.line_decoder.encoding)
+        if self.serial_settings.log_to_file:
+            self.serial_log.write_received(data, self.line_decoder.encoding)
         self._append_console_text(
             data.decode(self.line_decoder.encoding, errors="replace"),
             RECEIVED_TEXT_COLOR,
@@ -410,7 +416,8 @@ class MainWindow(QMainWindow):
             return
 
         self.ui.SendCommandTextEdit.clear()
-        self.serial_log.write_sent(command)
+        if self.serial_settings.log_to_file:
+            self.serial_log.write_sent(command)
         self._append_console_text(f"{command}\n", SENT_TEXT_COLOR)
 
     def eventFilter(self, watched, event) -> bool:
