@@ -1,5 +1,6 @@
 # This Python file uses the following encoding: utf-8
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from time import monotonic
 
@@ -23,11 +24,16 @@ from ui_form import Ui_MainWindow
 
 from modules.core.extraction import ExtractionEngine
 from modules.core.line_decoder import LineDecoder
-from modules.core.models import ExtractionMode, ExtractionRule
+from modules.core.models import CapturedValue, ExtractionMode, ExtractionRule
 from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.core.rule_suggestions import suggest_rules_from_samples
-from modules.core.serial_log import SerialLogEvent, SerialSessionLog, parse_serial_log
+from modules.core.serial_log import (
+    PlotSessionLog,
+    SerialSessionLog,
+    parse_plot_log_line,
+)
 from modules.core.serial_transport import SerialSettings, SerialTransport
+from modules.widgets.loading_dialog import LoadingDialog
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 import resources_rc  # noqa: F401
 
@@ -46,6 +52,7 @@ MAX_CONSOLE_BLOCKS = 10_000
 CONSOLE_FLUSH_INTERVAL_MS = 50
 RECEIVE_RATE_REFRESH_INTERVAL_MS = 100
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
+LOAD_PROGRESS_UPDATE_ROWS = 10_000
 
 
 def apply_application_style(app: QApplication) -> None:
@@ -69,6 +76,7 @@ class MainWindow(QMainWindow):
         self.line_decoder = LineDecoder()
         self.engine = ExtractionEngine()
         self.serial_log = SerialSessionLog()
+        self.plot_log = PlotSessionLog()
         self.profile_path: Path | None = None
 
         self.plot = self.ui.Plot
@@ -133,7 +141,7 @@ class MainWindow(QMainWindow):
         self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
         self.ui.actionSave_profile.triggered.connect(self.save_profile_as)
         self.ui.actionOpen_profile.triggered.connect(self.open_profile)
-        self.ui.actionLoad_log.triggered.connect(self.load_log_into_console)
+        self.ui.actionLoad_log.triggered.connect(self.load_plot_data)
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
@@ -186,29 +194,43 @@ class MainWindow(QMainWindow):
         self.profile_path = Path(path)
         self.statusBar().showMessage(f"Saved {self.profile_path.name}")
 
-    def load_log_into_console(self) -> None:
+    def load_plot_data(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(
             self,
-            "Load Serial Log",
+            "Load Plot Data",
             str(self.serial_log.log_dir),
-            "Serial Logs (*.log);;Text Files (*.txt);;All Files (*)",
+            "Plot CSV (*.csv)",
         )
         if not path:
             return
 
+        self.ui.ConsoleTextEdit.document().setMaximumBlockCount(MAX_CONSOLE_BLOCKS)
+        self.ui.ConsoleTextEdit.clear()
+        self.plot.clear_values()
+        self._pending_console_text.clear()
+        self._append_console_text(f"[loading plot data from {Path(path).name}]\n", STATUS_TEXT_COLOR)
+        self.statusBar().showMessage(f"Loading plot data from {Path(path).name}...")
+        self._flush_console_text()
+        loading_dialog = LoadingDialog(f"Loading {Path(path).name}", self)
+        loading_dialog.start()
+
+        def update_load_progress(row_count: int) -> None:
+            message = f"Loaded {row_count:,} rows"
+            loading_dialog.set_message(message)
+            self.statusBar().showMessage(message)
+
         try:
-            text = Path(path).read_text(encoding="utf-8", errors="replace")
+            captured_values, row_count = _read_plot_csv(path, update_load_progress)
+            loading_dialog.set_message("Rendering plot...")
+            self.plot.append_values(captured_values)
+            self.plot._show_all_data()
         except Exception as exc:
-            QMessageBox.warning(self, "Load Log Failed", str(exc))
+            loading_dialog.close()
+            QMessageBox.warning(self, "Load Plot Data Failed", str(exc))
             return
 
-        self.ui.ConsoleTextEdit.document().setMaximumBlockCount(0)
-        self.ui.ConsoleTextEdit.clear()
-        for event in parse_serial_log(text):
-            self._append_log_event(event)
-        self._flush_console_text()
-        self.ui.ConsoleTextEdit.moveCursor(QTextCursor.MoveOperation.Start)
-        self.statusBar().showMessage(f"Loaded log {Path(path).name}")
+        loading_dialog.close()
+        self.statusBar().showMessage(f"Loaded plot data {Path(path).name}: {row_count:,} rows")
 
     def generate_rules_from_sample(self) -> None:
         suggestions = suggest_rules_from_samples(self.ui.SampleOutputTextEdit.toPlainText())
@@ -374,10 +396,12 @@ class MainWindow(QMainWindow):
         message = f"[connected to {settings.port} at {settings.baudrate} baud]"
         if settings.log_to_file:
             log_path = self.serial_log.start(settings.port, settings.baudrate)
+            plot_log_path = self.plot_log.start(settings.port, settings.baudrate)
             self.serial_log.write_status(message)
-            self.statusBar().showMessage(f"Logging to {log_path}")
+            self.statusBar().showMessage(f"Logging to {log_path} and {plot_log_path}")
         else:
             self.serial_log.close()
+            self.plot_log.close()
             self.statusBar().showMessage("File logging disabled")
         self._append_console_text(f"{message}\n", STATUS_TEXT_COLOR)
 
@@ -393,6 +417,7 @@ class MainWindow(QMainWindow):
                 self.serial_log.write_status("[disconnected]")
             self._append_console_text("[disconnected]\n", STATUS_TEXT_COLOR)
             self.serial_log.close()
+            self.plot_log.close()
 
     def clear_console_and_plot(self) -> None:
         self._pending_console_text.clear()
@@ -415,6 +440,8 @@ class MainWindow(QMainWindow):
         for line in self.line_decoder.feed(data):
             captured_values = self.engine.extract(line, timestamp=received_at)
             if captured_values:
+                if self.serial_settings.log_to_file:
+                    self.plot_log.write_values(captured_values)
                 self.plot.append_values(captured_values)
 
     def handle_serial_error(self, message: str) -> None:
@@ -488,10 +515,6 @@ class MainWindow(QMainWindow):
     def _refresh_receive_rate_label(self) -> None:
         self.ui.DataReceivedLabel.setText(f"{self._latest_receive_rate:,.0f} B/s")
 
-    def _append_log_event(self, event: SerialLogEvent) -> None:
-        color = _color_for_log_event(event.event_type)
-        self._append_console_text(event.text, color)
-
     def _append_console_text(self, text: str, color: QColor | None = None) -> None:
         if not text:
             return
@@ -534,12 +557,23 @@ def _checkbox_item(checked: bool) -> QTableWidgetItem:
     return item
 
 
-def _color_for_log_event(event_type: str) -> QColor:
-    if event_type == "RX":
-        return RECEIVED_TEXT_COLOR
-    if event_type == "TX":
-        return SENT_TEXT_COLOR
-    return STATUS_TEXT_COLOR
+def _read_plot_csv(
+    path: str,
+    progress_callback: Callable[[int], None] | None = None,
+) -> tuple[list[CapturedValue], int]:
+    captured_values = []
+    row_count = 0
+    with Path(path).open("r", encoding="utf-8", errors="replace", newline="") as file:
+        for line in file:
+            captured = parse_plot_log_line(line.rstrip("\r\n"))
+            if captured is None:
+                continue
+
+            captured_values.append(captured)
+            row_count += 1
+            if progress_callback is not None and row_count % LOAD_PROGRESS_UPDATE_ROWS == 0:
+                progress_callback(row_count)
+    return captured_values, row_count
 
 
 if __name__ == "__main__":
