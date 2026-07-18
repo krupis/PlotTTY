@@ -44,6 +44,7 @@ SENT_TEXT_COLOR = QColor("#b58900")
 STATUS_TEXT_COLOR = QColor("#1f6feb")
 MAX_CONSOLE_BLOCKS = 10_000
 CONSOLE_FLUSH_INTERVAL_MS = 50
+RECEIVE_RATE_REFRESH_INTERVAL_MS = 100
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
 
 
@@ -74,10 +75,12 @@ class MainWindow(QMainWindow):
         self._updating_rules_table = False
         self._received_byte_count = 0
         self._receive_started_at: float | None = None
+        self._latest_receive_rate = 0.0
         self._pending_console_text: list[tuple[str, QColor | None]] = []
 
         self._configure_console()
         self._configure_console_flush_timer()
+        self._configure_receive_rate_timer()
         self._configure_rules_table()
         self._connect_signals()
         self._seed_default_rules()
@@ -96,6 +99,12 @@ class MainWindow(QMainWindow):
         self._console_flush_timer.setInterval(CONSOLE_FLUSH_INTERVAL_MS)
         self._console_flush_timer.timeout.connect(self._flush_console_text)
         self._console_flush_timer.start()
+
+    def _configure_receive_rate_timer(self) -> None:
+        self._receive_rate_timer = QTimer(self)
+        self._receive_rate_timer.setInterval(RECEIVE_RATE_REFRESH_INTERVAL_MS)
+        self._receive_rate_timer.timeout.connect(self._refresh_receive_rate_label)
+        self._receive_rate_timer.start()
 
     def _configure_rules_table(self) -> None:
         table = self.ui.RulesTable
@@ -460,7 +469,8 @@ class MainWindow(QMainWindow):
     def _reset_receive_rate(self) -> None:
         self._received_byte_count = 0
         self._receive_started_at = monotonic()
-        self._update_data_received_label(0.0)
+        self._latest_receive_rate = 0.0
+        self._refresh_receive_rate_label()
 
     def _record_received_bytes(self, byte_count: int) -> None:
         if byte_count <= 0:
@@ -471,10 +481,10 @@ class MainWindow(QMainWindow):
 
         self._received_byte_count += byte_count
         elapsed = max(monotonic() - self._receive_started_at, 0.001)
-        self._update_data_received_label(self._received_byte_count / elapsed)
+        self._latest_receive_rate = self._received_byte_count / elapsed
 
-    def _update_data_received_label(self, bytes_per_second: float) -> None:
-        self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
+    def _refresh_receive_rate_label(self) -> None:
+        self.ui.DataReceivedLabel.setText(f"{self._latest_receive_rate:,.0f} B/s")
 
     def _append_log_event(self, event: SerialLogEvent) -> None:
         color = _color_for_log_event(event.event_type)
