@@ -4,7 +4,7 @@ from pathlib import Path
 from time import monotonic
 
 from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -43,6 +43,7 @@ RECEIVED_TEXT_COLOR = QColor("#1f8f3a")
 SENT_TEXT_COLOR = QColor("#b58900")
 STATUS_TEXT_COLOR = QColor("#1f6feb")
 MAX_CONSOLE_BLOCKS = 10_000
+CONSOLE_FLUSH_INTERVAL_MS = 50
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
 
 
@@ -73,8 +74,10 @@ class MainWindow(QMainWindow):
         self._updating_rules_table = False
         self._received_byte_count = 0
         self._receive_started_at: float | None = None
+        self._pending_console_text: list[tuple[str, QColor | None]] = []
 
         self._configure_console()
+        self._configure_console_flush_timer()
         self._configure_rules_table()
         self._connect_signals()
         self._seed_default_rules()
@@ -87,6 +90,12 @@ class MainWindow(QMainWindow):
         self.ui.SendCommandTextEdit.setLineWrapMode(self.ui.SendCommandTextEdit.LineWrapMode.NoWrap)
         self.ui.SendCommandTextEdit.setPlaceholderText("Type command and press Enter")
         self.ui.SendCommandTextEdit.installEventFilter(self)
+
+    def _configure_console_flush_timer(self) -> None:
+        self._console_flush_timer = QTimer(self)
+        self._console_flush_timer.setInterval(CONSOLE_FLUSH_INTERVAL_MS)
+        self._console_flush_timer.timeout.connect(self._flush_console_text)
+        self._console_flush_timer.start()
 
     def _configure_rules_table(self) -> None:
         table = self.ui.RulesTable
@@ -188,6 +197,7 @@ class MainWindow(QMainWindow):
         self.ui.ConsoleTextEdit.clear()
         for event in parse_serial_log(text):
             self._append_log_event(event)
+        self._flush_console_text()
         self.ui.ConsoleTextEdit.moveCursor(QTextCursor.MoveOperation.Start)
         self.statusBar().showMessage(f"Loaded log {Path(path).name}")
 
@@ -376,6 +386,7 @@ class MainWindow(QMainWindow):
             self.serial_log.close()
 
     def clear_console_and_plot(self) -> None:
+        self._pending_console_text.clear()
         self.ui.ConsoleTextEdit.clear()
         self.plot.clear_values()
         self._reset_receive_rate()
@@ -473,15 +484,33 @@ class MainWindow(QMainWindow):
         if not text:
             return
 
-        self.ui.ConsoleTextEdit.moveCursor(QTextCursor.MoveOperation.End)
+        if self._pending_console_text and self._pending_console_text[-1][1] == color:
+            previous_text, previous_color = self._pending_console_text[-1]
+            self._pending_console_text[-1] = (previous_text + text, previous_color)
+        else:
+            self._pending_console_text.append((text, color))
+
+    def _flush_console_text(self) -> None:
+        if not self._pending_console_text:
+            return
+
+        pending_text = self._pending_console_text
+        self._pending_console_text = []
+
         cursor = self.ui.ConsoleTextEdit.textCursor()
-        text_format = QTextCharFormat()
-        if color is not None:
-            text_format.setForeground(color)
-        cursor.insertText(text.replace("\r\n", "\n").replace("\r", "\n"), text_format)
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        cursor.beginEditBlock()
+        for text, color in pending_text:
+            text_format = QTextCharFormat()
+            if color is not None:
+                text_format.setForeground(color)
+            cursor.insertText(text.replace("\r\n", "\n").replace("\r", "\n"), text_format)
+        cursor.endEditBlock()
+        self.ui.ConsoleTextEdit.setTextCursor(cursor)
         self.ui.ConsoleTextEdit.ensureCursorVisible()
 
     def closeEvent(self, event) -> None:
+        self._flush_console_text()
         self.disconnect_serial()
         super().closeEvent(event)
 
