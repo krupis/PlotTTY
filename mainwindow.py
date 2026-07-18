@@ -405,6 +405,8 @@ class MainWindow(QMainWindow):
         self._record_received_bytes(len(data))
         if self.serial_settings.log_to_file:
             self.serial_log.write_received(data, self.line_decoder.encoding)
+        if self.serial_settings.raw_capture_mode:
+            return
         self._append_console_text(
             data.decode(self.line_decoder.encoding, errors="replace"),
             RECEIVED_TEXT_COLOR,
