@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -63,8 +64,13 @@ class SerialSettingsDialog(QDialog):
         for label, value in (("LF", "\n"), ("CR", "\r"), ("CRLF", "\r\n"), ("None", "")):
             self.line_ending_combo.addItem(label, value)
 
-        self.log_to_file_checkbox = QCheckBox("Log received data to file")
-        self.raw_capture_mode_checkbox = QCheckBox("Raw capture mode")
+        log_to_file_tooltip = "Save received serial data and extracted plot values to log files."
+        raw_capture_mode_tooltip = "Show and log raw serial data without parsing it into plot values."
+
+        self.log_to_file_checkbox = QCheckBox()
+        self.log_to_file_checkbox.setToolTip(log_to_file_tooltip)
+        self.raw_capture_mode_checkbox = QCheckBox()
+        self.raw_capture_mode_checkbox.setToolTip(raw_capture_mode_tooltip)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.refresh_button = QPushButton("Refresh")
@@ -86,8 +92,12 @@ class SerialSettingsDialog(QDialog):
         form.addRow("Stop bits", self.stop_bits_combo)
         form.addRow("Encoding", self.encoding_combo)
         form.addRow("Line ending", self.line_ending_combo)
-        form.addRow("Log to file", self.log_to_file_checkbox)
-        form.addRow("Raw capture", self.raw_capture_mode_checkbox)
+        log_to_file_label = QLabel("Log to file")
+        log_to_file_label.setToolTip(log_to_file_tooltip)
+        raw_capture_mode_label = QLabel("Raw capture")
+        raw_capture_mode_label.setToolTip(raw_capture_mode_tooltip)
+        form.addRow(log_to_file_label, self.log_to_file_checkbox)
+        form.addRow(raw_capture_mode_label, self.raw_capture_mode_checkbox)
 
         layout = QVBoxLayout(self)
         layout.addLayout(form)
