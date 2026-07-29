@@ -55,6 +55,8 @@ RECEIVE_RATE_REFRESH_INTERVAL_MS = 100
 RECEIVE_RATE_WINDOW_SECONDS = 1.0
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
 LOAD_PROGRESS_UPDATE_ROWS = 10_000
+EDITABLE_RULE_CELL_BACKGROUND = QColor("#243840")
+EDITABLE_RULE_CELL_FOREGROUND = QColor("#f3f7fb")
 
 
 def apply_application_style(app: QApplication) -> None:
@@ -122,8 +124,8 @@ class MainWindow(QMainWindow):
         )
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(True)
-        table.setSelectionBehavior(table.SelectionBehavior.SelectRows)
-        table.setSelectionMode(table.SelectionMode.ExtendedSelection)
+        table.setSelectionMode(table.SelectionMode.NoSelection)
+        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -304,10 +306,10 @@ class MainWindow(QMainWindow):
     def _set_rule_row(self, row: int, rule: ExtractionRule) -> None:
         self.ui.RulesTable.setItem(row, 0, _checkbox_item(rule.enabled))
         self.ui.RulesTable.setItem(row, 1, _checkbox_item(rule.sample_counter))
-        self.ui.RulesTable.setItem(row, 2, QTableWidgetItem(rule.label))
+        self.ui.RulesTable.setItem(row, 2, _editable_text_item(rule.label))
         self.ui.RulesTable.setCellWidget(row, 3, self._rule_mode_combo(rule.mode))
-        self.ui.RulesTable.setItem(row, 4, QTableWidgetItem(self._extra_text_for_rule(rule)))
-        self.ui.RulesTable.setItem(row, 5, QTableWidgetItem(self._position_text_for_rule(rule)))
+        self.ui.RulesTable.setItem(row, 4, _editable_text_item(self._extra_text_for_rule(rule)))
+        self.ui.RulesTable.setItem(row, 5, _editable_text_item(self._position_text_for_rule(rule)))
 
     def _rule_mode_combo(self, mode: ExtractionMode) -> QComboBox:
         combo = QComboBox(self.ui.RulesTable)
@@ -556,8 +558,15 @@ class MainWindow(QMainWindow):
 
 def _checkbox_item(checked: bool) -> QTableWidgetItem:
     item = QTableWidgetItem()
-    item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+    item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
     item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+    return item
+
+
+def _editable_text_item(text: str) -> QTableWidgetItem:
+    item = QTableWidgetItem(text)
+    item.setBackground(EDITABLE_RULE_CELL_BACKGROUND)
+    item.setForeground(EDITABLE_RULE_CELL_FOREGROUND)
     return item
 
 

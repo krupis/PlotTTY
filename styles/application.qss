@@ -238,15 +238,12 @@ QTableWidget {
     border: 1px solid #444a53;
     color: #e0e0e0;
     font-size: 9pt;
-    gridline-color: #333942;
-    selection-background-color: #2e8b57;
-    selection-color: #ffffff;
+    gridline-color: #46535d;
 }
 
 QTableWidget::indicator {
     background-color: #444a53;
     border: 1px solid #68727f;
-    border-radius: 4px;
     height: 16px;
     width: 16px;
 }
