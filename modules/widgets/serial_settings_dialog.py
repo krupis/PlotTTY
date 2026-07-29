@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIntValidator
 from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -29,11 +28,8 @@ class SerialSettingsDialog(QDialog):
         self.setFixedWidth(360)
 
         self.port_combo = QComboBox()
-        self.port_combo.setEditable(True)
 
         self.baud_combo = QComboBox()
-        self.baud_combo.setEditable(True)
-        self.baud_combo.setValidator(QIntValidator(1, 4_000_000, self))
         for baudrate in (9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600):
             self.baud_combo.addItem(str(baudrate))
 
@@ -56,7 +52,6 @@ class SerialSettingsDialog(QDialog):
             self.stop_bits_combo.addItem(label, value)
 
         self.encoding_combo = QComboBox()
-        self.encoding_combo.setEditable(True)
         for encoding in ("utf-8", "ascii", "latin-1", "cp1252"):
             self.encoding_combo.addItem(encoding)
 
