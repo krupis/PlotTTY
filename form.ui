@@ -97,7 +97,7 @@
            <item>
             <widget class="QTabWidget" name="tabWidget">
              <property name="currentIndex">
-              <number>0</number>
+              <number>1</number>
              </property>
              <widget class="QWidget" name="ConsoleTab">
               <attribute name="title">
@@ -223,20 +223,6 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="AddRuleButton">
-                   <property name="text">
-                    <string>Add rule</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="RemoveRuleButton">
-                   <property name="text">
-                    <string>Remove rule</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
                   <widget class="QTableWidget" name="RulesTable">
                    <column>
                     <property name="text">
@@ -268,6 +254,20 @@
                      <string>Index</string>
                     </property>
                    </column>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="AddRuleButton">
+                   <property name="text">
+                    <string>Add rule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="RemoveRuleButton">
+                   <property name="text">
+                    <string>Remove rule</string>
+                   </property>
                   </widget>
                  </item>
                 </layout>
