@@ -5,6 +5,8 @@ name = "plottty"
 files = [
     "mainwindow.py",
     "form.ui",
+    "icons/Plottty.ico",
+    "icons/Plottty.png",
     "resources.qrc",
     "resources_rc.py",
     "ui_form.py",

@@ -174,16 +174,6 @@ class Ui_MainWindow(object):
 
         self.RulesLayout.addWidget(self.ManualLabel)
 
-        self.AddRuleButton = QPushButton(self.RulesTab)
-        self.AddRuleButton.setObjectName(u"AddRuleButton")
-
-        self.RulesLayout.addWidget(self.AddRuleButton)
-
-        self.RemoveRuleButton = QPushButton(self.RulesTab)
-        self.RemoveRuleButton.setObjectName(u"RemoveRuleButton")
-
-        self.RulesLayout.addWidget(self.RemoveRuleButton)
-
         self.RulesTable = QTableWidget(self.RulesTab)
         if (self.RulesTable.columnCount() < 6):
             self.RulesTable.setColumnCount(6)
@@ -202,6 +192,16 @@ class Ui_MainWindow(object):
         self.RulesTable.setObjectName(u"RulesTable")
 
         self.RulesLayout.addWidget(self.RulesTable)
+
+        self.AddRuleButton = QPushButton(self.RulesTab)
+        self.AddRuleButton.setObjectName(u"AddRuleButton")
+
+        self.RulesLayout.addWidget(self.AddRuleButton)
+
+        self.RemoveRuleButton = QPushButton(self.RulesTab)
+        self.RemoveRuleButton.setObjectName(u"RemoveRuleButton")
+
+        self.RulesLayout.addWidget(self.RemoveRuleButton)
 
 
         self.verticalLayout_7.addLayout(self.RulesLayout)
@@ -246,14 +246,14 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"PlotTTY", None))
         self.actionSave_profile.setText(QCoreApplication.translate("MainWindow", u"Save profile", None))
         self.actionOpen_profile.setText(QCoreApplication.translate("MainWindow", u"Open profile", None))
         self.actionLoad_log.setText(QCoreApplication.translate("MainWindow", u"Load log", None))
@@ -267,8 +267,6 @@ class Ui_MainWindow(object):
         self.PasteSampleLabel.setText(QCoreApplication.translate("MainWindow", u"Paste sample device output:", None))
         self.GenerateRulesButton.setText(QCoreApplication.translate("MainWindow", u"Auto generate rules", None))
         self.ManualLabel.setText(QCoreApplication.translate("MainWindow", u"Manual:", None))
-        self.AddRuleButton.setText(QCoreApplication.translate("MainWindow", u"Add rule", None))
-        self.RemoveRuleButton.setText(QCoreApplication.translate("MainWindow", u"Remove rule", None))
         ___qtablewidgetitem = self.RulesTable.horizontalHeaderItem(0)
         ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"Plot", None))
         ___qtablewidgetitem1 = self.RulesTable.horizontalHeaderItem(1)
@@ -281,6 +279,8 @@ class Ui_MainWindow(object):
         ___qtablewidgetitem4.setText(QCoreApplication.translate("MainWindow", u"Extra setting", None))
         ___qtablewidgetitem5 = self.RulesTable.horizontalHeaderItem(5)
         ___qtablewidgetitem5.setText(QCoreApplication.translate("MainWindow", u"Index", None))
+        self.AddRuleButton.setText(QCoreApplication.translate("MainWindow", u"Add rule", None))
+        self.RemoveRuleButton.setText(QCoreApplication.translate("MainWindow", u"Remove rule", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.RulesTab), QCoreApplication.translate("MainWindow", u"Rules", None))
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
     # retranslateUi

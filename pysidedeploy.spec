@@ -16,7 +16,7 @@ exec_directory = .
 project_file = pyproject.toml
 
 # application icon
-icon = C:\Users\petri\Desktop\WORK\Coding\QT\Plottty\.venv\Lib\site-packages\PySide6\scripts\deploy_lib\pyside_icon.ico
+icon = icons/Plottty.ico
 
 [python]
 

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from time import monotonic
 
-from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor
+from PySide6.QtGui import QColor, QIcon, QTextCharFormat, QTextCursor
 from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication,
@@ -56,6 +56,7 @@ CONSOLE_FLUSH_INTERVAL_MS = 50
 RECEIVE_RATE_REFRESH_INTERVAL_MS = 100
 RECEIVE_RATE_WINDOW_SECONDS = 1.0
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
+APP_ICON_RESOURCE = ":/icons/Plottty.png"
 LOAD_PROGRESS_UPDATE_ROWS = 10_000
 EDITABLE_RULE_CELL_BACKGROUND = QColor("#243840")
 EDITABLE_RULE_CELL_FOREGROUND = QColor("#f3f7fb")
@@ -98,6 +99,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.setWindowIcon(QIcon(APP_ICON_RESOURCE))
 
         self.transport: SerialTransport | None = None
         self.serial_settings = SerialSettings()
@@ -611,6 +613,7 @@ def _read_plot_csv(
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(APP_ICON_RESOURCE))
     apply_application_style(app)
     widget = MainWindow()
     widget.show()
