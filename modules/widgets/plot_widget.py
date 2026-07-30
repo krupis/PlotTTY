@@ -43,6 +43,10 @@ class PlotWidget(QWidget):
         self.visible_points_label.setToolTip(
             "Maximum number of data points currently visible in any shown series."
         )
+        self.downsample_ratio_label = QLabel("Downsample: 1:1")
+        self.downsample_ratio_label.setToolTip(
+            "Raw visible points compared to points sent to the plot. 1:1 means every visible point is drawn."
+        )
 
         self.series_menu = QMenu(self)
         self.series_button = QPushButton("Series")
@@ -58,6 +62,7 @@ class PlotWidget(QWidget):
         toolbar.setContentsMargins(0, 0, 0, 0)
         toolbar.addStretch()
         toolbar.addWidget(self.visible_points_label)
+        toolbar.addWidget(self.downsample_ratio_label)
         toolbar.addWidget(self.series_button)
         toolbar.addWidget(self.auto_scroll_button)
 
@@ -104,6 +109,7 @@ class PlotWidget(QWidget):
         self.graph.clear()
         self._toggle_auto_scroll(True)
 
+    # This method is called periodically to refresh the plot with any new data that has been added since the last refresh.
     def _refresh_pending_data(self) -> None:
         if not self._has_pending_refresh:
             return
@@ -216,11 +222,13 @@ class PlotWidget(QWidget):
         start_time, end_time = plot.viewRange()[0]
         return start_time, end_time
 
+    # This method updates the data for all visible curves based on the current time range.
     def _update_visible_curve_data(self, start_time: float | None = None, end_time: float | None = None) -> None:
         if start_time is None or end_time is None:
             start_time, end_time = self._time_range()
 
         visible_counts = []
+        downsample_ratios = []
         for label, series in self._series.items():
             if label not in self._curves:
                 continue
@@ -231,9 +239,11 @@ class PlotWidget(QWidget):
 
             x_values, y_values = series.read_visible_samples(start_time, end_time, bucket_count)
             self._curves[label].setData(x_values, y_values)
+            downsample_ratios.append(_downsample_ratio(visible_samples, len(x_values)))
 
         visible_point_count = max(visible_counts, default=0)
         self.visible_points_label.setText(f"Points: {visible_point_count:,}")
+        self.downsample_ratio_label.setText(f"Downsample: {_format_downsample_ratio(max(downsample_ratios, default=1.0))}")
 
     def _bucket_count_for_series(self, label: str) -> int:
         plot = self._plots.get(label)
@@ -252,3 +262,17 @@ class PlotWidget(QWidget):
 def _color_for_index(index: int) -> str:
     colors = ["#7cd1a8", "#89b4fa", "#f9c74f", "#f7768e", "#cba6f7", "#4dd0e1"]
     return colors[index % len(colors)]
+
+
+def _downsample_ratio(raw_point_count: int, plotted_point_count: int) -> float:
+    if raw_point_count <= 0 or plotted_point_count <= 0:
+        return 1.0
+    return max(1.0, raw_point_count / plotted_point_count)
+
+
+def _format_downsample_ratio(value: float) -> str:
+    if value <= 1:
+        return "1:1"
+    if value < 10:
+        return f"{value:.1f}:1"
+    return f"{value:,.0f}:1"
