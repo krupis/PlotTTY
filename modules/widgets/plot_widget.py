@@ -7,7 +7,7 @@ from collections.abc import Iterable
 import pyqtgraph as pg
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QSpinBox, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
 
 from ..core.models import CapturedValue
 from ..core.plotter import Plotter
@@ -39,28 +39,9 @@ class PlotWidget(QWidget):
         self.graph = pg.GraphicsLayoutWidget()
         self.graph.setBackground(PLOT_BACKGROUND)
 
-        bucket_count_tooltip = (
-            "Maximum target number of displayed bucket groups for the visible time range. "
-            "The actual displayed bucket count can be lower because PlotTTY uses fixed precomputed bucket levels. "
-            "Auto uses the graph width; each displayed bucket keeps the first, last, minimum, and maximum points."
-        )
-
-        self.bucket_count = QSpinBox()
-        self.bucket_count.setRange(0, 100_000)
-        self.bucket_count.setValue(0)
-        self.bucket_count.setSpecialValueText("Auto")
-        self.bucket_count.setToolTip(bucket_count_tooltip)
-        self.bucket_count.valueChanged.connect(self._refresh_visible_data)
-
-        self.visible_points_label = QLabel("Visible points: 0")
+        self.visible_points_label = QLabel("Points: 0")
         self.visible_points_label.setToolTip(
-            "Maximum raw point count currently visible in any shown series. "
-            "PlotTTY uses raw samples when this is at or below the target bucket count."
-        )
-        self.samples_per_bucket_label = QLabel("Samples/bucket: 0")
-        self.samples_per_bucket_label.setToolTip(
-            "Target raw samples per displayed bucket for the visible series with the most points. "
-            "This is visible points divided by max buckets; the actual plotted bucket level may be coarser."
+            "Maximum number of data points currently visible in any shown series."
         )
 
         self.series_menu = QMenu(self)
@@ -76,12 +57,7 @@ class PlotWidget(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
         toolbar.addStretch()
-        bucket_count_label = QLabel("Max buckets")
-        bucket_count_label.setToolTip(bucket_count_tooltip)
-        toolbar.addWidget(bucket_count_label)
-        toolbar.addWidget(self.bucket_count)
         toolbar.addWidget(self.visible_points_label)
-        toolbar.addWidget(self.samples_per_bucket_label)
         toolbar.addWidget(self.series_button)
         toolbar.addWidget(self.auto_scroll_button)
 
@@ -245,7 +221,6 @@ class PlotWidget(QWidget):
             start_time, end_time = self._time_range()
 
         visible_counts = []
-        samples_per_bucket_values = []
         for label, series in self._series.items():
             if label not in self._curves:
                 continue
@@ -253,23 +228,14 @@ class PlotWidget(QWidget):
             visible_samples = series.count_visible_samples(start_time, end_time)
             bucket_count = self._bucket_count_for_series(label)
             visible_counts.append(visible_samples)
-            samples_per_bucket_values.append(visible_samples / bucket_count)
 
             x_values, y_values = series.read_visible_samples(start_time, end_time, bucket_count)
             self._curves[label].setData(x_values, y_values)
 
         visible_point_count = max(visible_counts, default=0)
-        self.visible_points_label.setText(f"Visible points: {visible_point_count:,}")
-        samples_per_bucket = max(samples_per_bucket_values, default=0.0)
-        self.samples_per_bucket_label.setText(f"Samples/bucket: {_format_samples_per_bucket(samples_per_bucket)}")
-
-    def _refresh_visible_data(self) -> None:
-        self._update_visible_curve_data()
+        self.visible_points_label.setText(f"Points: {visible_point_count:,}")
 
     def _bucket_count_for_series(self, label: str) -> int:
-        if self.bucket_count.value() > 0:
-            return self.bucket_count.value()
-
         plot = self._plots.get(label)
         if plot is None:
             return 1000
@@ -286,11 +252,3 @@ class PlotWidget(QWidget):
 def _color_for_index(index: int) -> str:
     colors = ["#7cd1a8", "#89b4fa", "#f9c74f", "#f7768e", "#cba6f7", "#4dd0e1"]
     return colors[index % len(colors)]
-
-
-def _format_samples_per_bucket(value: float) -> str:
-    if value == 0:
-        return "0"
-    if value < 10:
-        return f"{value:.1f}"
-    return f"{value:,.0f}"
