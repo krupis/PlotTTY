@@ -14,7 +14,9 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QMessageBox,
     QMainWindow,
+    QPushButton,
     QTableWidgetItem,
+    QWidget,
 )
 
 # Important:
@@ -67,6 +69,28 @@ def apply_application_style(app: QApplication) -> None:
         return
 
     app.setStyleSheet(stylesheet)
+
+
+class RuleCheckCell(QWidget):
+    def __init__(self, checked: bool, changed_callback: Callable[[object], None], parent: QWidget) -> None:
+        super().__init__(parent)
+        self.button = QPushButton(self)
+        self.button.setObjectName("RuleCheckButton")
+        self.button.setCheckable(True)
+        self.button.setFixedSize(16, 16)
+        self.button.setChecked(checked)
+        self.button.toggled.connect(changed_callback)
+        QTimer.singleShot(0, self._center_button)
+
+    def is_checked(self) -> bool:
+        return self.button.isChecked()
+
+    def _center_button(self) -> None:
+        self.button.move((self.width() - self.button.width()) // 2, (self.height() - self.button.height()) // 2)
+
+    def resizeEvent(self, event) -> None:
+        self._center_button()
+        super().resizeEvent(event)
 
 
 class MainWindow(QMainWindow):
@@ -304,12 +328,15 @@ class MainWindow(QMainWindow):
         return rules
 
     def _set_rule_row(self, row: int, rule: ExtractionRule) -> None:
-        self.ui.RulesTable.setItem(row, 0, _checkbox_item(rule.enabled))
-        self.ui.RulesTable.setItem(row, 1, _checkbox_item(rule.sample_counter))
+        self.ui.RulesTable.setCellWidget(row, 0, self._rule_checkbox(rule.enabled))
+        self.ui.RulesTable.setCellWidget(row, 1, self._rule_checkbox(rule.sample_counter))
         self.ui.RulesTable.setItem(row, 2, _editable_text_item(rule.label))
         self.ui.RulesTable.setCellWidget(row, 3, self._rule_mode_combo(rule.mode))
         self.ui.RulesTable.setItem(row, 4, _editable_text_item(self._extra_text_for_rule(rule)))
         self.ui.RulesTable.setItem(row, 5, _editable_text_item(self._position_text_for_rule(rule)))
+
+    def _rule_checkbox(self, checked: bool) -> QWidget:
+        return RuleCheckCell(checked, self._handle_rule_item_changed, self.ui.RulesTable)
 
     def _rule_mode_combo(self, mode: ExtractionMode) -> QComboBox:
         combo = QComboBox(self.ui.RulesTable)
@@ -332,10 +359,10 @@ class MainWindow(QMainWindow):
         return item.text()
 
     def _rule_checked(self, row: int, column: int) -> bool:
-        item = self.ui.RulesTable.item(row, column)
-        return bool(item and item.checkState() == Qt.CheckState.Checked)
+        cell_widget = self.ui.RulesTable.cellWidget(row, column)
+        return isinstance(cell_widget, RuleCheckCell) and cell_widget.is_checked()
 
-    def _handle_rule_item_changed(self, _item: QTableWidgetItem) -> None:
+    def _handle_rule_item_changed(self, _changed: object) -> None:
         if not self._updating_rules_table:
             self._refresh_engine()
 
@@ -554,13 +581,6 @@ class MainWindow(QMainWindow):
         self._flush_console_text()
         self.disconnect_serial()
         super().closeEvent(event)
-
-
-def _checkbox_item(checked: bool) -> QTableWidgetItem:
-    item = QTableWidgetItem()
-    item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
-    item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
-    return item
 
 
 def _editable_text_item(text: str) -> QTableWidgetItem:
