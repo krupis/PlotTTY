@@ -34,6 +34,7 @@ class PlotWidget(QWidget):
         self._start_time: float | None = None
         self._has_pending_refresh = False
         self._auto_scroll_enabled = True
+        self._show_all_enabled = False
         self._is_setting_time_range = False
 
         self.graph = pg.GraphicsLayoutWidget()
@@ -54,9 +55,15 @@ class PlotWidget(QWidget):
         self.series_button.setEnabled(False)
 
         self.auto_scroll_button = QPushButton("Auto Scroll")
+        self.auto_scroll_button.setObjectName("PlotModeButton")
         self.auto_scroll_button.setCheckable(True)
         self.auto_scroll_button.setChecked(True)
         self.auto_scroll_button.clicked.connect(self._toggle_auto_scroll)
+
+        self.show_all_button = QPushButton("See all plot")
+        self.show_all_button.setObjectName("PlotModeButton")
+        self.show_all_button.setCheckable(True)
+        self.show_all_button.clicked.connect(self._toggle_show_all)
 
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
@@ -64,6 +71,7 @@ class PlotWidget(QWidget):
         toolbar.addWidget(self.visible_points_label)
         toolbar.addWidget(self.downsample_ratio_label)
         toolbar.addWidget(self.series_button)
+        toolbar.addWidget(self.show_all_button)
         toolbar.addWidget(self.auto_scroll_button)
 
         layout = QVBoxLayout(self)
@@ -117,6 +125,8 @@ class PlotWidget(QWidget):
         self._has_pending_refresh = False
         if self._auto_scroll_enabled:
             self._show_recent_data()
+        elif self._show_all_enabled:
+            self._show_all_data()
         else:
             self._update_visible_curve_data()
 
@@ -124,8 +134,16 @@ class PlotWidget(QWidget):
         self._auto_scroll_enabled = enabled
         self.auto_scroll_button.setChecked(enabled)
         if enabled:
+            self._show_all_enabled = False
+            self.show_all_button.setChecked(False)
             self._show_recent_data()
-        else:
+
+    def _toggle_show_all(self, enabled: bool) -> None:
+        self._show_all_enabled = enabled
+        self.show_all_button.setChecked(enabled)
+        if enabled:
+            self._auto_scroll_enabled = False
+            self.auto_scroll_button.setChecked(False)
             self._show_all_data()
 
     def _show_recent_data(self) -> None:
@@ -149,9 +167,21 @@ class PlotWidget(QWidget):
         if self._is_setting_time_range:
             return
 
+        if view_box is not None and view_box.autoRangeEnabled()[0] is not False:
+            self._auto_scroll_enabled = False
+            self.auto_scroll_button.setChecked(False)
+            self._show_all_enabled = False
+            self.show_all_button.setChecked(False)
+            start_time, end_time = view_box.viewRange()[0]
+            self._update_visible_curve_data(start_time, end_time)
+            return
+
         if self._auto_scroll_enabled:
             self._auto_scroll_enabled = False
             self.auto_scroll_button.setChecked(False)
+        if self._show_all_enabled:
+            self._show_all_enabled = False
+            self.show_all_button.setChecked(False)
 
         if view_box is not None:
             start_time, end_time = view_box.viewRange()[0]
@@ -192,6 +222,8 @@ class PlotWidget(QWidget):
 
         if self._auto_scroll_enabled:
             self._show_recent_data()
+        elif self._show_all_enabled:
+            self._show_all_data()
 
     def _configure_plot(self, plot: pg.PlotItem, title: str) -> None:
         axis_pen = pg.mkPen(PLOT_AXIS)

@@ -104,6 +104,22 @@ QPushButton:disabled {
     color: #777f89;
 }
 
+QPushButton#PlotModeButton:checked {
+    background-color: #2e8b57;
+    border-color: #7cd1a8;
+    color: #ffffff;
+}
+
+QPushButton#PlotModeButton:checked:hover {
+    background-color: #35a368;
+    border-color: #9ee6bf;
+}
+
+QPushButton#PlotModeButton:checked:pressed {
+    background-color: #257348;
+    border-color: #7cd1a8;
+}
+
 QPushButton#RemoveRuleButton {
     color: #f4b3bc;
 }
