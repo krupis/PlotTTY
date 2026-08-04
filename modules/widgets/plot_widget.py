@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction
@@ -17,6 +18,8 @@ PLOT_REFRESH_INTERVAL_MS = 100
 PLOT_BACKGROUND = "#1f2328"
 PLOT_AXIS = "#5c6370"
 PLOT_TEXT = "#dce3ea"
+
+PlotDataResult = tuple[str, int, np.ndarray, np.ndarray]
 
 
 class PlotWidget(QWidget):
@@ -58,12 +61,12 @@ class PlotWidget(QWidget):
         self.auto_scroll_button.setObjectName("PlotModeButton")
         self.auto_scroll_button.setCheckable(True)
         self.auto_scroll_button.setChecked(True)
-        self.auto_scroll_button.clicked.connect(self._toggle_auto_scroll)
+        self.auto_scroll_button.clicked.connect(self.on_toggle_auto_scroll)
 
         self.show_all_button = QPushButton("See all plot")
         self.show_all_button.setObjectName("PlotModeButton")
         self.show_all_button.setCheckable(True)
-        self.show_all_button.clicked.connect(self._toggle_show_all)
+        self.show_all_button.clicked.connect(self.on_toggle_show_all)
 
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
@@ -81,7 +84,7 @@ class PlotWidget(QWidget):
 
         self._timer = QTimer(self)
         self._timer.setInterval(PLOT_REFRESH_INTERVAL_MS)
-        self._timer.timeout.connect(self._refresh_pending_data)
+        self._timer.timeout.connect(self.on_refresh_pending_data)
         self._timer.start()
 
     def append_values(self, values: Iterable[CapturedValue]) -> None:
@@ -115,44 +118,44 @@ class PlotWidget(QWidget):
         self.series_menu.clear()
         self.series_button.setEnabled(False)
         self.graph.clear()
-        self._toggle_auto_scroll(True)
+        self.on_toggle_auto_scroll(True)
 
     # This method is called periodically to refresh the plot with any new data that has been added since the last refresh.
-    def _refresh_pending_data(self) -> None:
+    def on_refresh_pending_data(self) -> None:
         if not self._has_pending_refresh:
             return
 
         self._has_pending_refresh = False
         if self._auto_scroll_enabled:
-            self._show_recent_data()
+            self.show_recent_data()
         elif self._show_all_enabled:
-            self._show_all_data()
+            self.show_all_data()
         else:
             self._update_visible_curve_data()
 
-    def _toggle_auto_scroll(self, enabled: bool) -> None:
+    def on_toggle_auto_scroll(self, enabled: bool) -> None:
         self._auto_scroll_enabled = enabled
         self.auto_scroll_button.setChecked(enabled)
         if enabled:
             self._show_all_enabled = False
             self.show_all_button.setChecked(False)
-            self._show_recent_data()
+            self.show_recent_data()
 
-    def _toggle_show_all(self, enabled: bool) -> None:
+    def on_toggle_show_all(self, enabled: bool) -> None:
         self._show_all_enabled = enabled
         self.show_all_button.setChecked(enabled)
         if enabled:
             self._auto_scroll_enabled = False
             self.auto_scroll_button.setChecked(False)
-            self._show_all_data()
+            self.show_all_data()
 
-    def _show_recent_data(self) -> None:
+    def show_recent_data(self) -> None:
         latest_time = self._latest_sample_time()
         start_time = max(0.0, latest_time - self._time_window)
         end_time = max(self._time_window, latest_time)
         self._set_time_range(start_time, end_time)
 
-    def _show_all_data(self) -> None:
+    def show_all_data(self) -> None:
         latest_time = self._latest_sample_time()
         self._set_time_range(0.0, max(self._time_window, latest_time))
 
@@ -163,17 +166,8 @@ class PlotWidget(QWidget):
         self._is_setting_time_range = False
         self._update_visible_curve_data(start_time, end_time)
 
-    def _handle_x_range_changed(self, view_box=None, _range=None) -> None:
+    def on_x_range_changed(self, view_box=None, _range=None) -> None:
         if self._is_setting_time_range:
-            return
-
-        if view_box is not None and view_box.autoRangeEnabled()[0] is not False:
-            self._auto_scroll_enabled = False
-            self.auto_scroll_button.setChecked(False)
-            self._show_all_enabled = False
-            self.show_all_button.setChecked(False)
-            start_time, end_time = view_box.viewRange()[0]
-            self._update_visible_curve_data(start_time, end_time)
             return
 
         if self._auto_scroll_enabled:
@@ -191,12 +185,24 @@ class PlotWidget(QWidget):
         action = QAction(label, self)
         action.setCheckable(True)
         action.setChecked(True)
-        action.toggled.connect(lambda checked, series_label=label: self._toggle_series_visibility(series_label, checked))
+        action.setData(label)
+        action.toggled.connect(self.on_series_visibility_toggled)
         self._series_actions[label] = action
         self.series_menu.addAction(action)
         self.series_button.setEnabled(True)
 
-    def _toggle_series_visibility(self, label: str, visible: bool) -> None:
+    def on_series_visibility_toggled(self, visible: bool) -> None:
+        action = self.sender()
+        if not isinstance(action, QAction):
+            return
+
+        label = str(action.data() or "")
+        if not label:
+            return
+
+        self._set_series_visibility(label, visible)
+
+    def _set_series_visibility(self, label: str, visible: bool) -> None:
         if visible:
             self._visible_labels.add(label)
         else:
@@ -204,7 +210,7 @@ class PlotWidget(QWidget):
 
         self._rebuild_plots()
         self._has_pending_refresh = True
-        self._refresh_pending_data()
+        self.on_refresh_pending_data()
 
     def _rebuild_plots(self) -> None:
         self.graph.clear()
@@ -221,9 +227,9 @@ class PlotWidget(QWidget):
             self._curves[label] = curve
 
         if self._auto_scroll_enabled:
-            self._show_recent_data()
+            self.show_recent_data()
         elif self._show_all_enabled:
-            self._show_all_data()
+            self.show_all_data()
 
     def _configure_plot(self, plot: pg.PlotItem, title: str) -> None:
         axis_pen = pg.mkPen(PLOT_AXIS)
@@ -239,7 +245,7 @@ class PlotWidget(QWidget):
         plot.enableAutoRange(axis="x", enable=False)
         plot.enableAutoRange(axis="y", enable=True)
         plot.getViewBox().setBackgroundColor(PLOT_BACKGROUND)
-        plot.getViewBox().sigXRangeChanged.connect(self._handle_x_range_changed)
+        plot.getViewBox().sigXRangeChanged.connect(self.on_x_range_changed)
 
     def _latest_sample_time(self) -> float:
         return max(
@@ -259,18 +265,31 @@ class PlotWidget(QWidget):
         if start_time is None or end_time is None:
             start_time, end_time = self._time_range()
 
-        visible_counts = []
-        downsample_ratios = []
+        results = []
         for label, series in self._series.items():
             if label not in self._curves:
                 continue
 
-            visible_samples = series.count_visible_samples(start_time, end_time)
-            bucket_count = self._bucket_count_for_series(label)
-            visible_counts.append(visible_samples)
+            visible_samples, x_values, y_values = series.read_visible_samples(
+                start_time,
+                end_time,
+                self._bucket_count_for_series(label),
+            )
+            # Convert python list to numpy array.
+            results.append((label, visible_samples, *_prepare_plot_arrays(x_values, y_values)))
 
-            x_values, y_values = series.read_visible_samples(start_time, end_time, bucket_count)
-            self._curves[label].setData(x_values, y_values)
+        self._apply_visible_curve_data(results)
+
+    def _apply_visible_curve_data(self, results: list[PlotDataResult]) -> None:
+        visible_counts = []
+        downsample_ratios = []
+        for label, visible_samples, x_values, y_values in results:
+            curve = self._curves.get(label)
+            if curve is None:
+                continue
+
+            visible_counts.append(visible_samples)
+            curve.setData(x=x_values, y=y_values, connect="all", skipFiniteCheck=True)
             downsample_ratios.append(_downsample_ratio(visible_samples, len(x_values)))
 
         visible_point_count = max(visible_counts, default=0)
@@ -294,6 +313,19 @@ class PlotWidget(QWidget):
 def _color_for_index(index: int) -> str:
     colors = ["#7cd1a8", "#89b4fa", "#f9c74f", "#f7768e", "#cba6f7", "#4dd0e1"]
     return colors[index % len(colors)]
+
+
+def _prepare_plot_arrays(x_values: list[float], y_values: list[float]) -> tuple[np.ndarray, np.ndarray]:
+    x_array = np.asarray(x_values, dtype=np.float64)
+    y_array = np.asarray(y_values, dtype=np.float64)
+    if x_array.size == 0 or y_array.size == 0:
+        return x_array, y_array
+
+    finite_mask = np.isfinite(x_array) & np.isfinite(y_array)
+    if finite_mask.all():
+        return x_array, y_array
+
+    return x_array[finite_mask], y_array[finite_mask]
 
 
 def _downsample_ratio(raw_point_count: int, plotted_point_count: int) -> float:

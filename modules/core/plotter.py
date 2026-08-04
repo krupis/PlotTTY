@@ -100,23 +100,21 @@ class Plotter:
             BucketSummary(count=1, first=point, last=point, minimum=point, maximum=point),
         )
 
-    def read_visible_samples(self, start_time: float, end_time: float, buckets: int) -> tuple[list[float], list[float]]:
+    def read_visible_samples(self,start_time: float,end_time: float,buckets: int,) -> tuple[int, list[float], list[float]]:
         start_index, stop_index = self._sample_indexes_for_range(start_time, end_time)
         if stop_index <= start_index:
-            return [], []
+            return 0, [], []
 
         visible_samples = stop_index - start_index
         bucket_count = max(1, buckets)
         samples_per_bucket = visible_samples / bucket_count
         if samples_per_bucket <= 1:
-            return self._read_raw_samples_by_index(start_index, stop_index)
+            x_values, y_values = self._read_raw_samples_by_index(start_index, stop_index)
+            return visible_samples, x_values, y_values
 
         bucket_level = self._select_bucket_level(samples_per_bucket)
-        return self._read_bucket_level(bucket_level, start_time, end_time, bucket_count)
-
-    def count_visible_samples(self, start_time: float, end_time: float) -> int:
-        start_index, stop_index = self._sample_indexes_for_range(start_time, end_time)
-        return max(0, stop_index - start_index)
+        x_values, y_values = self._read_bucket_level(bucket_level, start_time, end_time, bucket_count)
+        return visible_samples, x_values, y_values
 
     def latest_timestamp(self) -> float | None:
         if self._sample_count == 0:

@@ -98,7 +98,7 @@ class SerialSettingsDialog(QDialog):
         layout.addLayout(form)
         layout.addWidget(self.buttons)
 
-        self.refresh_button.clicked.connect(lambda: self.refresh_ports(self.selected_port()))
+        self.refresh_button.clicked.connect(self.on_refresh_ports_clicked)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
@@ -120,6 +120,9 @@ class SerialSettingsDialog(QDialog):
 
     def selected_port(self) -> str:
         return self.port_combo.currentText().strip()
+
+    def on_refresh_ports_clicked(self) -> None:
+        self.refresh_ports(self.selected_port())
 
     def refresh_ports(self, selected_port: str = "") -> None:
         self.port_combo.clear()

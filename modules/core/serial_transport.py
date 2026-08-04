@@ -30,8 +30,8 @@ class SerialTransport(QObject):
         super().__init__(parent)
         self.settings = settings
         self._serial = QSerialPort(self)
-        self._serial.readyRead.connect(self._handle_ready_read)
-        self._serial.errorOccurred.connect(self._handle_error)
+        self._serial.readyRead.connect(self.on_ready_read)
+        self._serial.errorOccurred.connect(self.on_error)
 
     @property
     def is_open(self) -> bool:
@@ -63,12 +63,12 @@ class SerialTransport(QObject):
             raise RuntimeError(message)
         self._serial.flush()
 
-    def _handle_ready_read(self) -> None:
+    def on_ready_read(self) -> None:
         received_at = time()
         data = bytes(self._serial.readAll())
         self.bytesReceived.emit(data, received_at)
 
-    def _handle_error(self, error: QSerialPort.SerialPortError) -> None:
+    def on_error(self, error: QSerialPort.SerialPortError) -> None:
         if error != QSerialPort.SerialPortError.NoError:
             self.errorReceived.emit(self._serial.errorString())
 

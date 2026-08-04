@@ -81,16 +81,16 @@ class RuleCheckCell(QWidget):
         self.button.setFixedSize(16, 16)
         self.button.setChecked(checked)
         self.button.toggled.connect(changed_callback)
-        QTimer.singleShot(0, self._center_button)
+        QTimer.singleShot(0, self.on_center_button)
 
     def is_checked(self) -> bool:
         return self.button.isChecked()
 
-    def _center_button(self) -> None:
+    def on_center_button(self) -> None:
         self.button.move((self.width() - self.button.width()) // 2, (self.height() - self.button.height()) // 2)
 
     def resizeEvent(self, event) -> None:
-        self._center_button()
+        self.on_center_button()
         super().resizeEvent(event)
 
 
@@ -133,13 +133,13 @@ class MainWindow(QMainWindow):
     def _configure_console_flush_timer(self) -> None:
         self._console_flush_timer = QTimer(self)
         self._console_flush_timer.setInterval(CONSOLE_FLUSH_INTERVAL_MS)
-        self._console_flush_timer.timeout.connect(self._flush_console_text)
+        self._console_flush_timer.timeout.connect(self.on_flush_console_text)
         self._console_flush_timer.start()
 
     def _configure_receive_rate_timer(self) -> None:
         self._receive_rate_timer = QTimer(self)
         self._receive_rate_timer.setInterval(RECEIVE_RATE_REFRESH_INTERVAL_MS)
-        self._receive_rate_timer.timeout.connect(self._refresh_receive_rate_label)
+        self._receive_rate_timer.timeout.connect(self.on_refresh_receive_rate_label)
         self._receive_rate_timer.start()
 
     def _configure_rules_table(self) -> None:
@@ -160,16 +160,16 @@ class MainWindow(QMainWindow):
         table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
     def _connect_signals(self) -> None:
-        self.ui.ConnectButton.clicked.connect(self.toggle_serial_connection)
-        self.ui.pushButton.clicked.connect(self.open_serial_settings)
-        self.ui.ClearConsoleButton.clicked.connect(self.clear_console_and_plot)
-        self.ui.AddRuleButton.clicked.connect(self.add_rule)
-        self.ui.RemoveRuleButton.clicked.connect(self.remove_selected_rules)
-        self.ui.GenerateRulesButton.clicked.connect(self.generate_rules_from_sample)
-        self.ui.RulesTable.itemChanged.connect(self._handle_rule_item_changed)
-        self.ui.actionSave_profile.triggered.connect(self.save_profile_as)
-        self.ui.actionOpen_profile.triggered.connect(self.open_profile)
-        self.ui.actionLoad_log.triggered.connect(self.load_plot_data)
+        self.ui.ConnectButton.clicked.connect(self.on_toggle_serial_connection)
+        self.ui.pushButton.clicked.connect(self.on_open_serial_settings)
+        self.ui.ClearConsoleButton.clicked.connect(self.on_clear_console_and_plot)
+        self.ui.AddRuleButton.clicked.connect(self.on_add_rule)
+        self.ui.RemoveRuleButton.clicked.connect(self.on_remove_selected_rules)
+        self.ui.GenerateRulesButton.clicked.connect(self.on_generate_rules_from_sample)
+        self.ui.RulesTable.itemChanged.connect(self.on_rule_item_changed)
+        self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
+        self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
+        self.ui.actionLoad_log.triggered.connect(self.on_load_plot_data)
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
@@ -182,7 +182,7 @@ class MainWindow(QMainWindow):
     def _refresh_engine(self) -> None:
         self.engine = ExtractionEngine(self.rules_from_table())
 
-    def open_profile(self) -> None:
+    def on_open_profile(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(self, "Open Profile", "", "PlotTTY Profile (*.json)")
         if not path:
             return
@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
         self.set_rules(profile.rules or [ExtractionRule(label="Auto key/value", mode="auto_key_value")])
         self.statusBar().showMessage(f"Loaded {self.profile_path.name}")
 
-    def save_profile_as(self) -> None:
+    def on_save_profile_as(self) -> None:
         default_path = str(self.profile_path or Path("profile.json"))
         path, _selected_filter = QFileDialog.getSaveFileName(
             self,
@@ -222,7 +222,7 @@ class MainWindow(QMainWindow):
         self.profile_path = Path(path)
         self.statusBar().showMessage(f"Saved {self.profile_path.name}")
 
-    def load_plot_data(self) -> None:
+    def on_load_plot_data(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(
             self,
             "Load Plot Data",
@@ -238,7 +238,7 @@ class MainWindow(QMainWindow):
         self._pending_console_text.clear()
         self._append_console_text(f"[loading plot data from {Path(path).name}]\n", STATUS_TEXT_COLOR)
         self.statusBar().showMessage(f"Loading plot data from {Path(path).name}...")
-        self._flush_console_text()
+        self.on_flush_console_text()
         loading_dialog = LoadingDialog(f"Loading {Path(path).name}", self)
         loading_dialog.start()
 
@@ -251,7 +251,7 @@ class MainWindow(QMainWindow):
             captured_values, row_count = _read_plot_csv(path, update_load_progress)
             loading_dialog.set_message("Rendering plot...")
             self.plot.append_values(captured_values)
-            self.plot._show_all_data()
+            self.plot.show_all_data()
         except Exception as exc:
             loading_dialog.close()
             QMessageBox.warning(self, "Load Plot Data Failed", str(exc))
@@ -260,7 +260,7 @@ class MainWindow(QMainWindow):
         loading_dialog.close()
         self.statusBar().showMessage(f"Loaded plot data {Path(path).name}: {row_count:,} rows")
 
-    def generate_rules_from_sample(self) -> None:
+    def on_generate_rules_from_sample(self) -> None:
         suggestions = suggest_rules_from_samples(self.ui.SampleOutputTextEdit.toPlainText())
         if not suggestions:
             self.statusBar().showMessage("No numeric values found in sample output")
@@ -270,13 +270,16 @@ class MainWindow(QMainWindow):
         self.set_rules(rules)
         self.statusBar().showMessage(f"Generated {len(rules)} rule(s) from sample output")
 
-    def open_serial_settings(self) -> None:
+    def on_open_serial_settings(self) -> None:
         dialog = SerialSettingsDialog(self.serial_settings, self)
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
 
         self.serial_settings = dialog.selected_settings()
         self._update_port_status_label(False)
+
+    def on_add_rule(self) -> None:
+        self.add_rule()
 
     def add_rule(self, rule: ExtractionRule | None = None) -> None:
         rule = rule or ExtractionRule(label="value", mode="first_number")
@@ -289,7 +292,7 @@ class MainWindow(QMainWindow):
             self._updating_rules_table = False
         self._refresh_engine()
 
-    def remove_selected_rules(self) -> None:
+    def on_remove_selected_rules(self) -> None:
         table = self.ui.RulesTable
         rows = sorted({index.row() for index in table.selectedIndexes()}, reverse=True)
         if not rows and table.currentRow() >= 0:
@@ -338,14 +341,14 @@ class MainWindow(QMainWindow):
         self.ui.RulesTable.setItem(row, 5, _editable_text_item(self._position_text_for_rule(rule)))
 
     def _rule_checkbox(self, checked: bool) -> QWidget:
-        return RuleCheckCell(checked, self._handle_rule_item_changed, self.ui.RulesTable)
+        return RuleCheckCell(checked, self.on_rule_item_changed, self.ui.RulesTable)
 
     def _rule_mode_combo(self, mode: ExtractionMode) -> QComboBox:
         combo = QComboBox(self.ui.RulesTable)
         for label, value in MODE_LABELS.items():
             combo.addItem(label, value)
         combo.setCurrentText(MODE_NAMES_BY_VALUE.get(mode, "Auto key/value"))
-        combo.currentIndexChanged.connect(self._handle_rule_mode_changed)
+        combo.currentIndexChanged.connect(self.on_rule_mode_changed)
         return combo
 
     def _rule_mode(self, row: int) -> ExtractionMode:
@@ -364,11 +367,11 @@ class MainWindow(QMainWindow):
         cell_widget = self.ui.RulesTable.cellWidget(row, column)
         return isinstance(cell_widget, RuleCheckCell) and cell_widget.is_checked()
 
-    def _handle_rule_item_changed(self, _changed: object) -> None:
+    def on_rule_item_changed(self, _changed: object) -> None:
         if not self._updating_rules_table:
             self._refresh_engine()
 
-    def _handle_rule_mode_changed(self) -> None:
+    def on_rule_mode_changed(self) -> None:
         if not self._updating_rules_table:
             self._refresh_engine()
 
@@ -396,7 +399,7 @@ class MainWindow(QMainWindow):
             return ""
         return rule.extra_setting
 
-    def toggle_serial_connection(self) -> None:
+    def on_toggle_serial_connection(self) -> None:
         if self.transport and self.transport.is_open:
             self.disconnect_serial()
         else:
@@ -412,8 +415,8 @@ class MainWindow(QMainWindow):
         try:
             self.transport = SerialTransport(settings, self)
             self.line_decoder = LineDecoder(settings.encoding)
-            self.transport.bytesReceived.connect(self.handle_received_data)
-            self.transport.errorReceived.connect(self.handle_serial_error)
+            self.transport.bytesReceived.connect(self.on_received_data)
+            self.transport.errorReceived.connect(self.on_serial_error)
             self.transport.open()
         except Exception as exc:
             self.transport = None
@@ -450,14 +453,14 @@ class MainWindow(QMainWindow):
             self.serial_log.close()
             self.plot_log.close()
 
-    def clear_console_and_plot(self) -> None:
+    def on_clear_console_and_plot(self) -> None:
         self._pending_console_text.clear()
         self.ui.ConsoleTextEdit.clear()
         self.plot.clear_values()
         self._reset_receive_rate()
         self.statusBar().showMessage("Cleared console and plot data")
 
-    def handle_received_data(self, data: bytes, received_at: float | None = None) -> None:
+    def on_received_data(self, data: bytes, received_at: float | None = None) -> None:
         self._record_received_bytes(len(data))
         if self.serial_settings.log_to_file:
             self.serial_log.write_received(data, self.line_decoder.encoding)
@@ -475,12 +478,12 @@ class MainWindow(QMainWindow):
                     self.plot_log.write_values(captured_values)
                 self.plot.append_values(captured_values)
 
-    def handle_serial_error(self, message: str) -> None:
+    def on_serial_error(self, message: str) -> None:
         if self.transport and self.transport.is_open:
             self.disconnect_serial()
         QMessageBox.warning(self, "Serial Error", message)
 
-    def send_command(self) -> None:
+    def on_send_command(self) -> None:
         command = self.ui.SendCommandTextEdit.toPlainText().strip()
         if not command:
             return
@@ -506,7 +509,7 @@ class MainWindow(QMainWindow):
             and event.type() == QEvent.Type.KeyPress
             and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
         ):
-            self.send_command()
+            self.on_send_command()
             return True
 
         return super().eventFilter(watched, event)
@@ -536,7 +539,7 @@ class MainWindow(QMainWindow):
 
         self._receive_rate_samples.append((monotonic(), byte_count))
 
-    def _refresh_receive_rate_label(self) -> None:
+    def on_refresh_receive_rate_label(self) -> None:
         now = monotonic()
         cutoff = now - RECEIVE_RATE_WINDOW_SECONDS
         while self._receive_rate_samples and self._receive_rate_samples[0][0] < cutoff:
@@ -560,7 +563,7 @@ class MainWindow(QMainWindow):
         else:
             self._pending_console_text.append((text, color))
 
-    def _flush_console_text(self) -> None:
+    def on_flush_console_text(self) -> None:
         if not self._pending_console_text:
             return
 
@@ -580,7 +583,7 @@ class MainWindow(QMainWindow):
         self.ui.ConsoleTextEdit.ensureCursorVisible()
 
     def closeEvent(self, event) -> None:
-        self._flush_console_text()
+        self.on_flush_console_text()
         self.disconnect_serial()
         super().closeEvent(event)
 
