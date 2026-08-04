@@ -12,6 +12,7 @@ files = [
     "ui_form.py",
     "modules/__init__.py",
     "modules/controllers/__init__.py",
+    "modules/controllers/profile_controller.py",
     "modules/controllers/serial_session.py",
     "modules/core/__init__.py",
     "modules/core/extraction.py",

@@ -18,9 +18,9 @@ from PySide6.QtWidgets import (
 #     pyside2-uic form.ui -o ui_form.py
 from ui_form import Ui_MainWindow
 
+from modules.controllers.profile_controller import ProfileController
 from modules.controllers.serial_session import SerialSession
 from modules.core.models import CapturedValue, ExtractionRule
-from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.core.rule_suggestions import suggest_rules_from_samples
 from modules.core.serial_log import parse_plot_log_line
 from modules.widgets.console_widget import ConsoleWidget
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(APP_ICON_RESOURCE))
 
         self.session = SerialSession(self)
-        self.profile_path: Path | None = None
+        self.profile = ProfileController(self)
 
         self.plot = self.ui.Plot
         self.console = ConsoleWidget(self.ui.ConsoleTextEdit, self)
@@ -105,17 +105,16 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            profile = load_profile(path)
+            profile = self.profile.load(path)
         except Exception as exc:
             QMessageBox.warning(self, "Open Profile Failed", str(exc))
             return
 
-        self.profile_path = Path(path)
         self.set_rules(profile.rules or [ExtractionRule(label="Auto key/value", mode="auto_key_value")])
-        self.statusBar().showMessage(f"Loaded {self.profile_path.name}")
+        self.statusBar().showMessage(f"Loaded {self.profile.profile_name}")
 
     def on_save_profile_as(self) -> None:
-        default_path = str(self.profile_path or Path("profile.json"))
+        default_path = str(self.profile.default_save_path)
         path, _selected_filter = QFileDialog.getSaveFileName(
             self,
             "Save Profile",
@@ -125,19 +124,13 @@ class MainWindow(QMainWindow):
         if not path:
             return
 
-        profile = AppProfile(
-            name=Path(path).stem,
-            rules=self.rules_table.rules(),
-        )
-
         try:
-            save_profile(profile, path)
+            self.profile.save(path, self.rules_table.rules())
         except Exception as exc:
             QMessageBox.warning(self, "Save Profile Failed", str(exc))
             return
 
-        self.profile_path = Path(path)
-        self.statusBar().showMessage(f"Saved {self.profile_path.name}")
+        self.statusBar().showMessage(f"Saved {self.profile.profile_name}")
 
     def on_load_plot_data(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(
