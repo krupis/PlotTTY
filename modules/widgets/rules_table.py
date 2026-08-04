@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QTimer, Qt, Signal, QObject
+from PySide6.QtCore import QTimer, Qt, Signal, QObject, Slot
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QComboBox, QHeaderView, QPushButton, QTableWidget, QTableWidgetItem, QWidget
 
@@ -36,6 +36,7 @@ class RuleCheckCell(QWidget):
     def is_checked(self) -> bool:
         return self.button.isChecked()
 
+    @Slot()
     def on_center_button(self) -> None:
         self.button.move((self.width() - self.button.width()) // 2, (self.height() - self.button.height()) // 2)
 
@@ -104,10 +105,12 @@ class RulesTable(QObject):
             )
         return rules
 
+    @Slot(object)
     def on_rule_item_changed(self, _changed: object) -> None:
         if not self._updating:
             self.rulesChanged.emit()
 
+    @Slot()
     def on_rule_mode_changed(self) -> None:
         if not self._updating:
             self.rulesChanged.emit()

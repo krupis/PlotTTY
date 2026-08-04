@@ -6,7 +6,7 @@ from collections import deque
 from pathlib import Path
 from time import monotonic
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
 from ..core.extraction import ExtractionEngine
 from ..core.line_decoder import LineDecoder
@@ -113,6 +113,7 @@ class SerialSession(QObject):
         self._receive_rate_samples.clear()
         self.receiveRateChanged.emit(0.0)
 
+    @Slot(bytes, float)
     def on_received_data(self, data: bytes, received_at: float | None = None) -> None:
         self._record_received_bytes(len(data))
         if self.settings.log_to_file:
@@ -128,11 +129,13 @@ class SerialSession(QObject):
                     self._plot_log.write_values(captured_values)
                 self.valuesCaptured.emit(captured_values)
 
+    @Slot(str)
     def on_serial_error(self, message: str) -> None:
         if self.is_connected:
             self.disconnect_serial()
         self.errorOccurred.emit(message)
 
+    @Slot()
     def on_refresh_receive_rate(self) -> None:
         now = monotonic()
         cutoff = now - RECEIVE_RATE_WINDOW_SECONDS

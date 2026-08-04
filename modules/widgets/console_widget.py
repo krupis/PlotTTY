@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QTimer, Slot
 from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QPlainTextEdit
 
@@ -34,12 +34,15 @@ class ConsoleWidget(QObject):
         self._editor.document().setMaximumBlockCount(MAX_CONSOLE_BLOCKS)
         self._editor.clear()
 
+    @Slot(str)
     def append_received(self, text: str) -> None:
         self.append_text(text, RECEIVED_TEXT_COLOR)
 
+    @Slot(str)
     def append_sent(self, text: str) -> None:
         self.append_text(text, SENT_TEXT_COLOR)
 
+    @Slot(str)
     def append_status(self, text: str) -> None:
         self.append_text(text, STATUS_TEXT_COLOR)
 
@@ -53,6 +56,7 @@ class ConsoleWidget(QObject):
         else:
             self._pending_text.append((text, color))
 
+    @Slot()
     def on_flush(self) -> None:
         if not self._pending_text:
             return

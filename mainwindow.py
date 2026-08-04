@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -96,9 +96,11 @@ class MainWindow(QMainWindow):
             ]
         )
 
+    @Slot()
     def on_rules_changed(self) -> None:
         self.session.set_rules(self.rules_table.rules())
 
+    @Slot()
     def on_open_profile(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(self, "Open Profile", "", "PlotTTY Profile (*.json)")
         if not path:
@@ -113,6 +115,7 @@ class MainWindow(QMainWindow):
         self.set_rules(profile.rules or [ExtractionRule(label="Auto key/value", mode="auto_key_value")])
         self.statusBar().showMessage(f"Loaded {self.profile.profile_name}")
 
+    @Slot()
     def on_save_profile_as(self) -> None:
         default_path = str(self.profile.default_save_path)
         path, _selected_filter = QFileDialog.getSaveFileName(
@@ -132,6 +135,7 @@ class MainWindow(QMainWindow):
 
         self.statusBar().showMessage(f"Saved {self.profile.profile_name}")
 
+    @Slot()
     def on_load_plot_data(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(
             self,
@@ -168,6 +172,7 @@ class MainWindow(QMainWindow):
         loading_dialog.close()
         self.statusBar().showMessage(f"Loaded plot data {Path(path).name}: {row_count:,} rows")
 
+    @Slot()
     def on_generate_rules_from_sample(self) -> None:
         suggestions = suggest_rules_from_samples(self.ui.SampleOutputTextEdit.toPlainText())
         if not suggestions:
@@ -178,6 +183,7 @@ class MainWindow(QMainWindow):
         self.set_rules(rules)
         self.statusBar().showMessage(f"Generated {len(rules)} rule(s) from sample output")
 
+    @Slot()
     def on_open_serial_settings(self) -> None:
         dialog = SerialSettingsDialog(self.session.settings, self)
         if dialog.exec() != dialog.DialogCode.Accepted:
@@ -186,15 +192,18 @@ class MainWindow(QMainWindow):
         self.session.set_settings(dialog.selected_settings())
         self._update_port_status_label(False)
 
+    @Slot()
     def on_add_rule(self) -> None:
         self.rules_table.add_rule()
 
+    @Slot()
     def on_remove_selected_rules(self) -> None:
         self.rules_table.remove_selected_rules()
 
     def set_rules(self, rules: list[ExtractionRule]) -> None:
         self.rules_table.set_rules(rules)
 
+    @Slot()
     def on_toggle_serial_connection(self) -> None:
         if self.session.is_connected:
             self.session.disconnect_serial()
@@ -205,15 +214,18 @@ class MainWindow(QMainWindow):
                 title = "No Port" if not self.session.settings.port else "Connection Failed"
                 QMessageBox.warning(self, title, str(exc))
 
+    @Slot()
     def on_clear_console_and_plot(self) -> None:
         self.console.clear()
         self.plot.clear_values()
         self.session.reset_receive_rate()
         self.statusBar().showMessage("Cleared console and plot data")
 
+    @Slot(str)
     def on_serial_error(self, message: str) -> None:
         QMessageBox.warning(self, "Serial Error", message)
 
+    @Slot()
     def on_send_command(self) -> None:
         command = self.ui.SendCommandTextEdit.toPlainText().strip()
         if not command:
@@ -241,6 +253,7 @@ class MainWindow(QMainWindow):
 
         return super().eventFilter(watched, event)
 
+    @Slot(bool)
     def on_connected_changed(self, connected: bool) -> None:
         self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
         self.ui.ConnectButton.setObjectName("red_button" if connected else "green_button")
@@ -256,6 +269,7 @@ class MainWindow(QMainWindow):
         self.ui.PortStatusLabel.setText(port)
         self.ui.PortStatusLabel.setStyleSheet(f"color: {color}; font-weight: 600;")
 
+    @Slot(float)
     def on_receive_rate_changed(self, bytes_per_second: float) -> None:
         self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
 

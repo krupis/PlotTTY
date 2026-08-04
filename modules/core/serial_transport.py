@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from time import time
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtSerialPort import QSerialPort
 
 
@@ -63,11 +63,13 @@ class SerialTransport(QObject):
             raise RuntimeError(message)
         self._serial.flush()
 
+    @Slot()
     def on_ready_read(self) -> None:
         received_at = time()
         data = bytes(self._serial.readAll())
         self.bytesReceived.emit(data, received_at)
 
+    @Slot(QSerialPort.SerialPortError)
     def on_error(self, error: QSerialPort.SerialPortError) -> None:
         if error != QSerialPort.SerialPortError.NoError:
             self.errorReceived.emit(self._serial.errorString())

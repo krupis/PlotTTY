@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -121,6 +121,7 @@ class SerialSettingsDialog(QDialog):
     def selected_port(self) -> str:
         return self.port_combo.currentText().strip()
 
+    @Slot()
     def on_refresh_ports_clicked(self) -> None:
         self.refresh_ports(self.selected_port())
 

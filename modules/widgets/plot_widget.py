@@ -6,7 +6,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
 
@@ -87,6 +87,7 @@ class PlotWidget(QWidget):
         self._timer.timeout.connect(self.on_refresh_pending_data)
         self._timer.start()
 
+    @Slot(list)
     def append_values(self, values: Iterable[CapturedValue]) -> None:
         captured_values = list(values)
         if not captured_values:
@@ -121,6 +122,7 @@ class PlotWidget(QWidget):
         self.on_toggle_auto_scroll(True)
 
     # This method is called periodically to refresh the plot with any new data that has been added since the last refresh.
+    @Slot()
     def on_refresh_pending_data(self) -> None:
         if not self._has_pending_refresh:
             return
@@ -133,6 +135,7 @@ class PlotWidget(QWidget):
         else:
             self._update_visible_curve_data()
 
+    @Slot(bool)
     def on_toggle_auto_scroll(self, enabled: bool) -> None:
         self._auto_scroll_enabled = enabled
         self.auto_scroll_button.setChecked(enabled)
@@ -141,6 +144,7 @@ class PlotWidget(QWidget):
             self.show_all_button.setChecked(False)
             self.show_recent_data()
 
+    @Slot(bool)
     def on_toggle_show_all(self, enabled: bool) -> None:
         self._show_all_enabled = enabled
         self.show_all_button.setChecked(enabled)
@@ -166,6 +170,7 @@ class PlotWidget(QWidget):
         self._is_setting_time_range = False
         self._update_visible_curve_data(start_time, end_time)
 
+    @Slot(object, object)
     def on_x_range_changed(self, view_box=None, _range=None) -> None:
         if self._is_setting_time_range:
             return
@@ -191,6 +196,7 @@ class PlotWidget(QWidget):
         self.series_menu.addAction(action)
         self.series_button.setEnabled(True)
 
+    @Slot(bool)
     def on_series_visibility_toggled(self, visible: bool) -> None:
         action = self.sender()
         if not isinstance(action, QAction):
