@@ -11,6 +11,8 @@ files = [
     "resources_rc.py",
     "ui_form.py",
     "modules/__init__.py",
+    "modules/controllers/__init__.py",
+    "modules/controllers/serial_session.py",
     "modules/core/__init__.py",
     "modules/core/extraction.py",
     "modules/core/line_decoder.py",

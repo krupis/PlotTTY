@@ -1,12 +1,10 @@
 # This Python file uses the following encoding: utf-8
 import sys
-from collections import deque
 from collections.abc import Callable
 from pathlib import Path
-from time import monotonic
 
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -20,17 +18,11 @@ from PySide6.QtWidgets import (
 #     pyside2-uic form.ui -o ui_form.py
 from ui_form import Ui_MainWindow
 
-from modules.core.extraction import ExtractionEngine
-from modules.core.line_decoder import LineDecoder
+from modules.controllers.serial_session import SerialSession
 from modules.core.models import CapturedValue, ExtractionRule
 from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.core.rule_suggestions import suggest_rules_from_samples
-from modules.core.serial_log import (
-    PlotSessionLog,
-    SerialSessionLog,
-    parse_plot_log_line,
-)
-from modules.core.serial_transport import SerialSettings, SerialTransport
+from modules.core.serial_log import parse_plot_log_line
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.loading_dialog import LoadingDialog
 from modules.widgets.rules_table import RulesTable
@@ -38,8 +30,6 @@ from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 import resources_rc  # noqa: F401
 
 
-RECEIVE_RATE_REFRESH_INTERVAL_MS = 100
-RECEIVE_RATE_WINDOW_SECONDS = 1.0
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
 APP_ICON_RESOURCE = ":/icons/Plottty.png"
 LOAD_PROGRESS_UPDATE_ROWS = 10_000
@@ -62,35 +52,22 @@ class MainWindow(QMainWindow):
         self.ui.setupUi(self)
         self.setWindowIcon(QIcon(APP_ICON_RESOURCE))
 
-        self.transport: SerialTransport | None = None
-        self.serial_settings = SerialSettings()
-        self.line_decoder = LineDecoder()
-        self.engine = ExtractionEngine()
-        self.serial_log = SerialSessionLog()
-        self.plot_log = PlotSessionLog()
+        self.session = SerialSession(self)
         self.profile_path: Path | None = None
 
         self.plot = self.ui.Plot
-        self._receive_rate_samples: deque[tuple[float, int]] = deque()
         self.console = ConsoleWidget(self.ui.ConsoleTextEdit, self)
         self.rules_table = RulesTable(self.ui.RulesTable, self)
 
         self._configure_console()
-        self._configure_receive_rate_timer()
         self._connect_signals()
         self._seed_default_rules()
-        self._set_connected(False)
+        self.on_connected_changed(False)
 
     def _configure_console(self) -> None:
         self.ui.SendCommandTextEdit.setLineWrapMode(self.ui.SendCommandTextEdit.LineWrapMode.NoWrap)
         self.ui.SendCommandTextEdit.setPlaceholderText("Type command and press Enter")
         self.ui.SendCommandTextEdit.installEventFilter(self)
-
-    def _configure_receive_rate_timer(self) -> None:
-        self._receive_rate_timer = QTimer(self)
-        self._receive_rate_timer.setInterval(RECEIVE_RATE_REFRESH_INTERVAL_MS)
-        self._receive_rate_timer.timeout.connect(self.on_refresh_receive_rate_label)
-        self._receive_rate_timer.start()
 
     def _connect_signals(self) -> None:
         self.ui.ConnectButton.clicked.connect(self.on_toggle_serial_connection)
@@ -99,10 +76,18 @@ class MainWindow(QMainWindow):
         self.ui.AddRuleButton.clicked.connect(self.on_add_rule)
         self.ui.RemoveRuleButton.clicked.connect(self.on_remove_selected_rules)
         self.ui.GenerateRulesButton.clicked.connect(self.on_generate_rules_from_sample)
-        self.rules_table.rulesChanged.connect(self._refresh_engine)
+        self.rules_table.rulesChanged.connect(self.on_rules_changed)
         self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
         self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
         self.ui.actionLoad_log.triggered.connect(self.on_load_plot_data)
+        self.session.connectedChanged.connect(self.on_connected_changed)
+        self.session.receivedText.connect(self.console.append_received)
+        self.session.sentText.connect(self.console.append_sent)
+        self.session.statusText.connect(self.console.append_status)
+        self.session.valuesCaptured.connect(self.plot.append_values)
+        self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
+        self.session.statusChanged.connect(self.statusBar().showMessage)
+        self.session.errorOccurred.connect(self.on_serial_error)
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
@@ -111,8 +96,8 @@ class MainWindow(QMainWindow):
             ]
         )
 
-    def _refresh_engine(self) -> None:
-        self.engine = ExtractionEngine(self.rules_table.rules())
+    def on_rules_changed(self) -> None:
+        self.session.set_rules(self.rules_table.rules())
 
     def on_open_profile(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(self, "Open Profile", "", "PlotTTY Profile (*.json)")
@@ -158,7 +143,7 @@ class MainWindow(QMainWindow):
         path, _selected_filter = QFileDialog.getOpenFileName(
             self,
             "Load Plot Data",
-            str(self.serial_log.log_dir),
+            str(self.session.log_dir),
             "Plot CSV (*.csv)",
         )
         if not path:
@@ -201,11 +186,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Generated {len(rules)} rule(s) from sample output")
 
     def on_open_serial_settings(self) -> None:
-        dialog = SerialSettingsDialog(self.serial_settings, self)
+        dialog = SerialSettingsDialog(self.session.settings, self)
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
 
-        self.serial_settings = dialog.selected_settings()
+        self.session.set_settings(dialog.selected_settings())
         self._update_port_status_label(False)
 
     def on_add_rule(self) -> None:
@@ -218,81 +203,22 @@ class MainWindow(QMainWindow):
         self.rules_table.set_rules(rules)
 
     def on_toggle_serial_connection(self) -> None:
-        if self.transport and self.transport.is_open:
-            self.disconnect_serial()
+        if self.session.is_connected:
+            self.session.disconnect_serial()
         else:
-            self.connect_serial()
-
-    def connect_serial(self) -> None:
-        settings = self.serial_settings
-        port = settings.port
-        if not port:
-            QMessageBox.warning(self, "No Port", "Use the Settings button and choose a serial port first.")
-            return
-
-        try:
-            self.transport = SerialTransport(settings, self)
-            self.line_decoder = LineDecoder(settings.encoding)
-            self.transport.bytesReceived.connect(self.on_received_data)
-            self.transport.errorReceived.connect(self.on_serial_error)
-            self.transport.open()
-        except Exception as exc:
-            self.transport = None
-            QMessageBox.warning(self, "Connection Failed", str(exc))
-            return
-
-        self._reset_receive_rate()
-        self._set_connected(True)
-        message = f"[connected to {settings.port} at {settings.baudrate} baud]"
-        if settings.log_to_file:
-            log_path = self.serial_log.start(settings.port, settings.baudrate)
-            plot_log_path = self.plot_log.start(settings.port, settings.baudrate)
-            self.serial_log.write_status(message)
-            self.statusBar().showMessage(f"Logging to {log_path} and {plot_log_path}")
-        else:
-            self.serial_log.close()
-            self.plot_log.close()
-            self.statusBar().showMessage("File logging disabled")
-        self.console.append_status(f"{message}\n")
-
-    def disconnect_serial(self) -> None:
-        was_connected = bool(self.transport and self.transport.is_open)
-        if self.transport:
-            self.transport.close()
-            self.transport = None
-
-        self._set_connected(False)
-        if was_connected:
-            if self.serial_settings.log_to_file:
-                self.serial_log.write_status("[disconnected]")
-            self.console.append_status("[disconnected]\n")
-            self.serial_log.close()
-            self.plot_log.close()
+            try:
+                self.session.connect_serial()
+            except Exception as exc:
+                title = "No Port" if not self.session.settings.port else "Connection Failed"
+                QMessageBox.warning(self, title, str(exc))
 
     def on_clear_console_and_plot(self) -> None:
         self.console.clear()
         self.plot.clear_values()
-        self._reset_receive_rate()
+        self.session.reset_receive_rate()
         self.statusBar().showMessage("Cleared console and plot data")
 
-    def on_received_data(self, data: bytes, received_at: float | None = None) -> None:
-        self._record_received_bytes(len(data))
-        if self.serial_settings.log_to_file:
-            self.serial_log.write_received(data, self.line_decoder.encoding)
-        if self.serial_settings.raw_capture_mode:
-            return
-        self.console.append_received(data.decode(self.line_decoder.encoding, errors="replace"))
-
-        for line in self.line_decoder.feed(data):
-            captured_values = self.engine.extract(line, timestamp=received_at)
-            if captured_values:
-                if self.serial_settings.log_to_file:
-                    self.plot_log.write_values(captured_values)
-                self.plot.append_values(captured_values)
-
     def on_serial_error(self, message: str) -> None:
-        if self.transport and self.transport.is_open:
-            self.disconnect_serial()
         QMessageBox.warning(self, "Serial Error", message)
 
     def on_send_command(self) -> None:
@@ -300,20 +226,16 @@ class MainWindow(QMainWindow):
         if not command:
             return
 
-        if not self.transport or not self.transport.is_open:
-            self.statusBar().showMessage("Connect to a serial port before sending commands")
-            return
-
         try:
-            self.transport.write_text(command)
+            self.session.send_command(command)
         except Exception as exc:
-            QMessageBox.warning(self, "Send Command Failed", str(exc))
+            if self.session.is_connected:
+                QMessageBox.warning(self, "Send Command Failed", str(exc))
+            else:
+                self.statusBar().showMessage(str(exc))
             return
 
         self.ui.SendCommandTextEdit.clear()
-        if self.serial_settings.log_to_file:
-            self.serial_log.write_sent(command)
-        self.console.append_sent(f"{command}\n")
 
     def eventFilter(self, watched, event) -> bool:
         if (
@@ -326,7 +248,7 @@ class MainWindow(QMainWindow):
 
         return super().eventFilter(watched, event)
 
-    def _set_connected(self, connected: bool) -> None:
+    def on_connected_changed(self, connected: bool) -> None:
         self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
         self.ui.ConnectButton.setObjectName("red_button" if connected else "green_button")
         self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
@@ -336,38 +258,17 @@ class MainWindow(QMainWindow):
         self._update_port_status_label(connected)
 
     def _update_port_status_label(self, connected: bool) -> None:
-        port = self.serial_settings.port or "No port"
+        port = self.session.settings.port or "No port"
         color = "#1f8f3a" if connected else "#c62828"
         self.ui.PortStatusLabel.setText(port)
         self.ui.PortStatusLabel.setStyleSheet(f"color: {color}; font-weight: 600;")
 
-    def _reset_receive_rate(self) -> None:
-        self._receive_rate_samples.clear()
-        self.ui.DataReceivedLabel.setText("0 B/s")
-
-    def _record_received_bytes(self, byte_count: int) -> None:
-        if byte_count <= 0:
-            return
-
-        self._receive_rate_samples.append((monotonic(), byte_count))
-
-    def on_refresh_receive_rate_label(self) -> None:
-        now = monotonic()
-        cutoff = now - RECEIVE_RATE_WINDOW_SECONDS
-        while self._receive_rate_samples and self._receive_rate_samples[0][0] < cutoff:
-            self._receive_rate_samples.popleft()
-
-        if not self._receive_rate_samples:
-            bytes_per_second = 0.0
-        else:
-            byte_count = sum(byte_count for _timestamp, byte_count in self._receive_rate_samples)
-            bytes_per_second = byte_count / RECEIVE_RATE_WINDOW_SECONDS
-
+    def on_receive_rate_changed(self, bytes_per_second: float) -> None:
         self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
 
     def closeEvent(self, event) -> None:
         self.console.on_flush()
-        self.disconnect_serial()
+        self.session.disconnect_serial()
         super().closeEvent(event)
 
 
