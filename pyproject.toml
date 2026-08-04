@@ -21,7 +21,9 @@ files = [
     "modules/core/serial_log.py",
     "modules/core/serial_transport.py",
     "modules/widgets/__init__.py",
+    "modules/widgets/console_widget.py",
     "modules/widgets/plot_widget.py",
+    "modules/widgets/rules_table.py",
     "modules/widgets/serial_settings_dialog.py",
     "styles/application.qss",
 ]
