@@ -1,5 +1,6 @@
 [project]
 name = "plottty"
+version = "1.0.0"
 
 [tool.pyside6-project]
 files = [

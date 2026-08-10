@@ -31,6 +31,9 @@ import resources_rc  # noqa: F401
 
 
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"
+APP_NAME = "PlotTTY"
+APP_VERSION = "1.0.0"
+APP_DISPLAY_NAME = f"{APP_NAME} {APP_VERSION}"
 APP_ICON_RESOURCE = ":/icons/Plottty.png"
 LOAD_PROGRESS_UPDATE_ROWS = 10_000
 
@@ -50,6 +53,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.setWindowTitle(APP_DISPLAY_NAME)
         self.setWindowIcon(QIcon(APP_ICON_RESOURCE))
 
         self.session = SerialSession(self)
@@ -300,6 +304,8 @@ def _read_plot_csv(
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setApplicationName(APP_NAME)
+    app.setApplicationVersion(APP_VERSION)
     app.setWindowIcon(QIcon(APP_ICON_RESOURCE))
     apply_application_style(app)
     widget = MainWindow()
