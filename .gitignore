@@ -70,8 +70,16 @@ CMakeLists.txt.user*
 *.Debug
 *.Release
 
-# Python byte code
+# Python generated files
 *.pyc
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
 
 # Binaries
 # --------
