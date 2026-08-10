@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-
-from PySide6.QtCore import QTimer, Qt, Signal, QObject, Slot
+from PySide6.QtCore import Qt, Signal, QObject, Slot
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QComboBox, QHeaderView, QPushButton, QTableWidget, QTableWidgetItem, QWidget
+from PySide6.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem
 
 from ..core.models import ExtractionMode, ExtractionRule
 
@@ -20,29 +18,6 @@ MODE_LABELS: dict[str, ExtractionMode] = {
 MODE_NAMES_BY_VALUE = {value: label for label, value in MODE_LABELS.items()}
 EDITABLE_RULE_CELL_BACKGROUND = QColor("#243840")
 EDITABLE_RULE_CELL_FOREGROUND = QColor("#f3f7fb")
-
-
-class RuleCheckCell(QWidget):
-    def __init__(self, checked: bool, changed_callback: Callable[[object], None], parent: QWidget) -> None:
-        super().__init__(parent)
-        self.button = QPushButton(self)
-        self.button.setObjectName("RuleCheckButton")
-        self.button.setCheckable(True)
-        self.button.setFixedSize(16, 16)
-        self.button.setChecked(checked)
-        self.button.toggled.connect(changed_callback)
-        QTimer.singleShot(0, self.on_center_button)
-
-    def is_checked(self) -> bool:
-        return self.button.isChecked()
-
-    @Slot()
-    def on_center_button(self) -> None:
-        self.button.move((self.width() - self.button.width()) // 2, (self.height() - self.button.height()) // 2)
-
-    def resizeEvent(self, event) -> None:
-        self.on_center_button()
-        super().resizeEvent(event)
 
 
 class RulesTable(QObject):
@@ -132,15 +107,12 @@ class RulesTable(QObject):
         self._table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
     def _set_rule_row(self, row: int, rule: ExtractionRule) -> None:
-        self._table.setCellWidget(row, 0, self._rule_checkbox(rule.enabled))
-        self._table.setCellWidget(row, 1, self._rule_checkbox(rule.sample_counter))
+        self._table.setItem(row, 0, _check_item(rule.enabled))
+        self._table.setItem(row, 1, _check_item(rule.sample_counter))
         self._table.setItem(row, 2, _editable_text_item(rule.label))
         self._table.setCellWidget(row, 3, self._rule_mode_combo(rule.mode))
         self._table.setItem(row, 4, _editable_text_item(self._extra_text_for_rule(rule)))
         self._table.setItem(row, 5, _editable_text_item(self._position_text_for_rule(rule)))
-
-    def _rule_checkbox(self, checked: bool) -> QWidget:
-        return RuleCheckCell(checked, self.on_rule_item_changed, self._table)
 
     def _rule_mode_combo(self, mode: ExtractionMode) -> QComboBox:
         combo = QComboBox(self._table)
@@ -163,8 +135,8 @@ class RulesTable(QObject):
         return item.text()
 
     def _rule_checked(self, row: int, column: int) -> bool:
-        cell_widget = self._table.cellWidget(row, column)
-        return isinstance(cell_widget, RuleCheckCell) and cell_widget.is_checked()
+        item = self._table.item(row, column)
+        return item is not None and item.checkState() == Qt.CheckState.Checked
 
     def _extra_setting_from_row(self, row: int, mode: ExtractionMode) -> str:
         if mode == "delimiter_column":
@@ -195,4 +167,12 @@ def _editable_text_item(text: str) -> QTableWidgetItem:
     item = QTableWidgetItem(text)
     item.setBackground(EDITABLE_RULE_CELL_BACKGROUND)
     item.setForeground(EDITABLE_RULE_CELL_FOREGROUND)
+    return item
+
+
+def _check_item(checked: bool) -> QTableWidgetItem:
+    item = QTableWidgetItem()
+    item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
+    item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
     return item
