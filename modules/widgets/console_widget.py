@@ -69,7 +69,11 @@ class ConsoleWidget(QObject):
         pending_text = self._pending_text
         self._pending_text = []
 
-        cursor = self._editor.textCursor()
+        scroll_bar = self._editor.verticalScrollBar()
+        was_at_bottom = scroll_bar.value() >= scroll_bar.maximum()
+        previous_scroll_value = scroll_bar.value()
+
+        cursor = QTextCursor(self._editor.document())
         cursor.movePosition(QTextCursor.MoveOperation.End)
         cursor.beginEditBlock()
         for text, color in pending_text:
@@ -78,5 +82,9 @@ class ConsoleWidget(QObject):
                 text_format.setForeground(color)
             cursor.insertText(text.replace("\r\n", "\n").replace("\r", "\n"), text_format)
         cursor.endEditBlock()
-        self._editor.setTextCursor(cursor)
-        self._editor.ensureCursorVisible()
+
+        if self._line_limit_enabled or was_at_bottom:
+            self._editor.setTextCursor(cursor)
+            self._editor.ensureCursorVisible()
+        else:
+            scroll_bar.setValue(previous_scroll_value)
