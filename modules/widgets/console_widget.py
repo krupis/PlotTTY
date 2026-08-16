@@ -19,10 +19,11 @@ class ConsoleWidget(QObject):
         super().__init__(parent)
         self._editor = editor
         self._pending_text: list[tuple[str, QColor | None]] = []
+        self._line_limit_enabled = True
 
         self._editor.setReadOnly(True)
         self._editor.setLineWrapMode(self._editor.LineWrapMode.NoWrap)
-        self._editor.document().setMaximumBlockCount(MAX_CONSOLE_BLOCKS)
+        self.set_line_limit_enabled(self._line_limit_enabled)
 
         self._flush_timer = QTimer(self)
         self._flush_timer.setInterval(CONSOLE_FLUSH_INTERVAL_MS)
@@ -31,8 +32,12 @@ class ConsoleWidget(QObject):
 
     def clear(self) -> None:
         self._pending_text.clear()
-        self._editor.document().setMaximumBlockCount(MAX_CONSOLE_BLOCKS)
         self._editor.clear()
+
+    def set_line_limit_enabled(self, enabled: bool) -> None:
+        self._line_limit_enabled = enabled
+        maximum_blocks = MAX_CONSOLE_BLOCKS if enabled else 0
+        self._editor.document().setMaximumBlockCount(maximum_blocks)
 
     @Slot(str)
     def append_received(self, text: str) -> None:

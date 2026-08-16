@@ -193,7 +193,9 @@ class MainWindow(QMainWindow):
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
 
-        self.session.set_settings(dialog.selected_settings())
+        settings = dialog.selected_settings()
+        self.session.set_settings(settings)
+        self.console.set_line_limit_enabled(settings.console_line_limit)
         self._update_port_status_label(False)
 
     @Slot()

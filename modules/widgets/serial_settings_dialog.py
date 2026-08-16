@@ -61,11 +61,17 @@ class SerialSettingsDialog(QDialog):
 
         log_to_file_tooltip = "Save received serial data and extracted plot values to log files."
         raw_capture_mode_tooltip = "Show and log raw serial data without parsing it into plot values."
+        console_line_limit_tooltip = (
+            "Keep only the latest console lines for smoother rendering. "
+            "Disable for unlimited on-screen console history."
+        )
 
         self.log_to_file_checkbox = QCheckBox()
         self.log_to_file_checkbox.setToolTip(log_to_file_tooltip)
         self.raw_capture_mode_checkbox = QCheckBox()
         self.raw_capture_mode_checkbox.setToolTip(raw_capture_mode_tooltip)
+        self.console_line_limit_checkbox = QCheckBox()
+        self.console_line_limit_checkbox.setToolTip(console_line_limit_tooltip)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.refresh_button = QPushButton("Refresh")
@@ -91,8 +97,11 @@ class SerialSettingsDialog(QDialog):
         log_to_file_label.setToolTip(log_to_file_tooltip)
         raw_capture_mode_label = QLabel("Raw capture")
         raw_capture_mode_label.setToolTip(raw_capture_mode_tooltip)
+        console_line_limit_label = QLabel("Console line limit")
+        console_line_limit_label.setToolTip(console_line_limit_tooltip)
         form.addRow(log_to_file_label, self.log_to_file_checkbox)
         form.addRow(raw_capture_mode_label, self.raw_capture_mode_checkbox)
+        form.addRow(console_line_limit_label, self.console_line_limit_checkbox)
 
         layout = QVBoxLayout(self)
         layout.addLayout(form)
@@ -116,6 +125,7 @@ class SerialSettingsDialog(QDialog):
             line_ending=str(self.line_ending_combo.currentData() or ""),
             log_to_file=self.log_to_file_checkbox.isChecked(),
             raw_capture_mode=self.raw_capture_mode_checkbox.isChecked(),
+            console_line_limit=self.console_line_limit_checkbox.isChecked(),
         )
 
     def selected_port(self) -> str:
@@ -149,6 +159,7 @@ class SerialSettingsDialog(QDialog):
         _select_data(self.line_ending_combo, settings.line_ending)
         self.log_to_file_checkbox.setChecked(settings.log_to_file)
         self.raw_capture_mode_checkbox.setChecked(settings.raw_capture_mode)
+        self.console_line_limit_checkbox.setChecked(settings.console_line_limit)
 
 
 def _select_data(combo: QComboBox, value: object) -> None:

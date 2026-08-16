@@ -20,6 +20,7 @@ class SerialSettings:
     line_ending: str = "\n"
     log_to_file: bool = True
     raw_capture_mode: bool = False
+    console_line_limit: bool = True
 
 
 class SerialTransport(QObject):
