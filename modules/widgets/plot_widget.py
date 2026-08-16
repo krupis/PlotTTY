@@ -18,6 +18,8 @@ PLOT_REFRESH_INTERVAL_MS = 100
 PLOT_BACKGROUND = "#1f2328"
 PLOT_AXIS = "#5c6370"
 PLOT_TEXT = "#dce3ea"
+AUTO_SCROLL_TOOLTIP = "Keep the plot view following the newest incoming data."
+SHOW_ALL_TOOLTIP = "Zoom the plot out to show all captured data."
 
 PlotDataResult = tuple[str, int, np.ndarray, np.ndarray]
 
@@ -61,11 +63,13 @@ class PlotWidget(QWidget):
         self.auto_scroll_button.setObjectName("PlotModeButton")
         self.auto_scroll_button.setCheckable(True)
         self.auto_scroll_button.setChecked(True)
+        self.auto_scroll_button.setToolTip(AUTO_SCROLL_TOOLTIP)
         self.auto_scroll_button.clicked.connect(self.on_toggle_auto_scroll)
 
         self.show_all_button = QPushButton("See all plot")
         self.show_all_button.setObjectName("PlotModeButton")
         self.show_all_button.setCheckable(True)
+        self.show_all_button.setToolTip(SHOW_ALL_TOOLTIP)
         self.show_all_button.clicked.connect(self.on_toggle_show_all)
 
         toolbar = QHBoxLayout()

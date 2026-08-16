@@ -58,6 +58,13 @@ QFrame#RightFrame {
     border-radius: 8px;
 }
 
+QFrame#PlotSeparator {
+    background-color: #4b5561;
+    border: none;
+    max-width: 1px;
+    min-width: 1px;
+}
+
 QLabel {
     color: #dce3ea;
     background-color: transparent;

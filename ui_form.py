@@ -225,13 +225,31 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.tabWidget)
 
-        self.Plot = PlotWidget(self.RightFrame)
+        self.PlotSeparator = QFrame(self.RightFrame)
+        self.PlotSeparator.setObjectName(u"PlotSeparator")
+        self.PlotSeparator.setFrameShape(QFrame.Shape.VLine)
+        self.PlotSeparator.setFrameShadow(QFrame.Shadow.Sunken)
+
+        self.horizontalLayout_2.addWidget(self.PlotSeparator)
+
+        self.PlotTabWidget = QTabWidget(self.RightFrame)
+        self.PlotTabWidget.setObjectName(u"PlotTabWidget")
+        self.PlotTab = QWidget()
+        self.PlotTab.setObjectName(u"PlotTab")
+        self.PlotTabLayout = QVBoxLayout(self.PlotTab)
+        self.PlotTabLayout.setSpacing(0)
+        self.PlotTabLayout.setObjectName(u"PlotTabLayout")
+        self.PlotTabLayout.setContentsMargins(0, 0, 0, 0)
+        self.Plot = PlotWidget(self.PlotTab)
         self.Plot.setObjectName(u"Plot")
 
-        self.horizontalLayout_2.addWidget(self.Plot)
+        self.PlotTabLayout.addWidget(self.Plot)
 
+        self.PlotTabWidget.addTab(self.PlotTab, "")
+
+        self.horizontalLayout_2.addWidget(self.PlotTabWidget)
         self.horizontalLayout_2.setStretch(0, 1)
-        self.horizontalLayout_2.setStretch(1, 1)
+        self.horizontalLayout_2.setStretch(2, 1)
 
         self.mainSplit.addWidget(self.RightFrame)
 
@@ -329,6 +347,7 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.RemoveRuleButton.setText(QCoreApplication.translate("MainWindow", u"Remove rule", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.RulesTab), QCoreApplication.translate("MainWindow", u"Rules", None))
+        self.PlotTabWidget.setTabText(self.PlotTabWidget.indexOf(self.PlotTab), QCoreApplication.translate("MainWindow", u"Plot", None))
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
     # retranslateUi
 
