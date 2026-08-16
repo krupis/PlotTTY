@@ -178,6 +178,21 @@
               <layout class="QVBoxLayout" name="verticalLayout_7">
                <item>
                 <layout class="QVBoxLayout" name="RulesLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>8</number>
+                 </property>
                  <item>
                   <widget class="QLabel" name="AutomaticLabel">
                    <property name="font">
@@ -185,30 +200,59 @@
                      <bold>true</bold>
                     </font>
                    </property>
-                   <property name="text">
-                    <string>Automatic:</string>
+                    <property name="text">
+                     <string>Auto setup</string>
                    </property>
                    <property name="textFormat">
                     <enum>Qt::TextFormat::AutoText</enum>
                    </property>
                   </widget>
                  </item>
-                 <item>
-                  <widget class="QLabel" name="PasteSampleLabel">
-                   <property name="text">
-                    <string>Paste sample device output:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPlainTextEdit" name="SampleOutputTextEdit"/>
-                 </item>
+                  <item>
+                   <widget class="QLabel" name="AutomaticInfoLabel">
+                    <property name="styleSheet">
+                     <string notr="true">color: #a6accd;</string>
+                    </property>
+                    <property name="wordWrap">
+                     <bool>true</bool>
+                    </property>
+                    <property name="text">
+                     <string>Paste a few raw device output lines, then generate rules.</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPlainTextEdit" name="SampleOutputTextEdit">
+                    <property name="placeholderText">
+                     <string>Examples:&#xa;Voltage: 3.31 V  Current: 0.14 A&#xa;or&#xa;12345,3.31,0.14,26.8</string>
+                    </property>
+                   </widget>
+                  </item>
                  <item>
                   <widget class="QPushButton" name="GenerateRulesButton">
-                   <property name="text">
-                    <string>Auto generate rules</string>
-                   </property>
+                    <property name="toolTip">
+                     <string>Creates plot rules from named values, delimited columns, or the first number in each sample line.</string>
+                    </property>
+                    <property name="text">
+                     <string>Auto generate rules</string>
+                    </property>
                   </widget>
+                 </item>
+                 <item>
+                  <spacer name="RulesSectionSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Vertical</enum>
+                   </property>
+                   <property name="sizeType">
+                    <enum>QSizePolicy::Policy::Fixed</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>14</height>
+                    </size>
+                   </property>
+                  </spacer>
                  </item>
                  <item>
                   <widget class="QLabel" name="ManualLabel">
@@ -216,56 +260,93 @@
                     <font>
                      <bold>true</bold>
                     </font>
-                   </property>
-                   <property name="text">
-                    <string>Manual:</string>
-                   </property>
-                  </widget>
-                 </item>
+                    </property>
+                    <property name="text">
+                     <string>Manual rules</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="ManualInfoLabel">
+                    <property name="styleSheet">
+                     <string notr="true">color: #a6accd;</string>
+                    </property>
+                    <property name="wordWrap">
+                     <bool>true</bool>
+                    </property>
+                    <property name="text">
+                     <string>Each row extracts one value. For delimited values, Field index selects which split field to read: 0 is first, 1 is second.</string>
+                    </property>
+                   </widget>
+                  </item>
                  <item>
                   <widget class="QTableWidget" name="RulesTable">
-                   <column>
-                    <property name="text">
-                     <string>Plot</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>Use as X</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>Label</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>Find method</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>Extra setting</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>Index</string>
-                    </property>
-                   </column>
+                    <column>
+                     <property name="toolTip">
+                      <string>Draw this rule as a plotted Y value.</string>
+                     </property>
+                     <property name="text">
+                      <string>Plot Y</string>
+                     </property>
+                    </column>
+                    <column>
+                     <property name="toolTip">
+                      <string>Use this rule's value as the X axis timestamp/counter for the other plotted rules.</string>
+                     </property>
+                     <property name="text">
+                      <string>Use as X</string>
+                     </property>
+                    </column>
+                    <column>
+                     <property name="toolTip">
+                      <string>Name used for the plotted series. Named values can override this with names from the input line.</string>
+                     </property>
+                     <property name="text">
+                      <string>Series label</string>
+                     </property>
+                    </column>
+                    <column>
+                     <property name="toolTip">
+                      <string>How this rule finds a value in each incoming line.</string>
+                     </property>
+                     <property name="text">
+                      <string>Find method</string>
+                     </property>
+                    </column>
+                    <column>
+                     <property name="toolTip">
+                      <string>For delimited values, enter the delimiter, such as comma, semicolon, or \t. For regex, enter the pattern.</string>
+                     </property>
+                     <property name="text">
+                      <string>Pattern / delimiter</string>
+                     </property>
+                    </column>
+                    <column>
+                     <property name="toolTip">
+                     <string>For delimited values, enter the zero-based field index, such as 0, 1, or 2.</string>
+                     </property>
+                     <property name="text">
+                      <string>Field index</string>
+                     </property>
+                    </column>
                   </widget>
                  </item>
-                 <item>
-                  <widget class="QPushButton" name="AddRuleButton">
-                   <property name="text">
-                    <string>Add rule</string>
-                   </property>
+                  <item>
+                   <widget class="QPushButton" name="AddRuleButton">
+                    <property name="toolTip">
+                     <string>Add a manual rule for one plotted value.</string>
+                    </property>
+                    <property name="text">
+                     <string>Add rule</string>
+                    </property>
                   </widget>
                  </item>
-                 <item>
-                  <widget class="QPushButton" name="RemoveRuleButton">
-                   <property name="text">
+                  <item>
+                   <widget class="QPushButton" name="RemoveRuleButton">
+                    <property name="toolTip">
+                     <string>Remove the selected manual rule.</string>
+                    </property>
+                    <property name="text">
                     <string>Remove rule</string>
                    </property>
                   </widget>
