@@ -83,7 +83,7 @@ class ConsoleWidget(QObject):
             cursor.insertText(text.replace("\r\n", "\n").replace("\r", "\n"), text_format)
         cursor.endEditBlock()
 
-        if self._line_limit_enabled or was_at_bottom:
+        if was_at_bottom:
             self._editor.setTextCursor(cursor)
             self._editor.ensureCursorVisible()
         else:

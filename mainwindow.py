@@ -8,6 +8,7 @@ from PySide6.QtCore import QEvent, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QLabel,
     QMessageBox,
     QMainWindow,
 )
@@ -23,6 +24,7 @@ from modules.controllers.serial_session import SerialSession
 from modules.core.models import CapturedValue, ExtractionRule
 from modules.core.rule_suggestions import suggest_rules_from_samples
 from modules.core.serial_log import parse_plot_log_line
+from modules.core.ui_latency import EventLoopLatencyMonitor
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.loading_dialog import LoadingDialog
 from modules.widgets.rules_table import RulesTable
@@ -66,6 +68,9 @@ class MainWindow(QMainWindow):
         self._configure_console()
         self._connect_signals()
         self._seed_default_rules()
+        self._latency_monitor: EventLoopLatencyMonitor | None = None
+        self._latency_label: QLabel | None = None
+        self._start_latency_monitor()
         self.on_connected_changed(False)
 
     def _configure_console(self) -> None:
@@ -92,6 +97,13 @@ class MainWindow(QMainWindow):
         self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
         self.session.statusChanged.connect(self.statusBar().showMessage)
         self.session.errorOccurred.connect(self.on_serial_error)
+
+    def _start_latency_monitor(self) -> None:
+        self._latency_label = QLabel("UI p95: -- ms  p99: -- ms")
+        self.statusBar().addPermanentWidget(self._latency_label)
+        self._latency_monitor = EventLoopLatencyMonitor(self)
+        self._latency_monitor.summaryChanged.connect(self._latency_label.setText)
+        self._latency_monitor.start()
 
     def _seed_default_rules(self) -> None:
         self.set_rules(
