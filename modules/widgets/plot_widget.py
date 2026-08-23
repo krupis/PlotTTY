@@ -14,7 +14,7 @@ from ..core.models import CapturedValue
 from ..core.plotter import Plotter
 
 
-PLOT_REFRESH_INTERVAL_MS = 100
+PLOT_REFRESH_INTERVAL_MS = 50
 PLOT_BACKGROUND = "#1f2328"
 PLOT_AXIS = "#5c6370"
 PLOT_TEXT = "#dce3ea"
