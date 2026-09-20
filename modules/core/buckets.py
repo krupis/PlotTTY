@@ -48,14 +48,15 @@ class Bucket(NamedTuple):
 
 
 class Buckets:
-    """Store sample summaries at several sizes and read them for plotting."""
 
-    def __init__(self) -> None:
-        """Create an empty list for each target size, from smallest to largest."""
-        self._buckets_by_size: dict[int, list[Bucket]] = {size: [] for size in BUCKET_SIZES}
+    # Create empty lists for each level. Each list holds completed buckets of that size, plus one unfinished bucket.
+    def __init__(self) -> None:   
+        self._buckets_by_size = {}
+        for size in BUCKET_SIZES:
+            self._buckets_by_size[size] = []
 
+    # Add a sample to the smallest bucket and propagate it up through larger buckets as they fill.
     def add_sample(self, timestamp: float, value: float) -> None:
-        """Fill the smallest bucket and pass completed buckets to larger sizes."""
         point = (timestamp, value)
         bucket = Bucket(1, point, point, point, point)
         for size, buckets in self._buckets_by_size.items():
