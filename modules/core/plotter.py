@@ -2,81 +2,14 @@
 
 from __future__ import annotations
 
-from bisect import bisect_left, bisect_right
-from dataclasses import dataclass, field
-import math
 import struct
 import tempfile
-from typing import NamedTuple
+
+from .buckets import BucketStore
 
 
 RAW_SAMPLE_STRUCT = struct.Struct("<dd")
-BUCKET_SIZES = (4, 8, 16, 32, 64, 128, 256, 512, 1_000, 10_000, 100_000, 1_000_000)
 PENDING_BYTES_LIMIT = 1024 * 1024
-
-Point = tuple[float, float]
-
-
-class BucketSummary(NamedTuple):
-    count: int
-    first: Point
-    last: Point
-    minimum: Point
-    maximum: Point
-
-
-@dataclass
-class BucketLevel:
-    bucket_size: int
-    starts: list[float] = field(default_factory=list)
-    ends: list[float] = field(default_factory=list)
-    summaries: list[BucketSummary] = field(default_factory=list)
-    current_count: int = 0
-    current_first: Point | None = None
-    current_last: Point | None = None
-    current_minimum: Point | None = None
-    current_maximum: Point | None = None
-
-    def update_current_bucket(self, summary: BucketSummary) -> None:
-        if self.current_count == 0:
-            self.current_first = summary.first
-            self.current_minimum = summary.minimum
-            self.current_maximum = summary.maximum
-
-        self.current_count += summary.count
-        self.current_last = summary.last
-        self.current_minimum = min(self.current_minimum, summary.minimum, key=_point_y)
-        self.current_maximum = max(self.current_maximum, summary.maximum, key=_point_y)
-
-    def is_current_bucket_full(self) -> bool:
-        return self.current_count >= self.bucket_size
-
-    def finish_current_bucket(self) -> BucketSummary:
-        summary = self.current_summary()
-        assert summary is not None
-
-        self.starts.append(summary.first[0])
-        self.ends.append(summary.last[0])
-        self.summaries.append(summary)
-        self.current_count = 0
-        self.current_first = self.current_last = self.current_minimum = self.current_maximum = None
-        return summary
-
-    def current_summary(self) -> BucketSummary | None:
-        if self.current_count == 0:
-            return None
-
-        assert self.current_first is not None
-        assert self.current_last is not None
-        assert self.current_minimum is not None
-        assert self.current_maximum is not None
-        return BucketSummary(
-            count=self.current_count,
-            first=self.current_first,
-            last=self.current_last,
-            minimum=self.current_minimum,
-            maximum=self.current_maximum,
-        )
 
 
 class Plotter:
@@ -86,7 +19,7 @@ class Plotter:
         self._file = tempfile.TemporaryFile(prefix="plottty_series_", suffix=".bin")
         self._sample_count = 0
         self._pending_sample_bytes = bytearray()
-        self._bucket_levels = [BucketLevel(bucket_size) for bucket_size in BUCKET_SIZES]
+        self._buckets = BucketStore()
 
     def add_sample(self, timestamp: float, value: float) -> None:
         self._pending_sample_bytes.extend(RAW_SAMPLE_STRUCT.pack(timestamp, value))
@@ -94,13 +27,11 @@ class Plotter:
             self._write_pending_samples_to_file()
 
         self._sample_count += 1
-        point = (timestamp, value)
-        self._add_summary_to_bucket_level(
-            0,
-            BucketSummary(count=1, first=point, last=point, minimum=point, maximum=point),
-        )
+        self._buckets.add_sample(timestamp, value)
 
-    def read_visible_samples(self,start_time: float,end_time: float,buckets: int,) -> tuple[int, list[float], list[float]]:
+    def read_visible_samples(
+        self, start_time: float, end_time: float, buckets: int
+    ) -> tuple[int, list[float], list[float]]:
         start_index, stop_index = self._sample_indexes_for_range(start_time, end_time)
         if stop_index <= start_index:
             return 0, [], []
@@ -112,8 +43,9 @@ class Plotter:
             x_values, y_values = self._read_raw_samples_by_index(start_index, stop_index)
             return visible_samples, x_values, y_values
 
-        bucket_level = self._select_bucket_level(samples_per_bucket)
-        x_values, y_values = self._read_bucket_level(bucket_level, start_time, end_time, bucket_count)
+        x_values, y_values = self._buckets.read_samples(
+            start_time, end_time, samples_per_bucket, bucket_count
+        )
         return visible_samples, x_values, y_values
 
     def latest_timestamp(self) -> float | None:
@@ -129,64 +61,6 @@ class Plotter:
     def close(self) -> None:
         self._write_pending_samples_to_file()
         self._file.close()
-
-    def _add_summary_to_bucket_level(self, level_index: int, summary: BucketSummary) -> None:
-        level = self._bucket_levels[level_index]
-        level.update_current_bucket(summary)
-        if not level.is_current_bucket_full():
-            return
-
-        finished_summary = level.finish_current_bucket()
-        next_level_index = level_index + 1
-        if next_level_index < len(self._bucket_levels):
-            self._add_summary_to_bucket_level(next_level_index, finished_summary)
-
-    def _select_bucket_level(self, desired_samples_per_bucket: float) -> BucketLevel:
-        for level in self._bucket_levels:
-            if level.bucket_size >= desired_samples_per_bucket:
-                return level
-        return self._bucket_levels[-1]
-
-    def _read_bucket_level(
-        self,
-        level: BucketLevel,
-        start_time: float,
-        end_time: float,
-        max_buckets: int,
-    ) -> tuple[list[float], list[float]]:
-        summaries = self._read_bucket_summaries(level, start_time, end_time)
-        if not summaries:
-            return [], []
-
-        group_size = max(1, math.ceil(len(summaries) / max(1, max_buckets)))
-        x_values: list[float] = []
-        y_values: list[float] = []
-        for start in range(0, len(summaries), group_size):
-            group = summaries[start : start + group_size]
-            first = group[0].first
-            last = group[-1].last
-            minimum = min((summary.minimum for summary in group), key=_point_y)
-            maximum = max((summary.maximum for summary in group), key=_point_y)
-
-            for x_value, y_value in sorted({first, minimum, maximum, last}):
-                x_values.append(x_value)
-                y_values.append(y_value)
-
-        return x_values, y_values
-
-    def _read_bucket_summaries(self, level: BucketLevel, start_time: float, end_time: float) -> list[BucketSummary]:
-        first_index = bisect_left(level.ends, start_time)
-        last_index = bisect_right(level.starts, end_time)
-        summaries = level.summaries[first_index:last_index]
-
-        # Higher levels receive only completed lower-level buckets. Include
-        # their unfinished tails so downsampling never delays the newest data.
-        level_index = self._bucket_levels.index(level)
-        for pending_level in reversed(self._bucket_levels[:level_index + 1]):
-            current_summary = pending_level.current_summary()
-            if current_summary is not None and current_summary.last[0] >= start_time and current_summary.first[0] <= end_time:
-                summaries.append(current_summary)
-        return summaries
 
     def _write_pending_samples_to_file(self) -> None:
         if not self._pending_sample_bytes:
@@ -246,7 +120,3 @@ class Plotter:
         if len(data) != RAW_SAMPLE_STRUCT.size:
             raise IndexError(index)
         return RAW_SAMPLE_STRUCT.unpack(data)
-
-
-def _point_y(point: Point) -> float:
-    return point[1]

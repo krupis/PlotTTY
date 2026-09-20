@@ -16,6 +16,7 @@ files = [
     "modules/controllers/profile_controller.py",
     "modules/controllers/serial_session.py",
     "modules/core/__init__.py",
+    "modules/core/buckets.py",
     "modules/core/extraction.py",
     "modules/core/line_decoder.py",
     "modules/core/models.py",
