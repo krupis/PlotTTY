@@ -87,12 +87,8 @@ class PlotWidget(QWidget):
 
     @Slot(list)
     def append_values(self, values: Iterable[CapturedValue]) -> None:
-        captured_values = list(values)
-        if not captured_values:
-            return
-
         added_series = False
-        for captured in captured_values:
+        for captured in values:
             if self._start_time is None:
                 self._start_time = captured.timestamp
 
