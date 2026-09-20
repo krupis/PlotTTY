@@ -71,17 +71,14 @@ class Plotter:
         self._file.flush()
 
     def _read_raw_samples_by_index(self, start_index: int, stop_index: int) -> tuple[list[float], list[float]]:
+        """Read a contiguous range after the range lookup has flushed pending samples."""
         x_values: list[float] = []
         y_values: list[float] = []
-        self._flush_samples_to_file()
         self._file.seek(start_index * RAW_SAMPLE_STRUCT.size)
+        byte_count = (stop_index - start_index) * RAW_SAMPLE_STRUCT.size
+        data = self._file.read(byte_count)
 
-        for _index in range(start_index, stop_index):
-            data = self._file.read(RAW_SAMPLE_STRUCT.size)
-            if len(data) != RAW_SAMPLE_STRUCT.size:
-                break
-
-            x_value, y_value = RAW_SAMPLE_STRUCT.unpack(data)
+        for x_value, y_value in RAW_SAMPLE_STRUCT.iter_unpack(data):
             x_values.append(x_value)
             y_values.append(y_value)
 
