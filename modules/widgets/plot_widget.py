@@ -94,6 +94,7 @@ class PlotWidget(QWidget):
         if not captured_values:
             return
 
+        added_series = False
         for captured in captured_values:
             if self._start_time is None:
                 self._start_time = captured.timestamp
@@ -102,10 +103,13 @@ class PlotWidget(QWidget):
                 self._series[captured.label] = Plotter()
                 self._visible_labels.add(captured.label)
                 self._add_series_menu_item(captured.label)
-                self._rebuild_plots()
+                added_series = True
 
             self._series[captured.label].add_sample(captured.timestamp - self._start_time, captured.value)
             self._has_pending_refresh = True
+
+        if added_series:
+            self._rebuild_plots()
 
     def clear_values(self) -> None:
         for series in self._series.values():
