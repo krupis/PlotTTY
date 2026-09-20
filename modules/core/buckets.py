@@ -1,40 +1,34 @@
-"""Summarize samples at several resolutions so large captures stay cheap to draw.
+"""Keep compact summaries of samples for drawing large captures.
 
-A bucket groups consecutive samples, not screen pixels or a fixed time interval.
-Each point is a (timestamp, value) pair. Samples must arrive in nondecreasing
-timestamp order so completed buckets can be searched with binary search.
+Bucket summarizes one consecutive group: its sample count and its first, last,
+minimum and maximum points. Each point is a (timestamp, value) pair. These
+representative points preserve endpoints and extrema, but not every oscillation.
+Plotter keeps the raw samples separately for detailed reads.
 
-Bucket is a compact record of one group: its raw sample count and its
-first, last, lowest and highest points. Keeping the extrema preserves peaks and
-dips; keeping the endpoints preserves how adjacent groups connect. These four
-points can overlap, and the summary does not retain every oscillation inside
-the group. Plotter stores the raw samples separately for detailed reads.
+Buckets holds lists of these summaries, grouped by target sample count:
+    size 4:   [Bucket, Bucket, ...]
+    size 8:   [Bucket, Bucket, ...]
+    size 16:  [Bucket, Bucket, ...]
 
-BucketLevel holds completed summaries at one target size and a single pending
-Bucket (or None when empty). Sizes count raw samples, not summaries. Searches
-use timestamps from the summaries directly instead of separate time indexes.
-For example, the size-4 level consumes individual samples; two finished size-4
-summaries fill a size-8 bucket, and two size-8 summaries fill a size-16 bucket.
-Higher levels consume whole summaries, so their actual bucket sizes can exceed
-the target when adjacent target sizes are not exact multiples.
+The last bucket in each list may still be filling (count < target size).
+There is no separate pending state. When a bucket fills, it is passed to the
+next size. For example, two completed size-4 buckets fill a size-8 bucket.
+Because whole buckets are combined, the actual count can exceed a target when
+adjacent target sizes are not exact multiples.
 
-BucketStore manages this hierarchy:
-  1. Add each sample to the smallest level. Pass completed buckets upward.
-  2. For a display read, select a level using the requested samples per bucket.
-  3. Find summaries overlapping the time range, including unfinished tails from
-     lower levels so the newest samples do not wait for a large bucket to fill.
-  4. Merge summaries if needed to fit the bucket budget. Return up to four unique
-     points per group, ordered by timestamp, as separate x and y lists.
+Reads choose a size, find overlapping buckets, and include unfinished buckets
+from smaller sizes so the newest samples are visible immediately. If needed,
+these buckets are grouped further to fit the caller's budget. Each group emits
+up to four unique points ordered by timestamp, as separate x and y lists.
 
-Boundary buckets may include points outside the requested time range because
-whole summaries are used. The caller chooses the display budget; this module
-does not know the plot's pixel width and does not modify the stored raw data.
+Samples must arrive in nondecreasing timestamp order for binary search to work.
+Boundary buckets can include points outside the requested range. The caller
+chooses the budget; this module does not know the screen's pixel width.
 """
 
 from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
-from dataclasses import dataclass, field
 import math
 from typing import NamedTuple
 
@@ -53,47 +47,31 @@ class Bucket(NamedTuple):
     maximum: Point
 
 
-# BucketLevel is a collection of completed summaries at one target size, plus one unfinished bucket.
-@dataclass
-class BucketLevel:
-    bucket_size: int
-    summaries: list[Bucket] = field(default_factory=list)
-    pending: Bucket | None = None
-
-    def merge(self, bucket: Bucket) -> Bucket | None:
-        """Accumulate a bucket; store and return it when full, otherwise return None."""
-        if self.pending is not None:
-            current = self.pending
-            bucket = Bucket(
-                current.count + bucket.count,
-                current.first,
-                bucket.last,
-                min(current.minimum, bucket.minimum, key=_point_y),
-                max(current.maximum, bucket.maximum, key=_point_y),
-            )
-        if bucket.count < self.bucket_size:
-            self.pending = bucket
-            return None
-
-        self.summaries.append(bucket)
-        self.pending = None
-        return bucket
-
-
-class BucketStore:
-    """Accumulate summaries and return first/min/max/last points for a time range."""
+class Buckets:
+    """Store sample summaries at several sizes and read them for plotting."""
 
     def __init__(self) -> None:
-        """Create empty levels in order from the smallest bucket size to the largest."""
-        self._bucket_levels = [BucketLevel(size) for size in BUCKET_SIZES]
+        """Create an empty list for each target size, from smallest to largest."""
+        self._buckets_by_size: dict[int, list[Bucket]] = {size: [] for size in BUCKET_SIZES}
 
     def add_sample(self, timestamp: float, value: float) -> None:
-        """Wrap one sample as a summary and feed it into the smallest level."""
+        """Fill the smallest bucket and pass completed buckets to larger sizes."""
         point = (timestamp, value)
         bucket = Bucket(1, point, point, point, point)
-        for level in self._bucket_levels:
-            bucket = level.merge(bucket)
-            if bucket is None:
+        for size, buckets in self._buckets_by_size.items():
+            if buckets and buckets[-1].count < size:
+                current = buckets[-1]
+                bucket = Bucket(
+                    current.count + bucket.count,
+                    current.first,
+                    bucket.last,
+                    min(current.minimum, bucket.minimum, key=_point_y),
+                    max(current.maximum, bucket.maximum, key=_point_y),
+                )
+                buckets[-1] = bucket
+            else:
+                buckets.append(bucket)
+            if bucket.count < size:
                 break
 
     def read_samples(
@@ -104,7 +82,7 @@ class BucketStore:
         max_buckets: int,
     ) -> tuple[list[float], list[float]]:
         """Select a resolution and return reduced x/y lists for the time range."""
-        level_index = min(bisect_left(BUCKET_SIZES, samples_per_bucket), len(self._bucket_levels) - 1)
+        level_index = min(bisect_left(BUCKET_SIZES, samples_per_bucket), len(BUCKET_SIZES) - 1)
         summaries = self._read_buckets(level_index, start_time, end_time)
         if not summaries:
             return [], []
@@ -127,17 +105,21 @@ class BucketStore:
 
     def _read_buckets(self, level_index: int, start_time: float, end_time: float) -> list[Bucket]:
         """Find completed and unfinished summaries overlapping the inclusive range."""
-        completed = self._bucket_levels[level_index].summaries
-        first_index = bisect_left(completed, start_time, key=lambda bucket: bucket.last[0])
-        last_index = bisect_right(completed, end_time, key=lambda bucket: bucket.first[0])
-        summaries = completed[first_index:last_index]
+        buckets = self._buckets_by_size[BUCKET_SIZES[level_index]]
+        first_index = bisect_left(buckets, start_time, key=lambda bucket: bucket.last[0])
+        last_index = bisect_right(buckets, end_time, key=lambda bucket: bucket.first[0])
+        summaries = buckets[first_index:last_index]
 
         # Higher levels receive only completed lower-level buckets. Include
         # their unfinished tails so downsampling never delays the newest data.
-        for pending_level in reversed(self._bucket_levels[:level_index + 1]):
-            pending_bucket = pending_level.pending
+        # The selected size's unfinished bucket was already included above.
+        for size in reversed(BUCKET_SIZES[:level_index]):
+            smaller_buckets = self._buckets_by_size[size]
+            if not smaller_buckets:
+                continue
+            pending_bucket = smaller_buckets[-1]
             if (
-                pending_bucket is not None
+                pending_bucket.count < size
                 and pending_bucket.last[0] >= start_time
                 and pending_bucket.first[0] <= end_time
             ):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import struct
 import tempfile
 
-from .buckets import BucketStore
+from .buckets import Buckets
 
 
 RAW_SAMPLE_STRUCT = struct.Struct("<dd")
@@ -19,7 +19,7 @@ class Plotter:
         self._file = tempfile.TemporaryFile(prefix="plottty_series_", suffix=".bin")
         self._sample_count = 0
         self._pending_sample_bytes = bytearray()
-        self._buckets = BucketStore()
+        self._buckets = Buckets()
 
     def add_sample(self, timestamp: float, value: float) -> None:
         self._pending_sample_bytes.extend(RAW_SAMPLE_STRUCT.pack(timestamp, value))
