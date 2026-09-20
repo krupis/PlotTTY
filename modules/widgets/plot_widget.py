@@ -28,6 +28,7 @@ class PlotWidget(QWidget):
         self.setMinimumSize(320, 220)
 
         self._time_window = time_window
+        self._last_time_range = (0.0, time_window)
         self._series: dict[str, Plotter] = {}
         self._plots: dict[str, pg.PlotItem] = {}
         self._curves: dict[str, pg.PlotDataItem] = {}
@@ -157,6 +158,7 @@ class PlotWidget(QWidget):
         self._set_time_range(0.0, max(self._time_window, latest_time))
 
     def _set_time_range(self, start_time: float, end_time: float) -> None:
+        self._last_time_range = (start_time, end_time)
         self._is_setting_time_range = True
         for plot in self._plots.values():
             plot.setXRange(start_time, end_time, padding=0)
@@ -207,12 +209,15 @@ class PlotWidget(QWidget):
 
     def _rebuild_plots(self) -> None:
         """Recreate the visible plot layout; the timer refreshes its data."""
+        self._last_time_range = self._time_range()
         self.graph.clear()
         self._plots.clear()
         self._curves.clear()
 
         for row, label in enumerate(label for label in self._series if label in self._visible_labels):
             plot = self.graph.addPlot(row=row, col=0, title=label)
+            # Restore the range before connecting the range-change handler.
+            plot.setXRange(*self._last_time_range, padding=0)
             self._configure_plot(plot, label)
             curve = plot.plot(pen=pg.mkPen(_color_for_index(row), width=1))
             # Storage already reduces the visible range to a display-sized array.
@@ -254,7 +259,7 @@ class PlotWidget(QWidget):
 
     def _time_range(self) -> tuple[float, float]:
         if not self._plots:
-            return 0.0, self._time_window
+            return self._last_time_range
         plot = next(iter(self._plots.values()))
         start_time, end_time = plot.viewRange()[0]
         return start_time, end_time
