@@ -242,10 +242,15 @@ class PlotWidget(QWidget):
         plot.getViewBox().sigXRangeChanged.connect(self.on_x_range_changed)
 
     def _latest_sample_time(self) -> float:
-        return max(
-            (timestamp for series in self._series.values() if (timestamp := series.latest_timestamp()) is not None),
-            default=0.0,
-        )
+        latest_time = None
+        for series in self._series.values():
+            timestamp = series.latest_timestamp()
+            if timestamp is None:
+                continue
+            if latest_time is None or timestamp > latest_time:
+                latest_time = timestamp
+
+        return latest_time if latest_time is not None else 0.0
 
     def _time_range(self) -> tuple[float, float]:
         if not self._plots:
