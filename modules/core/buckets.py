@@ -38,42 +38,49 @@ BUCKET_SIZES = (4, 8, 16, 32, 64, 128, 256, 512, 1_000, 10_000, 100_000, 1_000_0
 Point = tuple[float, float]
 
 
-# Bucket is a summary of one consecutive group of raw samples.
 class Bucket(NamedTuple):
+    """Summary of one consecutive group of samples."""
+
     count: int
     first: Point
     last: Point
-    minimum: Point
-    maximum: Point
+    minimum_point: Point
+    maximum_point: Point
 
 
 class Buckets:
+    """Store bucket summaries at several target sizes."""
 
-    # Create empty lists for each level. Each list holds completed buckets of that size, plus one unfinished bucket.
-    def __init__(self) -> None:   
+    def __init__(self) -> None:
+        """Create one initially empty list for each target size."""
+
         self._buckets_by_size = {}
         for size in BUCKET_SIZES:
             self._buckets_by_size[size] = []
 
-    # Add a sample to the smallest bucket and propagate it up through larger buckets as they fill.
     def add_sample(self, timestamp: float, value: float) -> None:
+        """Add a sample and pass completed buckets to larger target sizes."""
+
         point = (timestamp, value)
         bucket = Bucket(1, point, point, point, point)
-        for size, buckets in self._buckets_by_size.items():
-            if buckets and buckets[-1].count < size:
-                current = buckets[-1]
+        for target_size in BUCKET_SIZES:
+            
+            level = self._buckets_by_size[target_size]
+            # Check if the last bucket is unfinished and can be combined with the new bucket.
+            if level and level[-1].count < target_size:
+                unfinished = level[-1]
                 bucket = Bucket(
-                    current.count + bucket.count,
-                    current.first,
+                    unfinished.count + bucket.count,
+                    unfinished.first,
                     bucket.last,
-                    min(current.minimum, bucket.minimum, key=_point_y),
-                    max(current.maximum, bucket.maximum, key=_point_y),
+                    min(unfinished.minimum_point, bucket.minimum_point, key=_point_y),
+                    max(unfinished.maximum_point, bucket.maximum_point, key=_point_y),
                 )
-                buckets[-1] = bucket
+                level[-1] = bucket
             else:
-                buckets.append(bucket)
-            if bucket.count < size:
-                break
+                level.append(bucket)
+            if bucket.count < target_size:
+                return
 
     def read_samples(
         self,
@@ -84,19 +91,19 @@ class Buckets:
     ) -> tuple[list[float], list[float]]:
         """Select a resolution and return reduced x/y lists for the time range."""
         level_index = min(bisect_left(BUCKET_SIZES, samples_per_bucket), len(BUCKET_SIZES) - 1)
-        summaries = self._read_buckets(level_index, start_time, end_time)
-        if not summaries:
+        selected_buckets = self._read_buckets(level_index, start_time, end_time)
+        if not selected_buckets:
             return [], []
 
-        group_size = max(1, math.ceil(len(summaries) / max(1, max_buckets)))
+        group_size = max(1, math.ceil(len(selected_buckets) / max(1, max_buckets)))
         x_values: list[float] = []
         y_values: list[float] = []
-        for start in range(0, len(summaries), group_size):
-            group = summaries[start : start + group_size]
+        for start in range(0, len(selected_buckets), group_size):
+            group = selected_buckets[start : start + group_size]
             first = group[0].first
             last = group[-1].last
-            minimum = min((summary.minimum for summary in group), key=_point_y)
-            maximum = max((summary.maximum for summary in group), key=_point_y)
+            minimum = min((bucket.minimum_point for bucket in group), key=_point_y)
+            maximum = max((bucket.maximum_point for bucket in group), key=_point_y)
 
             for x_value, y_value in sorted({first, minimum, maximum, last}):
                 x_values.append(x_value)
@@ -109,7 +116,7 @@ class Buckets:
         buckets = self._buckets_by_size[BUCKET_SIZES[level_index]]
         first_index = bisect_left(buckets, start_time, key=lambda bucket: bucket.last[0])
         last_index = bisect_right(buckets, end_time, key=lambda bucket: bucket.first[0])
-        summaries = buckets[first_index:last_index]
+        selected_buckets = buckets[first_index:last_index]
 
         # Higher levels receive only completed lower-level buckets. Include
         # their unfinished tails so downsampling never delays the newest data.
@@ -124,8 +131,8 @@ class Buckets:
                 and pending_bucket.last[0] >= start_time
                 and pending_bucket.first[0] <= end_time
             ):
-                summaries.append(pending_bucket)
-        return summaries
+                selected_buckets.append(pending_bucket)
+        return selected_buckets
 
 
 def _point_y(point: Point) -> float:
