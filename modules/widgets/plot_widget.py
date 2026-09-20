@@ -31,7 +31,6 @@ class PlotWidget(QWidget):
         self._series: dict[str, Plotter] = {}
         self._plots: dict[str, pg.PlotItem] = {}
         self._curves: dict[str, pg.PlotDataItem] = {}
-        self._series_actions: dict[str, QAction] = {}
         self._visible_labels: set[str] = set()
         self._start_time: float | None = None
         self._has_pending_refresh = False
@@ -117,7 +116,6 @@ class PlotWidget(QWidget):
         self._series.clear()
         self._plots.clear()
         self._curves.clear()
-        self._series_actions.clear()
         self._visible_labels.clear()
         self._start_time = None
         self._has_pending_refresh = False
@@ -197,7 +195,6 @@ class PlotWidget(QWidget):
         action.setChecked(True)
         action.setData(label)
         action.toggled.connect(self.on_series_visibility_toggled)
-        self._series_actions[label] = action
         self.series_menu.addAction(action)
         self.series_button.setEnabled(True)
 
@@ -221,9 +218,9 @@ class PlotWidget(QWidget):
 
         self._rebuild_plots()
         self._has_pending_refresh = True
-        self.on_refresh_pending_data()
 
     def _rebuild_plots(self) -> None:
+        """Recreate the visible plot layout; the timer refreshes its data."""
         self.graph.clear()
         self._plots.clear()
         self._curves.clear()
@@ -236,11 +233,6 @@ class PlotWidget(QWidget):
             curve.setDownsampling(auto=False)
             self._plots[label] = plot
             self._curves[label] = curve
-
-        if self._auto_scroll_enabled:
-            self.show_recent_data()
-        elif self._show_all_enabled:
-            self.show_all_data()
 
     def _configure_plot(self, plot: pg.PlotItem, title: str) -> None:
         axis_pen = pg.mkPen(PLOT_AXIS)
