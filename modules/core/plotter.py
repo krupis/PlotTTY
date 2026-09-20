@@ -179,9 +179,13 @@ class Plotter:
         last_index = bisect_right(level.starts, end_time)
         summaries = level.summaries[first_index:last_index]
 
-        current_summary = level.current_summary()
-        if current_summary is not None and current_summary.last[0] >= start_time and current_summary.first[0] <= end_time:
-            summaries.append(current_summary)
+        # Higher levels receive only completed lower-level buckets. Include
+        # their unfinished tails so downsampling never delays the newest data.
+        level_index = self._bucket_levels.index(level)
+        for pending_level in reversed(self._bucket_levels[:level_index + 1]):
+            current_summary = pending_level.current_summary()
+            if current_summary is not None and current_summary.last[0] >= start_time and current_summary.first[0] <= end_time:
+                summaries.append(current_summary)
         return summaries
 
     def _write_pending_samples_to_file(self) -> None:

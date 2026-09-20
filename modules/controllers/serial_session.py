@@ -122,12 +122,16 @@ class SerialSession(QObject):
             return
 
         self.receivedText.emit(data.decode(self._line_decoder.encoding, errors="replace"))
+        all_captured_values: list[CapturedValue] = []
         for line in self._line_decoder.feed(data):
             captured_values = self._engine.extract(line, timestamp=received_at)
             if captured_values:
                 if self.settings.log_to_file:
                     self._plot_log.write_values(captured_values)
-                self.valuesCaptured.emit(captured_values)
+                all_captured_values.extend(captured_values)
+
+        if all_captured_values:
+            self.valuesCaptured.emit(all_captured_values)
 
     @Slot(str)
     def on_serial_error(self, message: str) -> None:

@@ -230,9 +230,9 @@ class PlotWidget(QWidget):
         for row, label in enumerate(label for label in self._series if label in self._visible_labels):
             plot = self.graph.addPlot(row=row, col=0, title=label)
             self._configure_plot(plot, label)
-            curve = plot.plot(pen=pg.mkPen(_color_for_index(row), width=2))
-            curve.setClipToView(True)
-            curve.setDownsampling(auto=True, method="peak")
+            curve = plot.plot(pen=pg.mkPen(_color_for_index(row), width=1))
+            # Storage already reduces the visible range to a display-sized array.
+            curve.setDownsampling(auto=False)
             self._plots[label] = plot
             self._curves[label] = curve
 
@@ -253,6 +253,9 @@ class PlotWidget(QWidget):
         plot.getAxis("left").setPen(axis_pen)
         bottom_axis.setTextPen(PLOT_TEXT)
         plot.getAxis("left").setTextPen(PLOT_TEXT)
+        # Dense minor grids are expensive to repaint across multiple panels.
+        bottom_axis.setStyle(maxTickLevel=0)
+        plot.getAxis("left").setStyle(maxTickLevel=0)
         plot.setMouseEnabled(x=True, y=True)
         plot.enableAutoRange(axis="x", enable=False)
         plot.enableAutoRange(axis="y", enable=True)
@@ -314,7 +317,8 @@ class PlotWidget(QWidget):
             return 1000
 
         width = int(plot.getViewBox().width())
-        return max(1, width)
+        # Each bucket emits up to four points: first, minimum, maximum and last.
+        return max(1, width // 4)
 
     def closeEvent(self, event) -> None:
         for series in self._series.values():
