@@ -90,8 +90,8 @@ class Buckets:
             group = selected_buckets[start : start + group_size]
             first = group[0].first
             last = group[-1].last
-            minimum = min((bucket.minimum_point for bucket in group), key=_point_y)
-            maximum = max((bucket.maximum_point for bucket in group), key=_point_y)
+            minimum = min((bucket.minimum_point for bucket in group), key=lambda point: point[1])
+            maximum = max((bucket.maximum_point for bucket in group), key=lambda point: point[1])
 
             for x_value, y_value in sorted({first, minimum, maximum, last}):
                 x_values.append(x_value)
@@ -99,14 +99,10 @@ class Buckets:
 
         return x_values, y_values
 
+    
     def _read_buckets(self, level_index: int, start_time: float, end_time: float) -> list[Bucket]:
         """Find buckets overlapping the inclusive time range."""
         buckets = self._levels[BUCKET_SIZES[level_index]]
         first_index = bisect_left(buckets, start_time, key=lambda bucket: bucket.last[0])
         last_index = bisect_right(buckets, end_time, key=lambda bucket: bucket.first[0])
         return buckets[first_index:last_index]
-
-
-def _point_y(point: Point) -> float:
-    """Extract the value for minimum/maximum comparisons, ignoring its timestamp."""
-    return point[1]
