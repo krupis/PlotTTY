@@ -18,6 +18,7 @@ class Plotter:
     def __init__(self):
         self._file = tempfile.TemporaryFile(prefix="plottty_series_", suffix=".bin")
         self._sample_count = 0
+        self._latest_timestamp: float | None = None
         self._pending_sample_bytes = bytearray()
         self._buckets = Buckets()
 
@@ -27,6 +28,7 @@ class Plotter:
             self._write_pending_samples_to_file()
 
         self._sample_count += 1
+        self._latest_timestamp = timestamp
         self._buckets.add_sample(timestamp, value)
 
     def read_visible_samples(
@@ -38,22 +40,17 @@ class Plotter:
 
         visible_samples = stop_index - start_index
         bucket_count = max(1, buckets)
-        samples_per_bucket = visible_samples / bucket_count
-        if samples_per_bucket <= 1:
+        if visible_samples <= bucket_count:
             x_values, y_values = self._read_raw_samples_by_index(start_index, stop_index)
             return visible_samples, x_values, y_values
 
         x_values, y_values = self._buckets.read_samples(
-            start_time, end_time, samples_per_bucket, bucket_count
+            start_index, stop_index, bucket_count
         )
         return visible_samples, x_values, y_values
 
     def latest_timestamp(self) -> float | None:
-        if self._sample_count == 0:
-            return None
-        self._flush_samples_to_file()
-        timestamp, _value = self._read_sample_at_index(self._sample_count - 1)
-        return timestamp
+        return self._latest_timestamp
 
     def sample_count(self) -> int:
         return self._sample_count

@@ -21,9 +21,6 @@ PLOT_TEXT = "#dce3ea"
 AUTO_SCROLL_TOOLTIP = "Keep the plot view following the newest incoming data."
 SHOW_ALL_TOOLTIP = "Zoom the plot out to show all captured data."
 
-PlotDataResult = tuple[str, int, np.ndarray, np.ndarray]
-
-
 class PlotWidget(QWidget):
     def __init__(self, parent=None, time_window: float = 10.0):
         super().__init__(parent)
@@ -280,29 +277,16 @@ class PlotWidget(QWidget):
         if start_time is None or end_time is None:
             start_time, end_time = self._time_range()
 
-        results = []
-        for label, series in self._series.items():
-            if label not in self._curves:
-                continue
-
+        visible_counts = []
+        downsample_ratios = []
+        for label, curve in self._curves.items():
+            series = self._series[label]
             visible_samples, x_values, y_values = series.read_visible_samples(
                 start_time,
                 end_time,
                 self._bucket_count_for_series(label),
             )
-            # Convert python list to numpy array.
-            results.append((label, visible_samples, *_prepare_plot_arrays(x_values, y_values)))
-
-        self._apply_visible_curve_data(results)
-
-    def _apply_visible_curve_data(self, results: list[PlotDataResult]) -> None:
-        visible_counts = []
-        downsample_ratios = []
-        for label, visible_samples, x_values, y_values in results:
-            curve = self._curves.get(label)
-            if curve is None:
-                continue
-
+            x_values, y_values = _prepare_plot_arrays(x_values, y_values)
             visible_counts.append(visible_samples)
             curve.setData(x=x_values, y=y_values, connect="all", skipFiniteCheck=True)
             downsample_ratios.append(_downsample_ratio(visible_samples, len(x_values)))

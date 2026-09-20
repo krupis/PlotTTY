@@ -16,7 +16,6 @@ Boundary buckets can include points outside the requested range.
 
 from __future__ import annotations
 
-from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 import math
 
@@ -72,18 +71,29 @@ class Buckets:
 
     def read_samples(
         self,
-        start_time: float,
-        end_time: float,
-        samples_per_bucket: float,
+        start_index: int,
+        stop_index: int,
         max_buckets: int,
     ) -> tuple[list[float], list[float]]:
-        """Select a resolution and return reduced x/y lists for the time range."""
-        level_index = min(bisect_left(BUCKET_SIZES, samples_per_bucket), len(BUCKET_SIZES) - 1)
-        selected_buckets = self._read_buckets(level_index, start_time, end_time)
+        """Reduce samples in [start_index, stop_index) to at most max_buckets groups."""
+        if stop_index <= start_index:
+            return [], []
+
+        max_buckets = max(1, max_buckets)
+        samples_per_bucket = (stop_index - start_index) / max_buckets
+        for size in BUCKET_SIZES:
+            if size >= samples_per_bucket:
+                break
+
+        # Each level groups consecutive samples into fixed-size buckets.
+        first_bucket = start_index // size
+        stop_bucket = (stop_index + size - 1) // size
+        selected_buckets = self._levels[size][first_bucket:stop_bucket]
         if not selected_buckets:
             return [], []
 
-        group_size = max(1, math.ceil(len(selected_buckets) / max(1, max_buckets)))
+        # Boundary buckets and the largest level can still exceed the budget.
+        group_size = max(1, math.ceil(len(selected_buckets) / max_buckets))
         x_values: list[float] = []
         y_values: list[float] = []
         for start in range(0, len(selected_buckets), group_size):
@@ -98,11 +108,3 @@ class Buckets:
                 y_values.append(y_value)
 
         return x_values, y_values
-
-    
-    def _read_buckets(self, level_index: int, start_time: float, end_time: float) -> list[Bucket]:
-        """Find buckets overlapping the inclusive time range."""
-        buckets = self._levels[BUCKET_SIZES[level_index]]
-        first_index = bisect_left(buckets, start_time, key=lambda bucket: bucket.last[0])
-        last_index = bisect_right(buckets, end_time, key=lambda bucket: bucket.first[0])
-        return buckets[first_index:last_index]
