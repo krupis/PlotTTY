@@ -52,16 +52,16 @@ class Buckets:
     def __init__(self) -> None:
         """Create one initially empty list for each target size."""
 
-        self._buckets_by_size = {}
+        self._levels = {}
         for size in BUCKET_SIZES:
-            self._buckets_by_size[size] = []
+            self._levels[size] = []
 
     def add_sample(self, timestamp: float, value: float) -> None:
         """Add a sample to the current bucket at every target size."""
 
         point = (timestamp, value)
         for target_size in BUCKET_SIZES:
-            level = self._buckets_by_size[target_size]
+            level = self._levels[target_size]
 
             if not level or level[-1].count == target_size:
                 # If the last bucket is full or there are no buckets, create a new bucket with the current point as first, last, minimum, and maximum.
@@ -101,7 +101,7 @@ class Buckets:
 
     def _read_buckets(self, level_index: int, start_time: float, end_time: float) -> list[Bucket]:
         """Find buckets overlapping the inclusive time range."""
-        buckets = self._buckets_by_size[BUCKET_SIZES[level_index]]
+        buckets = self._levels[BUCKET_SIZES[level_index]]
         first_index = bisect_left(buckets, start_time, key=lambda bucket: bucket.last[0])
         last_index = bisect_right(buckets, end_time, key=lambda bucket: bucket.first[0])
         return buckets[first_index:last_index]
