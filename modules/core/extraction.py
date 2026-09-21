@@ -24,16 +24,18 @@ class ExtractionEngine:
         self.rules = default_rules() if rules is None else list(rules)
 
     def extract(self, text: str, timestamp: float | None = None) -> list[CapturedValue]:
-        value_timestamp = timestamp if timestamp is not None else time()
-        sample_counter_timestamp = _sample_counter_timestamp(self.rules, text)
+        timestamp = timestamp if timestamp is not None else time()
+        # Split once per delimiter, shared by counter and value rules for this line.
+        fields: dict[str, list[str]] = {}
+        counter_timestamp = _counter_timestamp(self.rules, text, fields)
+        timestamp = counter_timestamp if counter_timestamp is not None else timestamp
         captured_values = []
 
         for rule in self.rules:
             if not rule.enabled or rule.sample_counter:
                 continue
 
-            rule_timestamp = sample_counter_timestamp if sample_counter_timestamp is not None else value_timestamp
-            captured_values.extend(_extract_with_rule(rule, text, rule_timestamp))
+            captured_values.extend(_extract_rule(rule, text, timestamp, fields))
 
         return captured_values
 
@@ -42,12 +44,14 @@ def default_rules() -> list[ExtractionRule]:
     return [ExtractionRule(label="Auto key/value", mode="auto_key_value")]
 
 
-def _extract_with_rule(rule: ExtractionRule, text: str, timestamp: float) -> list[CapturedValue]:
+def _extract_rule(
+    rule: ExtractionRule, text: str, timestamp: float, fields: dict[str, list[str]]
+) -> list[CapturedValue]:
     captured_values = []
 
     if rule.mode == "auto_key_value":
         for match in AUTO_KEY_VALUE_RE.finditer(text):
-            label = _clean_label(match.group(1))
+            label = match.group(1)
             value = float(match.group(2))
             unit = (match.group(3) or rule.unit or "").strip()
             captured_values.append(_captured_value(timestamp, label, value, unit, text))
@@ -59,8 +63,7 @@ def _extract_with_rule(rule: ExtractionRule, text: str, timestamp: float) -> lis
             captured_values.append(_captured_value(timestamp, rule.label, value, rule.unit, text))
 
     elif rule.mode == "regex" and rule.extra_setting:
-        regex = re.compile(rule.extra_setting)
-        for match in regex.finditer(text):
+        for match in re.finditer(rule.extra_setting, text):
             if match.groups():
                 captured_values.append(
                     _captured_value(timestamp, rule.label, float(match.group(1)), rule.unit, text)
@@ -68,7 +71,7 @@ def _extract_with_rule(rule: ExtractionRule, text: str, timestamp: float) -> lis
 
     elif rule.mode == "delimiter_column":
         try:
-            column = int(rule.extra_setting.strip())
+            column = int(rule.extra_setting)
         except ValueError:
             return captured_values
 
@@ -76,7 +79,9 @@ def _extract_with_rule(rule: ExtractionRule, text: str, timestamp: float) -> lis
         if not delimiter:
             return captured_values
 
-        parts = [part.strip() for part in text.split(delimiter)]
+        if delimiter not in fields:
+            fields[delimiter] = text.split(delimiter)
+        parts = fields[delimiter]
         if 0 <= column < len(parts):
             match = FIRST_NUMBER_RE.search(parts[column])
             if match:
@@ -87,12 +92,14 @@ def _extract_with_rule(rule: ExtractionRule, text: str, timestamp: float) -> lis
     return captured_values
 
 
-def _sample_counter_timestamp(rules: Iterable[ExtractionRule], text: str) -> float | None:
+def _counter_timestamp(
+    rules: Iterable[ExtractionRule], text: str, fields: dict[str, list[str]]
+) -> float | None:
     for rule in rules:
         if not rule.sample_counter:
             continue
 
-        values = _extract_with_rule(rule, text, 0.0)
+        values = _extract_rule(rule, text, 0.0, fields)
         if values:
             return values[0].value
 
