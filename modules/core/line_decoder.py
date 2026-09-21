@@ -2,36 +2,32 @@
 
 from __future__ import annotations
 
+from codecs import getincrementaldecoder
+
 
 class LineDecoder:
     """Decode incoming byte chunks into complete text lines."""
 
     def __init__(self, encoding: str = "utf-8"):
         self.encoding = encoding
+        self._decoder = getincrementaldecoder(encoding)(errors="replace")
         self._buffer = ""
+        self._skip_lf = False
 
     def feed(self, data: bytes) -> list[str]:
         if not data:
             return []
 
-        self._buffer += data.decode(self.encoding, errors="replace")
-        lines = []
+        text = self._decoder.decode(data)
+        if not text:
+            return []
 
-        while True:
-            newline_indexes = [
-                index for index in (self._buffer.find("\n"), self._buffer.find("\r")) if index >= 0
-            ]
-            if not newline_indexes:
-                return lines
+        # A previous chunk's CR already ended a line; consume its matching LF.
+        if self._skip_lf and text.startswith("\n"):
+            text = text[1:]
+        self._skip_lf = text.endswith("\r")
 
-            index = min(newline_indexes)
-            line = self._buffer[:index]
-            self._buffer = self._buffer[index + 1 :]
-            if self._buffer.startswith(("\n", "\r")):
-                self._buffer = self._buffer[1:]
-            lines.append(line)
-
-    def flush(self) -> str:
-        text = self._buffer
-        self._buffer = ""
-        return text
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        lines = (self._buffer + text).split("\n")
+        self._buffer = lines.pop()  # Keep the unfinished line for the next chunk.
+        return lines
