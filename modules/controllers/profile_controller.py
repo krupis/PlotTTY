@@ -24,20 +24,17 @@ class ProfileController(QObject):
 
     @property
     def profile_name(self) -> str:
-        if self.profile_path is None:
-            return DEFAULT_PROFILE_PATH.name
-        return self.profile_path.name
+        return self.default_save_path.name
 
     def load(self, path: str | Path) -> AppProfile:
         profile = load_profile(path)
         self.profile_path = Path(path)
         return profile
 
-    def save(self, path: str | Path, rules: list[ExtractionRule]) -> AppProfile:
+    def save(self, path: str | Path, rules: list[ExtractionRule]) -> None:
         profile = AppProfile(
             name=Path(path).stem,
             rules=rules,
         )
         save_profile(profile, path)
         self.profile_path = Path(path)
-        return profile
