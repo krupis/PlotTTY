@@ -22,7 +22,7 @@ from ui_form import Ui_MainWindow
 from modules.controllers.profile_controller import ProfileController
 from modules.controllers.serial_session import SerialSession
 from modules.core.models import CapturedValue, ExtractionRule
-from modules.core.rule_suggestions import suggest_rules_from_samples
+from modules.core.rule_suggestions import suggest_rules
 from modules.core.serial_log import parse_plot_log_line
 from modules.core.ui_latency import EventLoopLatencyMonitor
 from modules.widgets.console_widget import ConsoleWidget
@@ -190,12 +190,11 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_generate_rules_from_sample(self) -> None:
-        suggestions = suggest_rules_from_samples(self.ui.SampleOutputTextEdit.toPlainText())
-        if not suggestions:
+        rules = suggest_rules(self.ui.SampleOutputTextEdit.toPlainText())
+        if not rules:
             self.statusBar().showMessage("No numeric values found in sample output")
             return
 
-        rules = [suggestion.rule for suggestion in suggestions]
         self.set_rules(rules)
         self.statusBar().showMessage(f"Generated {len(rules)} rule(s) from sample output")
 
