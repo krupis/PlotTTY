@@ -18,16 +18,15 @@ class ConsoleWidget(QObject):
     def __init__(self, editor: QPlainTextEdit, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._editor = editor
-        self._pending_text: list[tuple[str, QColor | None]] = []
-        self._line_limit_enabled = True
+        self._pending_text: list[tuple[list[str], QColor | None]] = []
 
         self._editor.setReadOnly(True)
         self._editor.setLineWrapMode(self._editor.LineWrapMode.NoWrap)
-        self.set_line_limit_enabled(self._line_limit_enabled)
+        self.set_line_limit_enabled(True)
 
         self._flush_timer = QTimer(self)
         self._flush_timer.setInterval(CONSOLE_FLUSH_INTERVAL_MS)
-        self._flush_timer.timeout.connect(self.on_flush)
+        self._flush_timer.timeout.connect(self.flush)
         self._flush_timer.start()
 
     def clear(self) -> None:
@@ -35,7 +34,6 @@ class ConsoleWidget(QObject):
         self._editor.clear()
 
     def set_line_limit_enabled(self, enabled: bool) -> None:
-        self._line_limit_enabled = enabled
         maximum_blocks = MAX_CONSOLE_BLOCKS if enabled else 0
         self._editor.document().setMaximumBlockCount(maximum_blocks)
 
@@ -56,13 +54,13 @@ class ConsoleWidget(QObject):
             return
 
         if self._pending_text and self._pending_text[-1][1] == color:
-            previous_text, previous_color = self._pending_text[-1]
-            self._pending_text[-1] = (previous_text + text, previous_color)
+            fragments, _ = self._pending_text[-1]
+            fragments.append(text)
         else:
-            self._pending_text.append((text, color))
+            self._pending_text.append(([text], color))
 
     @Slot()
-    def on_flush(self) -> None:
+    def flush(self) -> None:
         if not self._pending_text:
             return
 
@@ -76,7 +74,8 @@ class ConsoleWidget(QObject):
         cursor = QTextCursor(self._editor.document())
         cursor.movePosition(QTextCursor.MoveOperation.End)
         cursor.beginEditBlock()
-        for text, color in pending_text:
+        for fragments, color in pending_text:
+            text = "".join(fragments)
             text_format = QTextCharFormat()
             if color is not None:
                 text_format.setForeground(color)

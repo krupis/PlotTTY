@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
         self.plot.clear_values()
         self.console.append_status(f"[loading plot data from {Path(path).name}]\n")
         self.statusBar().showMessage(f"Loading plot data from {Path(path).name}...")
-        self.console.on_flush()
+        self.console.flush()
         loading_dialog = LoadingDialog(f"Loading {Path(path).name}", self)
         loading_dialog.start()
 
@@ -269,7 +269,7 @@ class MainWindow(QMainWindow):
         self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
 
     def closeEvent(self, event) -> None:
-        self.console.on_flush()
+        self.console.flush()
         self.session.disconnect_serial()
         super().closeEvent(event)
 
