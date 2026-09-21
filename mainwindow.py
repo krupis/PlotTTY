@@ -21,7 +21,8 @@ from ui_form import Ui_MainWindow
 
 from modules.controllers.profile_controller import ProfileController
 from modules.controllers.serial_session import SerialSession
-from modules.core.models import CapturedValue, ExtractionRule
+from modules.core.extraction import default_rules
+from modules.core.models import CapturedValue
 from modules.core.rule_suggestions import suggest_rules
 from modules.core.serial_log import parse_plot_log_line
 from modules.core.ui_latency import EventLoopLatencyMonitor
@@ -67,9 +68,7 @@ class MainWindow(QMainWindow):
 
         self._configure_console()
         self._connect_signals()
-        self._seed_default_rules()
-        self._latency_monitor: EventLoopLatencyMonitor | None = None
-        self._latency_label: QLabel | None = None
+        self.rules_table.set_rules(default_rules())
         self._start_latency_monitor()
         self.on_connected_changed(False)
 
@@ -79,16 +78,16 @@ class MainWindow(QMainWindow):
         self.ui.SendCommandTextEdit.installEventFilter(self)
 
     def _connect_signals(self) -> None:
-        self.ui.ConnectButton.clicked.connect(self.on_toggle_serial_connection)
+        self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
         self.ui.pushButton.clicked.connect(self.on_open_serial_settings)
         self.ui.ClearConsoleButton.clicked.connect(self.on_clear_console_and_plot)
-        self.ui.AddRuleButton.clicked.connect(self.on_add_rule)
-        self.ui.RemoveRuleButton.clicked.connect(self.on_remove_selected_rules)
-        self.ui.GenerateRulesButton.clicked.connect(self.on_generate_rules_from_sample)
+        self.ui.AddRuleButton.clicked.connect(self.rules_table.add_rule)
+        self.ui.RemoveRuleButton.clicked.connect(self.rules_table.remove_selected_rules)
+        self.ui.GenerateRulesButton.clicked.connect(self.on_generate_rules)
         self.rules_table.rulesChanged.connect(self.on_rules_changed)
         self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
         self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
-        self.ui.actionLoad_log.triggered.connect(self.on_load_plot_data)
+        self.ui.actionLoad_log.triggered.connect(self.on_load_log)
         self.session.connectedChanged.connect(self.on_connected_changed)
         self.session.receivedText.connect(self.console.append_received)
         self.session.sentText.connect(self.console.append_sent)
@@ -104,13 +103,6 @@ class MainWindow(QMainWindow):
         self._latency_monitor = EventLoopLatencyMonitor(self)
         self._latency_monitor.summaryChanged.connect(self._latency_label.setText)
         self._latency_monitor.start()
-
-    def _seed_default_rules(self) -> None:
-        self.set_rules(
-            [
-                ExtractionRule(label="Auto key/value", mode="auto_key_value"),
-            ]
-        )
 
     @Slot()
     def on_rules_changed(self) -> None:
@@ -128,7 +120,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Open Profile Failed", str(exc))
             return
 
-        self.set_rules(profile.rules or [ExtractionRule(label="Auto key/value", mode="auto_key_value")])
+        self.rules_table.set_rules(profile.rules or default_rules())
         self.statusBar().showMessage(f"Loaded {self.profile.profile_name}")
 
     @Slot()
@@ -152,7 +144,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Saved {self.profile.profile_name}")
 
     @Slot()
-    def on_load_plot_data(self) -> None:
+    def on_load_log(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(
             self,
             "Load Plot Data",
@@ -176,26 +168,26 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(message)
 
         try:
-            captured_values, row_count = _read_plot_csv(path, update_load_progress)
+            captured_values = _read_plot_csv(path, update_load_progress)
             loading_dialog.set_message("Rendering plot...")
             self.plot.append_values(captured_values)
             self.plot.show_all_data()
         except Exception as exc:
-            loading_dialog.close()
             QMessageBox.warning(self, "Load Plot Data Failed", str(exc))
             return
+        finally:
+            loading_dialog.close()
 
-        loading_dialog.close()
-        self.statusBar().showMessage(f"Loaded plot data {Path(path).name}: {row_count:,} rows")
+        self.statusBar().showMessage(f"Loaded plot data {Path(path).name}: {len(captured_values):,} rows")
 
     @Slot()
-    def on_generate_rules_from_sample(self) -> None:
+    def on_generate_rules(self) -> None:
         rules = suggest_rules(self.ui.SampleOutputTextEdit.toPlainText())
         if not rules:
             self.statusBar().showMessage("No numeric values found in sample output")
             return
 
-        self.set_rules(rules)
+        self.rules_table.set_rules(rules)
         self.statusBar().showMessage(f"Generated {len(rules)} rule(s) from sample output")
 
     @Slot()
@@ -210,18 +202,7 @@ class MainWindow(QMainWindow):
         self._update_port_status_label(False)
 
     @Slot()
-    def on_add_rule(self) -> None:
-        self.rules_table.add_rule()
-
-    @Slot()
-    def on_remove_selected_rules(self) -> None:
-        self.rules_table.remove_selected_rules()
-
-    def set_rules(self, rules: list[ExtractionRule]) -> None:
-        self.rules_table.set_rules(rules)
-
-    @Slot()
-    def on_toggle_serial_connection(self) -> None:
+    def on_toggle_connection(self) -> None:
         if self.session.is_connected:
             self.session.disconnect_serial()
         else:
@@ -299,9 +280,8 @@ class MainWindow(QMainWindow):
 def _read_plot_csv(
     path: str,
     progress_callback: Callable[[int], None] | None = None,
-) -> tuple[list[CapturedValue], int]:
+) -> list[CapturedValue]:
     captured_values = []
-    row_count = 0
     with Path(path).open("r", encoding="utf-8", errors="replace", newline="") as file:
         for line in file:
             captured = parse_plot_log_line(line.rstrip("\r\n"))
@@ -309,10 +289,10 @@ def _read_plot_csv(
                 continue
 
             captured_values.append(captured)
-            row_count += 1
+            row_count = len(captured_values)
             if progress_callback is not None and row_count % LOAD_PROGRESS_UPDATE_ROWS == 0:
                 progress_callback(row_count)
-    return captured_values, row_count
+    return captured_values
 
 
 if __name__ == "__main__":
