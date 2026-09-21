@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
 from .models import CapturedValue
+
+
+LOAD_PROGRESS_UPDATE_ROWS = 10_000
+
+
+def _create_log_path(log_dir: Path, port: str, baudrate: int, suffix: str) -> Path:
+    """Create the log directory and build a filename safe for the port name."""
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_port = "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in port)
+    return log_dir / f"serial_{safe_port}_{baudrate}_{timestamp}_{suffix}"
 
 
 class SerialSessionLog:
@@ -18,10 +30,7 @@ class SerialSessionLog:
 
     def start(self, port: str, baudrate: int) -> Path:
         self.close()
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_port = "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in port)
-        self.path = self.log_dir / f"serial_{safe_port}_{baudrate}_{timestamp}_console.log"
+        self.path = _create_log_path(self.log_dir, port, baudrate, "console.log")
         self._file = self.path.open("w", encoding="utf-8", newline="\n")
         return self.path
 
@@ -65,10 +74,7 @@ class PlotSessionLog:
 
     def start(self, port: str, baudrate: int) -> Path:
         self.close()
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_port = "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in port)
-        self.path = self.log_dir / f"serial_{safe_port}_{baudrate}_{timestamp}_plot.csv"
+        self.path = _create_log_path(self.log_dir, port, baudrate, "plot.csv")
         self._file = self.path.open("w", encoding="utf-8", newline="")
         self._writer = csv.writer(self._file)
         self._writer.writerow(("timestamp", "label", "value", "unit", "raw_text"))
@@ -89,17 +95,28 @@ class PlotSessionLog:
         for value in values:
             self._writer.writerow((value.timestamp, value.label, value.value, value.unit, value.raw_text))
 
-    def flush(self) -> None:
-        if self._file is not None:
-            self._file.flush()
 
 
-def parse_plot_log_line(line: str) -> CapturedValue | None:
-    try:
-        row = next(csv.reader([line]))
-    except csv.Error:
-        return None
+def read_plot_csv(
+    path: str | Path,
+    progress_callback: Callable[[int], None] | None = None,
+) -> list[CapturedValue]:
+    """Load CSV records, including quoted fields containing embedded newlines."""
+    captured_values = []
+    with Path(path).open("r", encoding="utf-8", errors="replace", newline="") as file:
+        for row in csv.reader(file):
+            captured = _parse_plot_row(row)
+            if captured is None:
+                continue
 
+            captured_values.append(captured)
+            row_count = len(captured_values)
+            if progress_callback is not None and row_count % LOAD_PROGRESS_UPDATE_ROWS == 0:
+                progress_callback(row_count)
+    return captured_values
+
+
+def _parse_plot_row(row: list[str]) -> CapturedValue | None:
     if not row or row[0] == "timestamp" or len(row) < 3:
         return None
 

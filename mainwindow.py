@@ -1,6 +1,5 @@
 # This Python file uses the following encoding: utf-8
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtGui import QIcon
@@ -22,9 +21,8 @@ from ui_form import Ui_MainWindow
 from modules.controllers.profile_controller import ProfileController
 from modules.controllers.serial_session import SerialSession
 from modules.core.extraction import default_rules
-from modules.core.models import CapturedValue
 from modules.core.rule_suggestions import suggest_rules
-from modules.core.serial_log import parse_plot_log_line
+from modules.core.serial_log import read_plot_csv
 from modules.core.ui_latency import EventLoopLatencyMonitor
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.loading_dialog import LoadingDialog
@@ -38,7 +36,6 @@ APP_NAME = "PlotTTY"
 APP_VERSION = "1.0.0"
 APP_DISPLAY_NAME = f"{APP_NAME} {APP_VERSION}"
 APP_ICON_RESOURCE = ":/icons/Plottty.png"
-LOAD_PROGRESS_UPDATE_ROWS = 10_000
 
 
 def apply_application_style(app: QApplication) -> None:
@@ -168,7 +165,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(message)
 
         try:
-            captured_values = _read_plot_csv(path, update_load_progress)
+            captured_values = read_plot_csv(path, update_load_progress)
             loading_dialog.set_message("Rendering plot...")
             self.plot.append_values(captured_values)
             self.plot.show_all_data()
@@ -275,24 +272,6 @@ class MainWindow(QMainWindow):
         self.console.on_flush()
         self.session.disconnect_serial()
         super().closeEvent(event)
-
-
-def _read_plot_csv(
-    path: str,
-    progress_callback: Callable[[int], None] | None = None,
-) -> list[CapturedValue]:
-    captured_values = []
-    with Path(path).open("r", encoding="utf-8", errors="replace", newline="") as file:
-        for line in file:
-            captured = parse_plot_log_line(line.rstrip("\r\n"))
-            if captured is None:
-                continue
-
-            captured_values.append(captured)
-            row_count = len(captured_values)
-            if progress_callback is not None and row_count % LOAD_PROGRESS_UPDATE_ROWS == 0:
-                progress_callback(row_count)
-    return captured_values
 
 
 if __name__ == "__main__":
