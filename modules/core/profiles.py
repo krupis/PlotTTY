@@ -26,15 +26,16 @@ def save_profile(profile: AppProfile, path: str | Path) -> None:
 
 
 def profile_from_dict(data: dict[str, Any]) -> AppProfile:
-    rules = [ExtractionRule(**_rule_from_dict(item)) for item in data.get("rules", [])]
+    rules = [_rule_from_dict(item) for item in data.get("rules", [])]
     return AppProfile(
         name=data.get("name", "Untitled Profile"),
         rules=rules,
     )
 
 
-def _rule_from_dict(data: dict[str, Any]) -> dict[str, Any]:
+def _rule_from_dict(data: dict[str, Any]) -> ExtractionRule:
     rule = dict(data)
-    if "pattern" in rule and "extra_setting" not in rule:
-        rule["extra_setting"] = rule.pop("pattern")
-    return rule
+    if "pattern" in rule:
+        pattern = rule.pop("pattern")
+        rule.setdefault("extra_setting", pattern)
+    return ExtractionRule(**rule)
