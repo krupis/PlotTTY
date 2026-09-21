@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
             return
 
         settings = dialog.selected_settings()
-        self.session.set_settings(settings)
+        self.session.settings = settings
         self.console.set_line_limit_enabled(settings.console_line_limit)
         self._update_port_status_label(False)
 

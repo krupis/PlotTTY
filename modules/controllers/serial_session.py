@@ -41,7 +41,7 @@ class SerialSession(QObject):
 
         self._receive_rate_timer = QTimer(self)
         self._receive_rate_timer.setInterval(RECEIVE_RATE_REFRESH_INTERVAL_MS)
-        self._receive_rate_timer.timeout.connect(self.on_refresh_receive_rate)
+        self._receive_rate_timer.timeout.connect(self.update_receive_rate)
         self._receive_rate_timer.start()
 
     @property
@@ -52,51 +52,57 @@ class SerialSession(QObject):
     def log_dir(self) -> Path:
         return self._serial_log.log_dir
 
-    def set_settings(self, settings: SerialSettings) -> None:
-        self.settings = settings
-
     def set_rules(self, rules: list[ExtractionRule]) -> None:
         self._engine = ExtractionEngine(rules)
 
     def connect_serial(self) -> None:
+        if self.is_connected:
+            return
         if not self.settings.port:
             raise RuntimeError("Use the Settings button and choose a serial port first.")
 
-        try:
-            self._transport = SerialTransport(self.settings, self)
-            self._line_decoder = LineDecoder(self.settings.encoding)
-            self._transport.bytesReceived.connect(self.on_received_data)
-            self._transport.errorReceived.connect(self.on_serial_error)
-            self._transport.open()
-        except Exception:
-            self._transport = None
-            raise
-
-        self.reset_receive_rate()
-        self.connectedChanged.emit(True)
+        transport = SerialTransport(self.settings, self)
         message = f"[connected to {self.settings.port} at {self.settings.baudrate} baud]"
-        if self.settings.log_to_file:
-            log_path = self._serial_log.start(self.settings.port, self.settings.baudrate)
-            plot_log_path = self._plot_log.start(self.settings.port, self.settings.baudrate)
-            self._serial_log.write_status(message)
-            self.statusChanged.emit(f"Logging to {log_path} and {plot_log_path}")
-        else:
+        try:
+            self._line_decoder = LineDecoder(self.settings.encoding)
+            transport.open()
+            if self.settings.log_to_file:
+                log_path = self._serial_log.start(self.settings.port, self.settings.baudrate)
+                plot_log_path = self._plot_log.start(self.settings.port, self.settings.baudrate)
+                self._serial_log.write_status(message)
+                status = f"Logging to {log_path} and {plot_log_path}"
+            else:
+                status = "File logging disabled"
+        except Exception:
+            transport.close()
+            transport.deleteLater()
             self._serial_log.close()
             self._plot_log.close()
-            self.statusChanged.emit("File logging disabled")
+            raise
+
+        self._transport = transport
+        transport.bytesReceived.connect(self.on_receive)
+        transport.errorReceived.connect(self.on_serial_error)
+        self.reset_receive_rate()
+        self.connectedChanged.emit(True)
+        self.statusChanged.emit(status)
         self.statusText.emit(f"{message}\n")
 
     def disconnect_serial(self) -> None:
         was_connected = self.is_connected
         if self._transport:
+            self._transport.blockSignals(True)
             self._transport.close()
+            self._transport.deleteLater()
             self._transport = None
 
         self.connectedChanged.emit(False)
-        if was_connected:
-            if self.settings.log_to_file:
-                self._serial_log.write_status("[disconnected]")
-            self.statusText.emit("[disconnected]\n")
+        try:
+            if was_connected:
+                if self.settings.log_to_file:
+                    self._serial_log.write_status("[disconnected]")
+                self.statusText.emit("[disconnected]\n")
+        finally:
             self._serial_log.close()
             self._plot_log.close()
 
@@ -114,48 +120,38 @@ class SerialSession(QObject):
         self.receiveRateChanged.emit(0.0)
 
     @Slot(bytes, float)
-    def on_received_data(self, data: bytes, received_at: float | None = None) -> None:
-        self._record_received_bytes(len(data))
+    def on_receive(self, data: bytes, received_at: float | None = None) -> None:
+        if not data:
+            return
+        self._receive_rate_samples.append((monotonic(), len(data)))
         if self.settings.log_to_file:
             self._serial_log.write_received(data, self._line_decoder.encoding)
+        self.receivedText.emit(data.decode(self._line_decoder.encoding, errors="replace"))
         if self.settings.raw_capture_mode:
             return
 
-        self.receivedText.emit(data.decode(self._line_decoder.encoding, errors="replace"))
-        all_captured_values: list[CapturedValue] = []
+        captured_values: list[CapturedValue] = []
         for line in self._line_decoder.feed(data):
-            captured_values = self._engine.extract(line, timestamp=received_at)
-            if captured_values:
-                if self.settings.log_to_file:
-                    self._plot_log.write_values(captured_values)
-                all_captured_values.extend(captured_values)
+            captured_values.extend(self._engine.extract(line, timestamp=received_at))
 
-        if all_captured_values:
-            self.valuesCaptured.emit(all_captured_values)
+        if captured_values:
+            if self.settings.log_to_file:
+                self._plot_log.write_values(captured_values)
+            self.valuesCaptured.emit(captured_values)
 
     @Slot(str)
     def on_serial_error(self, message: str) -> None:
-        if self.is_connected:
+        if self._transport is not None:
             self.disconnect_serial()
         self.errorOccurred.emit(message)
 
     @Slot()
-    def on_refresh_receive_rate(self) -> None:
+    def update_receive_rate(self) -> None:
         now = monotonic()
         cutoff = now - RECEIVE_RATE_WINDOW_SECONDS
         while self._receive_rate_samples and self._receive_rate_samples[0][0] < cutoff:
             self._receive_rate_samples.popleft()
 
-        if not self._receive_rate_samples:
-            bytes_per_second = 0.0
-        else:
-            byte_count = sum(byte_count for _timestamp, byte_count in self._receive_rate_samples)
-            bytes_per_second = byte_count / RECEIVE_RATE_WINDOW_SECONDS
-
+        byte_count = sum(byte_count for _timestamp, byte_count in self._receive_rate_samples)
+        bytes_per_second = byte_count / RECEIVE_RATE_WINDOW_SECONDS
         self.receiveRateChanged.emit(bytes_per_second)
-
-    def _record_received_bytes(self, byte_count: int) -> None:
-        if byte_count <= 0:
-            return
-
-        self._receive_rate_samples.append((monotonic(), byte_count))
