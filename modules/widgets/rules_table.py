@@ -49,7 +49,7 @@ class RulesTable(QObject):
         self._updating = False
         self._configure_table()
         self._table.setItemDelegate(RuleCellDelegate(self._table))
-        self._update_method_column_visibility()
+        self._update_columns()
         self._table.itemChanged.connect(self.on_rule_item_changed)
 
     def add_rule(self, rule: ExtractionRule | None = None) -> None:
@@ -61,7 +61,7 @@ class RulesTable(QObject):
             self._set_rule_row(row, rule)
         finally:
             self._updating = False
-        self._update_method_column_visibility()
+        self._update_columns()
         self.rulesChanged.emit()
 
     def remove_selected_rules(self) -> None:
@@ -73,20 +73,19 @@ class RulesTable(QObject):
             self._table.removeRow(row)
 
         if rows:
-            self._update_method_column_visibility()
+            self._update_columns()
             self.rulesChanged.emit()
 
     def set_rules(self, rules: list[ExtractionRule]) -> None:
         self._updating = True
         try:
             self._table.setRowCount(0)
-            for rule in rules:
-                row = self._table.rowCount()
-                self._table.insertRow(row)
+            self._table.setRowCount(len(rules))
+            for row, rule in enumerate(rules):
                 self._set_rule_row(row, rule)
         finally:
             self._updating = False
-        self._update_method_column_visibility()
+        self._update_columns()
         self.rulesChanged.emit()
 
     def rules(self) -> list[ExtractionRule]:
@@ -95,12 +94,13 @@ class RulesTable(QObject):
             mode = self._rule_mode(row)
             rules.append(
                 ExtractionRule(
-                    enabled=self._rule_checked(row, 0),
-                    sample_counter=self._rule_checked(row, 1),
-                    label=self._rule_text(row, 2).strip() or "value",
+                    enabled=self._is_checked(row, 0),
+                    sample_counter=self._is_checked(row, 1),
+                    label=self._cell_text(row, 2).strip() or "value",
                     mode=mode,
                     extra_setting=self._extra_setting_from_row(row, mode),
                     delimiter=self._delimiter_from_row(row, mode),
+                    unit=self._table.item(row, 2).data(Qt.ItemDataRole.UserRole) or "",
                 )
             )
         return rules
@@ -119,7 +119,7 @@ class RulesTable(QObject):
             self._updating = True
             try:
                 self._update_method_cells(self._row_for_widget(combo))
-                self._update_method_column_visibility()
+                self._update_columns()
             finally:
                 self._updating = was_updating
         if not self._updating:
@@ -141,7 +141,10 @@ class RulesTable(QObject):
     def _set_rule_row(self, row: int, rule: ExtractionRule) -> None:
         self._table.setItem(row, 0, _check_item(rule.enabled, COLUMN_TOOLTIPS[0]))
         self._table.setItem(row, 1, _check_item(rule.sample_counter, COLUMN_TOOLTIPS[1]))
-        self._table.setItem(row, 2, _editable_text_item(rule.label, COLUMN_TOOLTIPS[2]))
+        label_item = _editable_text_item(rule.label, COLUMN_TOOLTIPS[2])
+        # Keep the unit with its row even though the table has no unit column.
+        label_item.setData(Qt.ItemDataRole.UserRole, rule.unit)
+        self._table.setItem(row, 2, label_item)
         self._table.setCellWidget(row, 3, self._rule_mode_combo(rule.mode))
         self._table.setItem(row, 4, _editable_text_item(self._extra_text_for_rule(rule), COLUMN_TOOLTIPS[4]))
         self._table.setItem(row, 5, _editable_text_item(self._position_text_for_rule(rule), COLUMN_TOOLTIPS[5]))
@@ -163,27 +166,27 @@ class RulesTable(QObject):
             return combo.currentData()
         return "auto_key_value"
 
-    def _rule_text(self, row: int, column: int) -> str:
+    def _cell_text(self, row: int, column: int) -> str:
         item = self._table.item(row, column)
         if item is None:
             return ""
         return item.text()
 
-    def _rule_checked(self, row: int, column: int) -> bool:
+    def _is_checked(self, row: int, column: int) -> bool:
         item = self._table.item(row, column)
         return item is not None and item.checkState() == Qt.CheckState.Checked
 
     def _extra_setting_from_row(self, row: int, mode: ExtractionMode) -> str:
         if mode == "delimiter_column":
-            return self._rule_text(row, 5).strip()
+            return self._cell_text(row, 5).strip()
         if mode == "regex":
-            return self._rule_text(row, 4).strip()
+            return self._cell_text(row, 4).strip()
         return ""
 
     def _delimiter_from_row(self, row: int, mode: ExtractionMode) -> str:
         if mode != "delimiter_column":
             return ","
-        return (self._rule_text(row, 4).strip() or ",").replace(r"\t", "\t")
+        return (self._cell_text(row, 4).strip() or ",").replace(r"\t", "\t")
 
     def _extra_text_for_rule(self, rule: ExtractionRule) -> str:
         if rule.mode == "delimiter_column":
@@ -208,7 +211,7 @@ class RulesTable(QObject):
             return
 
         mode = self._rule_mode(row)
-        self._prepare_method_cell_values(row, mode)
+        self._prepare_cells(row, mode)
         self._set_cell_applicable(
             row,
             PATTERN_DELIMITER_COLUMN,
@@ -222,7 +225,7 @@ class RulesTable(QObject):
             COLUMN_TOOLTIPS[COLUMN_NUMBER_COLUMN],
         )
 
-    def _prepare_method_cell_values(self, row: int, mode: ExtractionMode) -> None:
+    def _prepare_cells(self, row: int, mode: ExtractionMode) -> None:
         setting_item = self._table.item(row, PATTERN_DELIMITER_COLUMN)
         column_item = self._table.item(row, COLUMN_NUMBER_COLUMN)
         if setting_item is None or column_item is None:
@@ -268,7 +271,7 @@ class RulesTable(QObject):
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             item.setToolTip("Not used by the selected find method.")
 
-    def _update_method_column_visibility(self) -> None:
+    def _update_columns(self) -> None:
         modes = [self._rule_mode(row) for row in range(self._table.rowCount())]
         uses_pattern_or_delimiter = any(mode in ("delimiter_column", "regex") for mode in modes)
         uses_column_number = any(mode == "delimiter_column" for mode in modes)
