@@ -1,0 +1,645 @@
+{
+  "current-widget-gl": {
+    "backend": "current-widget-gl",
+    "build_seconds": 20.187667999998666,
+    "rows": [
+      {
+        "mode": "refresh",
+        "raw_samples_per_series": 1000000,
+        "plotted_points_per_series": [
+          400,
+          400,
+          400,
+          400,
+          400
+        ],
+        "median_ms": 11.0375,
+        "p95_ms": 11.869729999999999,
+        "max_ms": 12.5103
+      },
+      {
+        "mode": "pan_zoom",
+        "raw_samples_per_series": 1000000,
+        "plotted_points_per_series": [
+          248,
+          248,
+          248,
+          248,
+          248
+        ],
+        "median_ms": 18.47065,
+        "p95_ms": 19.544815,
+        "max_ms": 19.8585
+      }
+    ],
+    "storage_read_five_series": {
+      "median_ms": 2.8457,
+      "p95_ms": 3.57008,
+      "max_ms": 3.9644
+    },
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      }
+    }
+  },
+  "current-widget": {
+    "backend": "current-widget",
+    "build_seconds": 20.371135500026867,
+    "rows": [
+      {
+        "mode": "refresh",
+        "raw_samples_per_series": 1000000,
+        "plotted_points_per_series": [
+          400,
+          400,
+          400,
+          400,
+          400
+        ],
+        "median_ms": 19.7593,
+        "p95_ms": 20.63374,
+        "max_ms": 21.9651
+      },
+      {
+        "mode": "pan_zoom",
+        "raw_samples_per_series": 1000000,
+        "plotted_points_per_series": [
+          248,
+          248,
+          248,
+          248,
+          248
+        ],
+        "median_ms": 25.838,
+        "p95_ms": 27.050795,
+        "max_ms": 27.9127
+      }
+    ],
+    "storage_read_five_series": {
+      "median_ms": 2.91045,
+      "p95_ms": 3.6644599999999996,
+      "max_ms": 4.04
+    },
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      }
+    }
+  },
+  "matplotlib-blit": {
+    "backend": "matplotlib-blit",
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      },
+      "qt_platform": "windows",
+      "device_pixel_ratio": 1.0,
+      "logical_size": [
+        1000,
+        900
+      ]
+    },
+    "rows": [
+      {
+        "points_per_series": 1000,
+        "mode": "refresh",
+        "median_ms": 10.977,
+        "p95_ms": 11.993170000000001,
+        "max_ms": 13.3627
+      },
+      {
+        "points_per_series": 1000,
+        "mode": "pan_zoom",
+        "median_ms": 153.81615,
+        "p95_ms": 171.291445,
+        "max_ms": 186.1469
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "refresh",
+        "median_ms": 21.72915,
+        "p95_ms": 23.89332,
+        "max_ms": 24.668
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "pan_zoom",
+        "median_ms": 165.9534,
+        "p95_ms": 202.8983,
+        "max_ms": 279.9972
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "refresh",
+        "median_ms": 114.34514999999999,
+        "p95_ms": 118.653305,
+        "max_ms": 171.4617
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "pan_zoom",
+        "median_ms": 242.46585,
+        "p95_ms": 254.94331,
+        "max_ms": 316.9012
+      }
+    ]
+  },
+  "matplotlib": {
+    "backend": "matplotlib",
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      },
+      "qt_platform": "windows",
+      "device_pixel_ratio": 1.0,
+      "logical_size": [
+        1000,
+        900
+      ]
+    },
+    "rows": [
+      {
+        "points_per_series": 1000,
+        "mode": "refresh",
+        "median_ms": 139.31405,
+        "p95_ms": 148.95927,
+        "max_ms": 160.2146
+      },
+      {
+        "points_per_series": 1000,
+        "mode": "pan_zoom",
+        "median_ms": 150.69025,
+        "p95_ms": 168.43257,
+        "max_ms": 296.1909
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "refresh",
+        "median_ms": 154.55034999999998,
+        "p95_ms": 179.43266500000001,
+        "max_ms": 211.5092
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "pan_zoom",
+        "median_ms": 169.40210000000002,
+        "p95_ms": 246.73807,
+        "max_ms": 449.9315
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "refresh",
+        "median_ms": 246.99325,
+        "p95_ms": 266.412935,
+        "max_ms": 513.9983
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "pan_zoom",
+        "median_ms": 255.53494999999998,
+        "p95_ms": 315.24052,
+        "max_ms": 458.3504
+      }
+    ]
+  },
+  "opengl": {
+    "backend": "opengl",
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      },
+      "qt_platform": "windows",
+      "device_pixel_ratio": 1.0,
+      "logical_size": [
+        1000,
+        900
+      ],
+      "gl_renderer": "NVIDIA GeForce GTX 1060 6GB/PCIe/SSE2"
+    },
+    "rows": [
+      {
+        "points_per_series": 1000,
+        "mode": "refresh",
+        "median_ms": 1.3085499999999999,
+        "p95_ms": 2.563395,
+        "max_ms": 3.0603
+      },
+      {
+        "points_per_series": 1000,
+        "mode": "pan_zoom",
+        "median_ms": 1.05545,
+        "p95_ms": 1.7631049999999997,
+        "max_ms": 3.0963
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "refresh",
+        "median_ms": 1.4378000000000002,
+        "p95_ms": 2.26136,
+        "max_ms": 2.8759
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "pan_zoom",
+        "median_ms": 1.8084,
+        "p95_ms": 2.62355,
+        "max_ms": 2.9604
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "refresh",
+        "median_ms": 13.53405,
+        "p95_ms": 15.301565,
+        "max_ms": 18.3159
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "pan_zoom",
+        "median_ms": 13.71335,
+        "p95_ms": 16.999254999999998,
+        "max_ms": 19.4241
+      }
+    ]
+  },
+  "pyqtgraph-gl": {
+    "backend": "pyqtgraph-gl",
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      },
+      "qt_platform": "windows",
+      "device_pixel_ratio": 1.0,
+      "logical_size": [
+        1000,
+        900
+      ]
+    },
+    "rows": [
+      {
+        "points_per_series": 1000,
+        "mode": "refresh",
+        "median_ms": 6.6139,
+        "p95_ms": 7.871225,
+        "max_ms": 9.4274
+      },
+      {
+        "points_per_series": 1000,
+        "mode": "pan_zoom",
+        "median_ms": 12.11005,
+        "p95_ms": 12.899099999999999,
+        "max_ms": 14.1137
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "refresh",
+        "median_ms": 6.9984,
+        "p95_ms": 7.924415,
+        "max_ms": 9.5281
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "pan_zoom",
+        "median_ms": 12.34405,
+        "p95_ms": 12.968605,
+        "max_ms": 13.7744
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "refresh",
+        "median_ms": 11.5032,
+        "p95_ms": 13.753559999999998,
+        "max_ms": 15.3057
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "pan_zoom",
+        "median_ms": 19.76885,
+        "p95_ms": 25.12265,
+        "max_ms": 26.4926
+      }
+    ]
+  },
+  "pyqtgraph": {
+    "backend": "pyqtgraph",
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      },
+      "qt_platform": "windows",
+      "device_pixel_ratio": 1.0,
+      "logical_size": [
+        1000,
+        900
+      ]
+    },
+    "rows": [
+      {
+        "points_per_series": 1000,
+        "mode": "refresh",
+        "median_ms": 13.77975,
+        "p95_ms": 16.36631,
+        "max_ms": 16.9752
+      },
+      {
+        "points_per_series": 1000,
+        "mode": "pan_zoom",
+        "median_ms": 21.317500000000003,
+        "p95_ms": 23.73508,
+        "max_ms": 26.9823
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "refresh",
+        "median_ms": 17.82965,
+        "p95_ms": 20.569125,
+        "max_ms": 24.9345
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "pan_zoom",
+        "median_ms": 26.58165,
+        "p95_ms": 27.092935,
+        "max_ms": 27.9849
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "refresh",
+        "median_ms": 64.8884,
+        "p95_ms": 66.08161,
+        "max_ms": 69.2513
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "pan_zoom",
+        "median_ms": 71.72579999999999,
+        "p95_ms": 74.47409,
+        "max_ms": 78.2758
+      }
+    ]
+  },
+  "qgraphicsview": {
+    "backend": "qgraphicsview",
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      },
+      "qt_platform": "windows",
+      "device_pixel_ratio": 1.0,
+      "logical_size": [
+        1000,
+        900
+      ]
+    },
+    "rows": [
+      {
+        "points_per_series": 1000,
+        "mode": "refresh",
+        "median_ms": 2.22515,
+        "p95_ms": 3.6645,
+        "max_ms": 4.4238
+      },
+      {
+        "points_per_series": 1000,
+        "mode": "pan_zoom",
+        "median_ms": 2.1271500000000003,
+        "p95_ms": 3.2804399999999996,
+        "max_ms": 4.3606
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "refresh",
+        "median_ms": 5.01895,
+        "p95_ms": 6.148985,
+        "max_ms": 6.6895
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "pan_zoom",
+        "median_ms": 5.07405,
+        "p95_ms": 6.583345,
+        "max_ms": 8.0094
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "refresh",
+        "median_ms": 32.203599999999994,
+        "p95_ms": 34.59365,
+        "max_ms": 35.8257
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "pan_zoom",
+        "median_ms": 31.8557,
+        "p95_ms": 34.000025,
+        "max_ms": 36.1552
+      }
+    ]
+  },
+  "qpainter": {
+    "backend": "qpainter",
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      },
+      "qt_platform": "windows",
+      "device_pixel_ratio": 1.0,
+      "logical_size": [
+        1000,
+        900
+      ]
+    },
+    "rows": [
+      {
+        "points_per_series": 1000,
+        "mode": "refresh",
+        "median_ms": 2.3797,
+        "p95_ms": 4.02778,
+        "max_ms": 4.327
+      },
+      {
+        "points_per_series": 1000,
+        "mode": "pan_zoom",
+        "median_ms": 2.1332,
+        "p95_ms": 3.4257099999999996,
+        "max_ms": 3.6138
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "refresh",
+        "median_ms": 5.8607,
+        "p95_ms": 7.3045,
+        "max_ms": 8.4618
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "pan_zoom",
+        "median_ms": 5.6318,
+        "p95_ms": 6.90999,
+        "max_ms": 7.6801
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "refresh",
+        "median_ms": 32.3314,
+        "p95_ms": 33.67497,
+        "max_ms": 38.5363
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "pan_zoom",
+        "median_ms": 31.547150000000002,
+        "p95_ms": 33.182775,
+        "max_ms": 35.3158
+      }
+    ]
+  },
+  "vispy": {
+    "backend": "vispy",
+    "environment": {
+      "python": "3.13.3 (tags/v3.13.3:6280bb5, Apr  8 2025, 14:47:33) [MSC v.1943 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "qt": "6.11.1",
+      "packages": {
+        "PySide6": "6.11.1",
+        "pyqtgraph": "0.14.0",
+        "numpy": "2.5.1",
+        "matplotlib": "3.11.2",
+        "vispy": "0.17.0",
+        "PyOpenGL": "3.1.10"
+      },
+      "qt_platform": "windows",
+      "device_pixel_ratio": 1.0,
+      "logical_size": [
+        1000,
+        900
+      ]
+    },
+    "rows": [
+      {
+        "points_per_series": 1000,
+        "mode": "refresh",
+        "median_ms": 30.1284,
+        "p95_ms": 32.371375,
+        "max_ms": 37.5181
+      },
+      {
+        "points_per_series": 1000,
+        "mode": "pan_zoom",
+        "median_ms": 59.60565,
+        "p95_ms": 63.35392,
+        "max_ms": 67.7339
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "refresh",
+        "median_ms": 33.7235,
+        "p95_ms": 36.121235,
+        "max_ms": 37.6804
+      },
+      {
+        "points_per_series": 10000,
+        "mode": "pan_zoom",
+        "median_ms": 58.959450000000004,
+        "p95_ms": 63.013864999999996,
+        "max_ms": 66.5887
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "refresh",
+        "median_ms": 38.853049999999996,
+        "p95_ms": 41.383575,
+        "max_ms": 43.218
+      },
+      {
+        "points_per_series": 100000,
+        "mode": "pan_zoom",
+        "median_ms": 64.9511,
+        "p95_ms": 69.97161,
+        "max_ms": 75.508
+      }
+    ]
+  }
+}
