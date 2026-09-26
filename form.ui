@@ -286,7 +286,7 @@
                       <string>Draw this rule as a plotted Y value.</string>
                      </property>
                      <property name="text">
-                      <string>Plot Y</string>
+                      <string>Enable</string>
                      </property>
                     </column>
                     <column>
@@ -294,7 +294,7 @@
                       <string>Use this rule's value as the X axis timestamp/counter for the other plotted rules.</string>
                      </property>
                      <property name="text">
-                      <string>Use as X</string>
+                      <string>Use as X reference</string>
                      </property>
                     </column>
                     <column>
@@ -302,7 +302,7 @@
                       <string>Name used for the plotted series. Named values can override this with names from the input line.</string>
                      </property>
                      <property name="text">
-                      <string>Series label</string>
+                      <string>Label</string>
                      </property>
                     </column>
                     <column>

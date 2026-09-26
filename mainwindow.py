@@ -2,7 +2,7 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QColor, QIcon, QPalette
 from PySide6.QtCore import QEvent, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
@@ -26,6 +26,7 @@ from modules.core.serial_log import read_plot_csv
 from modules.core.ui_latency import EventLoopLatencyMonitor
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.loading_dialog import LoadingDialog
+from modules.widgets.application_style import ApplicationStyle
 from modules.widgets.rules_table import RulesTable
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 import resources_rc  # noqa: F401
@@ -39,6 +40,29 @@ APP_ICON_RESOURCE = ":/icons/Plottty.png"
 
 
 def apply_application_style(app: QApplication) -> None:
+    # Give Qt-drawn controls a palette that matches the dark stylesheet.
+    # Fusion keeps their indicators consistent across Windows themes.
+    app.setStyle(ApplicationStyle())
+    palette = app.palette()
+    for role, color in {
+        QPalette.ColorRole.Window: "#252b32",
+        QPalette.ColorRole.WindowText: "#dce3ea",
+        QPalette.ColorRole.Base: "#303b47",
+        QPalette.ColorRole.AlternateBase: "#262c33",
+        QPalette.ColorRole.Text: "#f0f4f8",
+        QPalette.ColorRole.Button: "#3a444f",
+        QPalette.ColorRole.ButtonText: "#f0f4f8",
+        QPalette.ColorRole.Light: "#a6b5c5",
+        QPalette.ColorRole.Mid: "#8091a3",
+        QPalette.ColorRole.Dark: "#687b8e",
+        QPalette.ColorRole.Highlight: "#2e8b57",
+        QPalette.ColorRole.HighlightedText: "#ffffff",
+    }.items():
+        palette.setColor(role, QColor(color))
+    for role in (QPalette.ColorRole.Text, QPalette.ColorRole.WindowText, QPalette.ColorRole.ButtonText):
+        palette.setColor(QPalette.ColorGroup.Disabled, role, QColor("#858b93"))
+    app.setPalette(palette)
+
     try:
         stylesheet = STYLESHEET_PATH.read_text(encoding="utf-8")
     except OSError:

@@ -3,7 +3,7 @@ name = "plottty"
 version = "1.0.0"
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE", "licenses/*.txt"]
+license-files = ["LICENSE"]
 
 [tool.pyside6-project]
 files = [
@@ -30,6 +30,7 @@ files = [
     "modules/core/serial_transport.py",
     "modules/core/ui_latency.py",
     "modules/widgets/__init__.py",
+    "modules/widgets/application_style.py",
     "modules/widgets/console_widget.py",
     "modules/widgets/plot_widget.py",
     "modules/widgets/rules_table.py",

@@ -187,7 +187,14 @@ QSpinBox:disabled {
     color: #858b93;
 }
 
-QComboBox::drop-down,
+QComboBox {
+    padding-right: 24px;
+}
+
+QComboBox:hover {
+    border-color: #8091a3;
+}
+
 QSpinBox::up-button,
 QSpinBox::down-button {
     background-color: #3a4048;
@@ -195,12 +202,6 @@ QSpinBox::down-button {
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
     width: 22px;
-}
-
-QComboBox::down-arrow {
-    image: url(":/icons/arrow-down.svg");
-    width: 12px;
-    height: 12px;
 }
 
 QComboBox QAbstractItemView {
@@ -214,16 +215,7 @@ QComboBox QAbstractItemView {
 QTableWidget QComboBox {
     margin: 2px 3px;
     min-height: 0;
-    padding: 0 6px;
-}
-
-QTableWidget QComboBox::drop-down {
-    width: 20px;
-}
-
-QTableWidget QComboBox::down-arrow {
-    width: 10px;
-    height: 10px;
+    padding: 0 24px 0 6px;
 }
 
 QTabWidget::pane {
@@ -262,23 +254,6 @@ QTableWidget {
     color: #e0e0e0;
     font-size: 9pt;
     gridline-color: #46535d;
-}
-
-QTableWidget::indicator {
-    background-color: #444a53;
-    border: 1px solid #68727f;
-    height: 16px;
-    width: 16px;
-}
-
-QTableWidget::indicator:unchecked {
-    image: url(":/icons/x.svg");
-}
-
-QTableWidget::indicator:checked {
-    background-color: #3cb371;
-    border-color: #2e8b57;
-    image: url(":/icons/check.svg");
 }
 
 QHeaderView::section {

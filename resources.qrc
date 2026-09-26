@@ -1,8 +1,5 @@
 <RCC>
   <qresource prefix="/">
-    <file>icons/arrow-down.svg</file>
-    <file>icons/check.svg</file>
     <file>icons/Plottty.png</file>
-    <file>icons/x.svg</file>
   </qresource>
 </RCC>

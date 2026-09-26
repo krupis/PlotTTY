@@ -39,16 +39,10 @@ Optional benchmarks also use [Matplotlib](https://matplotlib.org/stable/project/
 
 ### Artwork attribution
 
-`icons/arrow-down.svg`, `icons/check.svg`, and `icons/x.svg` use the regular
-[Phosphor Icons](https://github.com/phosphor-icons/core) paths, with customized
-size and fill color. Copyright (c) 2023 Phosphor Icons. The full MIT license is
-in [licenses/Phosphor-Icons-MIT.txt](licenses/Phosphor-Icons-MIT.txt). This
-attribution also covers copies embedded in generated Qt resource files.
-
 `icons/Plottty.png` and `icons/Plottty.ico` are the project owner's own artwork.
 
-The loading dialog uses Qt's built-in busy progress bar and requires no external
-animation asset.
+Combo-box arrows, checkbox indicators, and the loading dialog's busy progress bar
+are drawn by Qt and require no external artwork.
 
 ### Executable distributions
 
