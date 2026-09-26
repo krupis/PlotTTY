@@ -1,0 +1,2249 @@
+{
+  "baseline_gl": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\baseline_gl"
+    },
+    "elapsed_seconds": 25.038376299999072,
+    "counts": {
+      "bytes": 2498942,
+      "chunks": 724,
+      "max_chunk_bytes": 7381,
+      "lines": 50048,
+      "values": 300288
+    },
+    "sequence": {
+      "first": 1469177,
+      "last": 1519224,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "bytes_per_second": 99804.47494113636,
+    "lines_per_second": 1998.8516587635859,
+    "latency": {
+      "count": 531,
+      "median_ms": 29.466499996487983,
+      "p95_ms": 48.393899993243394,
+      "p99_ms": 55.25105999695372,
+      "max_ms": 80.69989999785321
+    },
+    "stages": {
+      "read_downsample": {
+        "count": 3648,
+        "median_ms": 0.6520000024465844,
+        "p95_ms": 0.9401450017321618,
+        "p99_ms": 1.1884300014207836,
+        "max_ms": 2.0347000026958995,
+        "total_ms": 2485.446299862815,
+        "exclusive_ms": 2485.446299862815,
+        "exclusive_wall_percent": 9.926547432961566
+      },
+      "curve_update": {
+        "count": 608,
+        "median_ms": 5.89600000239443,
+        "p95_ms": 7.516080001732916,
+        "p99_ms": 8.404704004278747,
+        "max_ms": 9.595800001989119,
+        "total_ms": 3629.4971000388614,
+        "exclusive_ms": 1144.0508001760463,
+        "exclusive_wall_percent": 4.569189257596103
+      },
+      "range_update": {
+        "count": 608,
+        "median_ms": 7.209649997093948,
+        "p95_ms": 8.792000001267297,
+        "p99_ms": 9.809948996771707,
+        "max_ms": 10.857000001124106,
+        "total_ms": 4428.399800024636,
+        "exclusive_ms": 798.9026999857742,
+        "exclusive_wall_percent": 3.190712889740394
+      },
+      "paint": {
+        "count": 9422,
+        "median_ms": 0.06909999501658604,
+        "p95_ms": 13.290775001223665,
+        "p99_ms": 15.054049000827941,
+        "max_ms": 19.24009999493137,
+        "total_ms": 9843.410600238713,
+        "exclusive_ms": 9843.410600238713,
+        "exclusive_wall_percent": 39.31329444968473
+      },
+      "console_log": {
+        "count": 724,
+        "median_ms": 0.09419999696547166,
+        "p95_ms": 0.17651000016485346,
+        "p99_ms": 0.26015599622041896,
+        "max_ms": 0.6243000025278889,
+        "total_ms": 76.19099997828016,
+        "exclusive_ms": 76.19099997828016,
+        "exclusive_wall_percent": 0.30429688836605184
+      },
+      "decode_lines": {
+        "count": 724,
+        "median_ms": 0.0168999977177009,
+        "p95_ms": 0.02948499895865098,
+        "p99_ms": 0.04381600061606149,
+        "max_ms": 0.12730000162264332,
+        "total_ms": 13.602799896034412,
+        "exclusive_ms": 13.602799896034412,
+        "exclusive_wall_percent": 0.05432780358059766
+      },
+      "extract": {
+        "count": 50048,
+        "median_ms": 0.017600003047846258,
+        "p95_ms": 0.030999995942693204,
+        "p99_ms": 0.04890000127488747,
+        "max_ms": 0.8749999979045242,
+        "total_ms": 980.8499997598119,
+        "exclusive_ms": 980.8499997598119,
+        "exclusive_wall_percent": 3.9173866068937073
+      },
+      "csv_log": {
+        "count": 724,
+        "median_ms": 1.3590500020654872,
+        "p95_ms": 1.8387849973805714,
+        "p99_ms": 2.236446001188596,
+        "max_ms": 3.4326999957556836,
+        "total_ms": 1010.355200007325,
+        "exclusive_ms": 1010.355200007325,
+        "exclusive_wall_percent": 4.035226517493318
+      },
+      "append_store": {
+        "count": 724,
+        "median_ms": 1.7062999977497384,
+        "p95_ms": 2.3365799970633816,
+        "p99_ms": 2.8914300002361415,
+        "max_ms": 44.62169999897014,
+        "total_ms": 1337.1936000548885,
+        "exclusive_ms": 1337.1936000548885,
+        "exclusive_wall_percent": 5.340576337831212
+      },
+      "receive_total": {
+        "count": 724,
+        "median_ms": 5.197600003157277,
+        "p95_ms": 6.714139999894543,
+        "p99_ms": 7.741099998020216,
+        "max_ms": 48.71579999598907,
+        "total_ms": 3882.7763000081177,
+        "exclusive_ms": 464.58370031177765,
+        "exclusive_wall_percent": 1.8554865329338261
+      },
+      "console_flush": {
+        "count": 398,
+        "median_ms": 5.2973999991081655,
+        "p95_ms": 7.309079996412038,
+        "p99_ms": 8.322284999812835,
+        "max_ms": 10.702699997636955,
+        "total_ms": 1998.9975999778835,
+        "exclusive_ms": 1998.9975999778835,
+        "exclusive_wall_percent": 7.9837349516068965
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70328,
+      "Value 1": 70328,
+      "Value 2": 70328,
+      "Value 3": 70328,
+      "Value 4": 70328,
+      "Value 5": 70328
+    },
+    "plotted_points": {
+      "Value 0": 276,
+      "Value 1": 276,
+      "Value 2": 543,
+      "Value 3": 547,
+      "Value 4": 541,
+      "Value 5": 537
+    }
+  },
+  "baseline_raster": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "raster",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\baseline_raster"
+    },
+    "elapsed_seconds": 25.020592999993823,
+    "counts": {
+      "bytes": 2497992,
+      "lines": 50029,
+      "chunks": 786,
+      "max_chunk_bytes": 8400,
+      "values": 300174
+    },
+    "sequence": {
+      "first": 1539567,
+      "last": 1589595,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "bytes_per_second": 99837.44190238083,
+    "lines_per_second": 1999.5129611841073,
+    "latency": {
+      "count": 573,
+      "median_ms": 26.559400001133326,
+      "p95_ms": 47.510239995608565,
+      "p99_ms": 54.2889639973873,
+      "max_ms": 81.63860000058776
+    },
+    "stages": {
+      "console_flush": {
+        "count": 397,
+        "median_ms": 5.0137000071117654,
+        "p95_ms": 7.412039996415842,
+        "p99_ms": 8.083515996113428,
+        "max_ms": 11.926299994229339,
+        "total_ms": 2006.3542000207235,
+        "exclusive_ms": 2006.3542000207235,
+        "exclusive_wall_percent": 8.018811544639325
+      },
+      "paint": {
+        "count": 9816,
+        "median_ms": 0.07339999865507707,
+        "p95_ms": 15.258425004503806,
+        "p99_ms": 17.362714999035234,
+        "max_ms": 20.576300004904624,
+        "total_ms": 11759.504500201729,
+        "exclusive_ms": 11759.504500201729,
+        "exclusive_wall_percent": 46.99930373434647
+      },
+      "read_downsample": {
+        "count": 3654,
+        "median_ms": 0.6630999996559694,
+        "p95_ms": 0.9380350024002837,
+        "p99_ms": 1.1533519966906167,
+        "max_ms": 1.7202999952132814,
+        "total_ms": 2520.653199782828,
+        "exclusive_ms": 2520.653199782828,
+        "exclusive_wall_percent": 10.07431438488868
+      },
+      "curve_update": {
+        "count": 609,
+        "median_ms": 6.004899994877633,
+        "p95_ms": 7.637080001586583,
+        "p99_ms": 8.746728000696747,
+        "max_ms": 9.23989999864716,
+        "total_ms": 3708.5856999765383,
+        "exclusive_ms": 1187.9325001937104,
+        "exclusive_wall_percent": 4.747819127204553
+      },
+      "range_update": {
+        "count": 609,
+        "median_ms": 7.286600004590582,
+        "p95_ms": 9.010539999871982,
+        "p99_ms": 10.087619999831075,
+        "max_ms": 10.741500002040993,
+        "total_ms": 4498.243299967726,
+        "exclusive_ms": 789.6575999911875,
+        "exclusive_wall_percent": 3.1560307143455093
+      },
+      "console_log": {
+        "count": 786,
+        "median_ms": 0.08719999823370017,
+        "p95_ms": 0.155625000843429,
+        "p99_ms": 0.22948999940126635,
+        "max_ms": 0.30229999538278207,
+        "total_ms": 76.3945999351563,
+        "exclusive_ms": 76.3945999351563,
+        "exclusive_wall_percent": 0.30532689587003453
+      },
+      "decode_lines": {
+        "count": 786,
+        "median_ms": 0.01599999814061448,
+        "p95_ms": 0.022774998797103763,
+        "p99_ms": 0.03184500128554645,
+        "max_ms": 0.047900000936351717,
+        "total_ms": 13.329799970961176,
+        "exclusive_ms": 13.329799970961176,
+        "exclusive_wall_percent": 0.05327531594061126
+      },
+      "extract": {
+        "count": 50029,
+        "median_ms": 0.01799999881768599,
+        "p95_ms": 0.026299996534362435,
+        "p99_ms": 0.04510000144364312,
+        "max_ms": 1.1530999981914647,
+        "total_ms": 987.5224005372729,
+        "exclusive_ms": 987.5224005372729,
+        "exclusive_wall_percent": 3.9468385123306895
+      },
+      "csv_log": {
+        "count": 786,
+        "median_ms": 1.2463500024750829,
+        "p95_ms": 1.7300249983236426,
+        "p99_ms": 2.1299199968780154,
+        "max_ms": 3.653400002804119,
+        "total_ms": 1001.8605999648571,
+        "exclusive_ms": 1001.8605999648571,
+        "exclusive_wall_percent": 4.004144106277195
+      },
+      "append_store": {
+        "count": 786,
+        "median_ms": 1.551650002511451,
+        "p95_ms": 2.2575250004592817,
+        "p99_ms": 2.910304999750224,
+        "max_ms": 48.53719999664463,
+        "total_ms": 1344.3191000478691,
+        "exclusive_ms": 1344.3191000478691,
+        "exclusive_wall_percent": 5.372850675634271
+      },
+      "receive_total": {
+        "count": 786,
+        "median_ms": 4.771050003910204,
+        "p95_ms": 6.566800000655348,
+        "p99_ms": 7.628309997744508,
+        "max_ms": 52.35050000192132,
+        "total_ms": 3892.1576999491663,
+        "exclusive_ms": 468.73119949304964,
+        "exclusive_wall_percent": 1.8733816560349523
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70279,
+      "Value 1": 70279,
+      "Value 2": 70279,
+      "Value 3": 70279,
+      "Value 4": 70279,
+      "Value 5": 70279
+    },
+    "plotted_points": {
+      "Value 0": 276,
+      "Value 1": 276,
+      "Value 2": 545,
+      "Value 3": 548,
+      "Value 4": 541,
+      "Value 5": 539
+    }
+  },
+  "no_plot": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": true,
+      "no_logging": false,
+      "frame_ms": null,
+      "no_vsync": false,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\no_plot"
+    },
+    "elapsed_seconds": 25.0007626000006,
+    "counts": {
+      "bytes": 2496711,
+      "lines": 50003,
+      "chunks": 22543,
+      "max_chunk_bytes": 5050,
+      "values": 300018
+    },
+    "sequence": {
+      "first": 1609872,
+      "last": 1659874,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "bytes_per_second": 99865.393706028,
+    "lines_per_second": 2000.0589902005152,
+    "latency": {
+      "count": 1560,
+      "median_ms": 0.0,
+      "p95_ms": 2.4595850012701694,
+      "p99_ms": 5.047012997383719,
+      "max_ms": 41.01309999532532
+    },
+    "stages": {
+      "console_log": {
+        "count": 22543,
+        "median_ms": 0.030399998649954796,
+        "p95_ms": 0.06150000190245919,
+        "p99_ms": 0.09071599837625362,
+        "max_ms": 1.5554999990854412,
+        "total_ms": 821.7163001027075,
+        "exclusive_ms": 821.7163001027075,
+        "exclusive_wall_percent": 3.286764940932993
+      },
+      "decode_lines": {
+        "count": 22543,
+        "median_ms": 0.004900000931229442,
+        "p95_ms": 0.008200004231184721,
+        "p99_ms": 0.01979999797185883,
+        "max_ms": 0.1905999961309135,
+        "total_ms": 128.76409953605616,
+        "exclusive_ms": 128.76409953605616,
+        "exclusive_wall_percent": 0.5150406873430856
+      },
+      "extract": {
+        "count": 50003,
+        "median_ms": 0.023100001271814108,
+        "p95_ms": 0.04340000305091962,
+        "p99_ms": 0.062298001430462636,
+        "max_ms": 46.77129999618046,
+        "total_ms": 1388.2027001745882,
+        "exclusive_ms": 1388.2027001745882,
+        "exclusive_wall_percent": 5.552641422924255
+      },
+      "csv_log": {
+        "count": 22543,
+        "median_ms": 0.05499999679159373,
+        "p95_ms": 0.11600000216276385,
+        "p99_ms": 0.2207159998943094,
+        "max_ms": 1.811899994208943,
+        "total_ms": 1175.7860001525842,
+        "exclusive_ms": 1175.7860001525842,
+        "exclusive_wall_percent": 4.703000540281743
+      },
+      "append_store": {
+        "count": 22543,
+        "median_ms": 0.07340000593103468,
+        "p95_ms": 0.12319000015850157,
+        "p99_ms": 0.2772119996370721,
+        "max_ms": 31.135299999732524,
+        "total_ms": 1645.0276996474713,
+        "exclusive_ms": 1645.0276996474713,
+        "exclusive_wall_percent": 6.579910085012494
+      },
+      "receive_total": {
+        "count": 22543,
+        "median_ms": 0.2989999993587844,
+        "p95_ms": 0.4995899987989103,
+        "p99_ms": 0.9166060006828034,
+        "max_ms": 47.11529999622144,
+        "total_ms": 6857.725200155983,
+        "exclusive_ms": 1698.2284005425754,
+        "exclusive_wall_percent": 6.792706397454191
+      },
+      "console_flush": {
+        "count": 400,
+        "median_ms": 4.916549998597475,
+        "p95_ms": 5.806854999900679,
+        "p99_ms": 6.4692039992951305,
+        "max_ms": 7.491500000469387,
+        "total_ms": 1991.70529996627,
+        "exclusive_ms": 1991.70529996627,
+        "exclusive_wall_percent": 7.966578187363862
+      },
+      "paint": {
+        "count": 506,
+        "median_ms": 0.010199997632298619,
+        "p95_ms": 0.1547250049043214,
+        "p99_ms": 0.3984599963587242,
+        "max_ms": 0.5909999963478185,
+        "total_ms": 27.015299929189496,
+        "exclusive_ms": 27.015299929189496,
+        "exclusive_wall_percent": 0.10805790351846647
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70200,
+      "Value 1": 70200,
+      "Value 2": 70200,
+      "Value 3": 70200,
+      "Value 4": 70200,
+      "Value 5": 70200
+    },
+    "plotted_points": {}
+  },
+  "detail_no_vsync_visible": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": null,
+      "no_vsync": true,
+      "detail": true,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\detail_no_vsync_visible"
+    },
+    "elapsed_seconds": 25.0371290999974,
+    "counts": {
+      "bytes": 2498361,
+      "lines": 50036,
+      "chunks": 718,
+      "max_chunk_bytes": 9750,
+      "values": 300216
+    },
+    "sequence": {
+      "first": 1750446,
+      "last": 1800481,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "bytes_per_second": 99786.24106708223,
+    "lines_per_second": 1998.471941417804,
+    "latency": {
+      "count": 551,
+      "median_ms": 27.626699993561488,
+      "p95_ms": 48.44984999726876,
+      "p99_ms": 55.081949994928436,
+      "max_ms": 87.43719999620225
+    },
+    "stages": {
+      "console_flush": {
+        "count": 399,
+        "median_ms": 5.13449999561999,
+        "p95_ms": 7.494120001501867,
+        "p99_ms": 8.658683998219203,
+        "max_ms": 10.733399998571258,
+        "total_ms": 2000.146200072777,
+        "exclusive_ms": 2000.146200072777,
+        "exclusive_wall_percent": 7.988720240584551
+      },
+      "paint": {
+        "count": 9323,
+        "median_ms": 0.06940000457689166,
+        "p95_ms": 13.433439996879315,
+        "p99_ms": 15.601603998075008,
+        "max_ms": 19.05540000007022,
+        "total_ms": 9945.800300214614,
+        "exclusive_ms": 2962.4380003660917,
+        "exclusive_wall_percent": 11.83217927476517
+      },
+      "auto_range": {
+        "count": 3703,
+        "median_ms": 0.13659999967785552,
+        "p95_ms": 0.7776399994327219,
+        "p99_ms": 1.0340779944090173,
+        "max_ms": 1.6971000004559755,
+        "total_ms": 902.6931998960208,
+        "exclusive_ms": 902.6931998960208,
+        "exclusive_wall_percent": 3.605418162324827
+      },
+      "curve_paint": {
+        "count": 4308,
+        "median_ms": 0.4394000025058631,
+        "p95_ms": 0.7545950003986944,
+        "p99_ms": 1.0008970049239005,
+        "max_ms": 1.6505000021425076,
+        "total_ms": 2096.249299836927,
+        "exclusive_ms": 2096.249299836927,
+        "exclusive_wall_percent": 8.372562570830635
+      },
+      "axis_paint": {
+        "count": 8616,
+        "median_ms": 0.16700000196578912,
+        "p95_ms": 1.0940499978460139,
+        "p99_ms": 1.3584999978775159,
+        "max_ms": 2.2064000004320405,
+        "total_ms": 3984.4198001155746,
+        "exclusive_ms": 1720.7669999625068,
+        "exclusive_wall_percent": 6.872860674599811
+      },
+      "axis_layout": {
+        "count": 4173,
+        "median_ms": 0.519599998369813,
+        "p95_ms": 0.7746000017505137,
+        "p99_ms": 0.9584720028215076,
+        "max_ms": 1.3868000023649074,
+        "total_ms": 2263.652800153068,
+        "exclusive_ms": 2263.652800153068,
+        "exclusive_wall_percent": 9.041183560272103
+      },
+      "console_log": {
+        "count": 718,
+        "median_ms": 0.09510000381851569,
+        "p95_ms": 0.17932500268216242,
+        "p99_ms": 0.23347699767327876,
+        "max_ms": 0.30500000138999894,
+        "total_ms": 75.40730011533014,
+        "exclusive_ms": 75.40730011533014,
+        "exclusive_wall_percent": 0.3011818959520322
+      },
+      "decode_lines": {
+        "count": 718,
+        "median_ms": 0.01769999653333798,
+        "p95_ms": 0.030649999462184472,
+        "p99_ms": 0.04989500172087018,
+        "max_ms": 0.12409999908413738,
+        "total_ms": 13.9299000511528,
+        "exclusive_ms": 13.9299000511528,
+        "exclusive_wall_percent": 0.0556369701794374
+      },
+      "extract": {
+        "count": 50036,
+        "median_ms": 0.017799997294787318,
+        "p95_ms": 0.03060000017285347,
+        "p99_ms": 0.047864995940472145,
+        "max_ms": 50.88419999810867,
+        "total_ms": 1036.4533002502867,
+        "exclusive_ms": 1036.4533002502867,
+        "exclusive_wall_percent": 4.139665119394198
+      },
+      "csv_log": {
+        "count": 718,
+        "median_ms": 1.3483999973686878,
+        "p95_ms": 1.8662000002223067,
+        "p99_ms": 2.27366300248832,
+        "max_ms": 3.998700005467981,
+        "total_ms": 998.0954000347992,
+        "exclusive_ms": 998.0954000347992,
+        "exclusive_wall_percent": 3.9864610516982273
+      },
+      "append_store": {
+        "count": 718,
+        "median_ms": 1.7420999975001905,
+        "p95_ms": 2.464424997742753,
+        "p99_ms": 3.00169500274933,
+        "max_ms": 30.42489999643294,
+        "total_ms": 1316.2293000423233,
+        "exclusive_ms": 1316.2293000423233,
+        "exclusive_wall_percent": 5.257109530351305
+      },
+      "receive_total": {
+        "count": 718,
+        "median_ms": 5.230599999777041,
+        "p95_ms": 7.009670003026257,
+        "p99_ms": 8.324738000155781,
+        "max_ms": 57.60319999535568,
+        "total_ms": 3907.3264998951345,
+        "exclusive_ms": 467.2112994012423,
+        "exclusive_wall_percent": 1.8660737720176184
+      },
+      "read_downsample": {
+        "count": 3594,
+        "median_ms": 0.6577000021934509,
+        "p95_ms": 0.9318099986558082,
+        "p99_ms": 1.1948209957336076,
+        "max_ms": 1.5876000034040771,
+        "total_ms": 2464.4048999616643,
+        "exclusive_ms": 2464.4048999616643,
+        "exclusive_wall_percent": 9.84300112891905
+      },
+      "curve_update": {
+        "count": 599,
+        "median_ms": 5.897099996218458,
+        "p95_ms": 7.552830000349786,
+        "p99_ms": 8.014843995770207,
+        "max_ms": 8.319799999298993,
+        "total_ms": 3598.3080999867525,
+        "exclusive_ms": 1133.9032000250882,
+        "exclusive_wall_percent": 4.528886660672312
+      },
+      "range_update": {
+        "count": 599,
+        "median_ms": 7.230900002468843,
+        "p95_ms": 8.880640002462314,
+        "p99_ms": 9.373149996972643,
+        "max_ms": 9.703299998363946,
+        "total_ms": 4393.231500034744,
+        "exclusive_ms": 794.9234000479919,
+        "exclusive_wall_percent": 3.174978236814198
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70273,
+      "Value 1": 70273,
+      "Value 2": 70273,
+      "Value 3": 70273,
+      "Value 4": 70273,
+      "Value 5": 70273
+    },
+    "plotted_points": {
+      "Value 0": 276,
+      "Value 1": 275,
+      "Value 2": 545,
+      "Value 3": 548,
+      "Value 4": 541,
+      "Value 5": 537
+    }
+  },
+  "storage_fastpath": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": null,
+      "no_vsync": false,
+      "detail": true,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\storage_fastpath"
+    },
+    "elapsed_seconds": 25.011795100006566,
+    "counts": {
+      "bytes": 2496923,
+      "lines": 50008,
+      "chunks": 803,
+      "max_chunk_bytes": 8200,
+      "values": 300048
+    },
+    "sequence": {
+      "first": 1820792,
+      "last": 1870799,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "bytes_per_second": 99829.81989162962,
+    "lines_per_second": 1999.3766860814749,
+    "latency": {
+      "count": 587,
+      "median_ms": 25.672099996882025,
+      "p95_ms": 43.64757999937862,
+      "p99_ms": 49.657455995620694,
+      "max_ms": 71.4871999953175
+    },
+    "stages": {
+      "console_flush": {
+        "count": 398,
+        "median_ms": 4.933849999360973,
+        "p95_ms": 7.587650001005385,
+        "p99_ms": 8.379220998249366,
+        "max_ms": 8.766899998590816,
+        "total_ms": 1989.7868000844028,
+        "exclusive_ms": 1989.7868000844028,
+        "exclusive_wall_percent": 7.955393813712637
+      },
+      "paint": {
+        "count": 10258,
+        "median_ms": 0.07449999975506216,
+        "p95_ms": 13.305554996259161,
+        "p99_ms": 15.282173998493818,
+        "max_ms": 18.972400001075584,
+        "total_ms": 10582.599700370338,
+        "exclusive_ms": 3191.5562006252003,
+        "exclusive_wall_percent": 12.760204486979676
+      },
+      "auto_range": {
+        "count": 3853,
+        "median_ms": 0.13870000111637637,
+        "p95_ms": 0.7555600022897123,
+        "p99_ms": 0.9821519991965033,
+        "max_ms": 1.632799998333212,
+        "total_ms": 926.196799504396,
+        "exclusive_ms": 926.196799504396,
+        "exclusive_wall_percent": 3.703040088890513
+      },
+      "curve_paint": {
+        "count": 4818,
+        "median_ms": 0.45790000149281695,
+        "p95_ms": 0.7396500004688275,
+        "p99_ms": 0.9301659959601238,
+        "max_ms": 1.6952000005403534,
+        "total_ms": 2337.856200130773,
+        "exclusive_ms": 2337.856200130773,
+        "exclusive_wall_percent": 9.347014841530344
+      },
+      "axis_paint": {
+        "count": 9636,
+        "median_ms": 0.12590000187628902,
+        "p95_ms": 1.0666500002116663,
+        "p99_ms": 1.341730001149699,
+        "max_ms": 2.4015000017243437,
+        "total_ms": 4126.990500109969,
+        "exclusive_ms": 1807.7530001100968,
+        "exclusive_wall_percent": 7.227601988909712
+      },
+      "read_downsample": {
+        "count": 3672,
+        "median_ms": 0.388849999580998,
+        "p95_ms": 0.6030800017470027,
+        "p99_ms": 0.7736610012943852,
+        "max_ms": 1.1373000015737489,
+        "total_ms": 1504.745000100229,
+        "exclusive_ms": 1504.745000100229,
+        "exclusive_wall_percent": 6.0161415607464095
+      },
+      "curve_update": {
+        "count": 612,
+        "median_ms": 4.147650000959402,
+        "p95_ms": 5.364100000952021,
+        "p99_ms": 6.125536999097676,
+        "max_ms": 6.645000001299195,
+        "total_ms": 2573.1250001190347,
+        "exclusive_ms": 1068.3800000188057,
+        "exclusive_wall_percent": 4.271504687076719
+      },
+      "range_update": {
+        "count": 612,
+        "median_ms": 5.474099998536985,
+        "p95_ms": 6.685194998135556,
+        "p99_ms": 7.480736002398771,
+        "max_ms": 7.82949999847915,
+        "total_ms": 3373.143299999356,
+        "exclusive_ms": 800.0182998803211,
+        "exclusive_wall_percent": 3.198564104181835
+      },
+      "console_log": {
+        "count": 803,
+        "median_ms": 0.08890000026440248,
+        "p95_ms": 0.1676899977610446,
+        "p99_ms": 0.2452980050293263,
+        "max_ms": 1.2930000011692755,
+        "total_ms": 83.21420007996494,
+        "exclusive_ms": 83.21420007996494,
+        "exclusive_wall_percent": 0.3326998312086088
+      },
+      "decode_lines": {
+        "count": 803,
+        "median_ms": 0.015799996617715806,
+        "p95_ms": 0.02609999501146376,
+        "p99_ms": 0.034980004420503995,
+        "max_ms": 0.12170000263722613,
+        "total_ms": 13.562799991632346,
+        "exclusive_ms": 13.562799991632346,
+        "exclusive_wall_percent": 0.05422561610393484
+      },
+      "extract": {
+        "count": 50008,
+        "median_ms": 0.017799997294787318,
+        "p95_ms": 0.031200004741549492,
+        "p99_ms": 0.04690000059781596,
+        "max_ms": 1.203499996336177,
+        "total_ms": 983.6697003775043,
+        "exclusive_ms": 983.6697003775043,
+        "exclusive_wall_percent": 3.932823279754303
+      },
+      "csv_log": {
+        "count": 803,
+        "median_ms": 1.207799999974668,
+        "p95_ms": 1.6609099984634665,
+        "p99_ms": 1.8707639988861047,
+        "max_ms": 8.152499998686835,
+        "total_ms": 994.3485000258079,
+        "exclusive_ms": 994.3485000258079,
+        "exclusive_wall_percent": 3.975518334649826
+      },
+      "append_store": {
+        "count": 803,
+        "median_ms": 1.5094999980647117,
+        "p95_ms": 2.212049999798182,
+        "p99_ms": 3.0646719997457708,
+        "max_ms": 44.923599998583086,
+        "total_ms": 1327.9955998586956,
+        "exclusive_ms": 1327.9955998586956,
+        "exclusive_wall_percent": 5.309477366773835
+      },
+      "receive_total": {
+        "count": 803,
+        "median_ms": 4.673900002671871,
+        "p95_ms": 6.112100002792431,
+        "p99_ms": 7.622154001146555,
+        "max_ms": 48.582099996565375,
+        "total_ms": 3873.8681999675464,
+        "exclusive_ms": 471.07739963394124,
+        "exclusive_wall_percent": 1.8834209929770998
+      },
+      "axis_layout": {
+        "count": 4264,
+        "median_ms": 0.5208000002312474,
+        "p95_ms": 0.7768850013235351,
+        "p99_ms": 0.9573069962061708,
+        "max_ms": 1.5050000001792796,
+        "total_ms": 2319.237499999872,
+        "exclusive_ms": 2319.237499999872,
+        "exclusive_wall_percent": 9.272575161945346
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70231,
+      "Value 1": 70231,
+      "Value 2": 70231,
+      "Value 3": 70231,
+      "Value 4": 70231,
+      "Value 5": 70231
+    },
+    "plotted_points": {
+      "Value 0": 276,
+      "Value 1": 275,
+      "Value 2": 544,
+      "Value 3": 547,
+      "Value 4": 540,
+      "Value 5": 535
+    }
+  },
+  "frame33": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": 33,
+      "no_vsync": false,
+      "detail": false,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\frame33"
+    },
+    "elapsed_seconds": 25.010654599995178,
+    "counts": {
+      "bytes": 2496342,
+      "lines": 49996,
+      "chunks": 1452,
+      "max_chunk_bytes": 5831,
+      "values": 299976
+    },
+    "sequence": {
+      "first": 1891115,
+      "last": 1941110,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "bytes_per_second": 99811.14208823952,
+    "lines_per_second": 1998.9880632716283,
+    "latency": {
+      "count": 835,
+      "median_ms": 13.646899999002926,
+      "p95_ms": 35.320809995755546,
+      "p99_ms": 43.49089399984222,
+      "max_ms": 53.85109999770066
+    },
+    "stages": {
+      "read_downsample": {
+        "count": 3192,
+        "median_ms": 0.3838499978883192,
+        "p95_ms": 0.6108449946623296,
+        "p99_ms": 0.7628790007584034,
+        "max_ms": 1.1101999989477918,
+        "total_ms": 1297.6159999816446,
+        "exclusive_ms": 1297.6159999816446,
+        "exclusive_wall_percent": 5.188252849575135
+      },
+      "curve_update": {
+        "count": 532,
+        "median_ms": 4.070899998623645,
+        "p95_ms": 5.492399996728636,
+        "p99_ms": 5.888096999260593,
+        "max_ms": 6.874499995319638,
+        "total_ms": 2225.200299930293,
+        "exclusive_ms": 927.5842999486485,
+        "exclusive_wall_percent": 3.708756587078002
+      },
+      "range_update": {
+        "count": 532,
+        "median_ms": 5.3844499998376705,
+        "p95_ms": 6.760899998334935,
+        "p99_ms": 7.278856003249516,
+        "max_ms": 8.063300003414042,
+        "total_ms": 2915.030900061538,
+        "exclusive_ms": 689.8306001312449,
+        "exclusive_wall_percent": 2.7581469224375192
+      },
+      "console_log": {
+        "count": 1452,
+        "median_ms": 0.07710000136285089,
+        "p95_ms": 0.15805999973963483,
+        "p99_ms": 0.23297399879083971,
+        "max_ms": 1.501400001870934,
+        "total_ms": 128.5470999791869,
+        "exclusive_ms": 128.5470999791869,
+        "exclusive_wall_percent": 0.5139693544015105
+      },
+      "decode_lines": {
+        "count": 1452,
+        "median_ms": 0.012150001566624269,
+        "p95_ms": 0.021144997663213875,
+        "p99_ms": 0.032295998535119004,
+        "max_ms": 0.07910000567790121,
+        "total_ms": 18.964800161484163,
+        "exclusive_ms": 18.964800161484163,
+        "exclusive_wall_percent": 0.07582688444103265
+      },
+      "extract": {
+        "count": 49996,
+        "median_ms": 0.017799997294787318,
+        "p95_ms": 0.0351999988197349,
+        "p99_ms": 0.05010500281059678,
+        "max_ms": 0.45450000470736995,
+        "total_ms": 1004.138399810472,
+        "exclusive_ms": 1004.138399810472,
+        "exclusive_wall_percent": 4.014842537590622
+      },
+      "csv_log": {
+        "count": 1452,
+        "median_ms": 0.6663499989372212,
+        "p95_ms": 1.298929999757093,
+        "p99_ms": 1.6556390013283817,
+        "max_ms": 2.569999996921979,
+        "total_ms": 1026.4673000274342,
+        "exclusive_ms": 1026.4673000274342,
+        "exclusive_wall_percent": 4.10412008979418
+      },
+      "append_store": {
+        "count": 1452,
+        "median_ms": 0.8387500020035077,
+        "p95_ms": 1.599625000380911,
+        "p99_ms": 2.4072449997038348,
+        "max_ms": 45.760799999698065,
+        "total_ms": 1362.4177999590756,
+        "exclusive_ms": 1362.4177999590756,
+        "exclusive_wall_percent": 5.4473496265840975
+      },
+      "receive_total": {
+        "count": 1452,
+        "median_ms": 2.6265999986208044,
+        "p95_ms": 4.868414999509697,
+        "p99_ms": 5.897331997184665,
+        "max_ms": 47.97369999869261,
+        "total_ms": 4076.4935000770492,
+        "exclusive_ms": 535.9581001393963,
+        "exclusive_wall_percent": 2.1429191227146034
+      },
+      "paint": {
+        "count": 10510,
+        "median_ms": 0.0686999992467463,
+        "p95_ms": 11.761790003583869,
+        "p99_ms": 14.570983000157865,
+        "max_ms": 19.414200003666338,
+        "total_ms": 10334.312499813677,
+        "exclusive_ms": 10334.312499813677,
+        "exclusive_wall_percent": 41.31964022971102
+      },
+      "console_flush": {
+        "count": 398,
+        "median_ms": 4.902549997495953,
+        "p95_ms": 6.7998950005858205,
+        "p99_ms": 7.574139996286246,
+        "max_ms": 7.796600002620835,
+        "total_ms": 1990.8272000102443,
+        "exclusive_ms": 1990.8272000102443,
+        "exclusive_wall_percent": 7.959916411026795
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70243,
+      "Value 1": 70243,
+      "Value 2": 70243,
+      "Value 3": 70243,
+      "Value 4": 70243,
+      "Value 5": 70243
+    },
+    "plotted_points": {
+      "Value 0": 274,
+      "Value 1": 274,
+      "Value 2": 534,
+      "Value 3": 543,
+      "Value 4": 534,
+      "Value 5": 531
+    }
+  },
+  "prepare_scene": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": null,
+      "no_vsync": false,
+      "detail": true,
+      "prepare_view": true,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\prepare_scene"
+    },
+    "elapsed_seconds": 25.01125460000185,
+    "counts": {
+      "bytes": 2497523,
+      "lines": 50020,
+      "chunks": 1159,
+      "max_chunk_bytes": 7150,
+      "values": 300120
+    },
+    "sequence": {
+      "first": 1961396,
+      "last": 2011415,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "refresh_interval_ms": 20,
+    "bytes_per_second": 99855.96644159607,
+    "lines_per_second": 1999.899677163588,
+    "latency": {
+      "count": 744,
+      "median_ms": 18.26019999498385,
+      "p95_ms": 28.940889995647012,
+      "p99_ms": 35.605081998510286,
+      "max_ms": 79.54759999847738
+    },
+    "stages": {
+      "console_flush": {
+        "count": 399,
+        "median_ms": 5.203300002904143,
+        "p95_ms": 7.12185999873327,
+        "p99_ms": 7.9725139983929605,
+        "max_ms": 9.494999998423737,
+        "total_ms": 1991.2506000109715,
+        "exclusive_ms": 1991.2506000109715,
+        "exclusive_wall_percent": 7.961418296908722
+      },
+      "paint": {
+        "count": 9855,
+        "median_ms": 0.07670000195503235,
+        "p95_ms": 11.108029999013525,
+        "p99_ms": 12.959419999533564,
+        "max_ms": 16.720399995392654,
+        "total_ms": 8687.0602004783,
+        "exclusive_ms": 2245.7698003781843,
+        "exclusive_wall_percent": 8.979036982727042
+      },
+      "auto_range": {
+        "count": 4784,
+        "median_ms": 0.18929999714600854,
+        "p95_ms": 0.7305499977519497,
+        "p99_ms": 0.9690100042644192,
+        "max_ms": 1.5548000010312535,
+        "total_ms": 1287.3421998083359,
+        "exclusive_ms": 1287.3421998083359,
+        "exclusive_wall_percent": 5.14705167891994
+      },
+      "curve_paint": {
+        "count": 4080,
+        "median_ms": 0.48549999701208435,
+        "p95_ms": 0.7860149969928897,
+        "p99_ms": 1.055320000014035,
+        "max_ms": 1.8016999965766445,
+        "total_ms": 2135.251500112645,
+        "exclusive_ms": 2135.251500112645,
+        "exclusive_wall_percent": 8.537162706394133
+      },
+      "axis_paint": {
+        "count": 8160,
+        "median_ms": 0.6508500009658746,
+        "p95_ms": 1.110205005898024,
+        "p99_ms": 1.399265996733447,
+        "max_ms": 2.161500000511296,
+        "total_ms": 4227.277899874025,
+        "exclusive_ms": 1695.7006002121489,
+        "exclusive_wall_percent": 6.779750265754456
+      },
+      "axis_layout": {
+        "count": 4748,
+        "median_ms": 0.5077499990875367,
+        "p95_ms": 0.769215002583223,
+        "p99_ms": 0.9548890018777453,
+        "max_ms": 1.5258000057656318,
+        "total_ms": 2531.577299661876,
+        "exclusive_ms": 2531.577299661876,
+        "exclusive_wall_percent": 10.121752547597868
+      },
+      "read_downsample": {
+        "count": 4104,
+        "median_ms": 0.3934999986086041,
+        "p95_ms": 0.6123650000517954,
+        "p99_ms": 0.8162289957544988,
+        "max_ms": 1.2783000056515448,
+        "total_ms": 1692.3329996570828,
+        "exclusive_ms": 1692.3329996570828,
+        "exclusive_wall_percent": 6.766285924964986
+      },
+      "curve_update": {
+        "count": 684,
+        "median_ms": 4.174099998635938,
+        "p95_ms": 5.542825000156881,
+        "p99_ms": 6.158419999483155,
+        "max_ms": 7.72290000168141,
+        "total_ms": 2906.4555000441032,
+        "exclusive_ms": 1214.1225003870204,
+        "exclusive_wall_percent": 4.854304671253598
+      },
+      "prepare_scene": {
+        "count": 684,
+        "median_ms": 1.8259000025864225,
+        "p95_ms": 2.5334050031233346,
+        "p99_ms": 2.8659460003109407,
+        "max_ms": 3.639300004579127,
+        "total_ms": 1323.3227998789516,
+        "exclusive_ms": 114.7416001840611,
+        "exclusive_wall_percent": 0.4587598743809222
+      },
+      "range_update": {
+        "count": 684,
+        "median_ms": 7.371799998509232,
+        "p95_ms": 8.964580003885203,
+        "p99_ms": 9.775744003563881,
+        "max_ms": 11.679200004437007,
+        "total_ms": 5105.122300024959,
+        "exclusive_ms": 875.3440001019044,
+        "exclusive_wall_percent": 3.4998004462432677
+      },
+      "console_log": {
+        "count": 1159,
+        "median_ms": 0.08070000330917537,
+        "p95_ms": 0.15449000347871325,
+        "p99_ms": 0.22794000018620914,
+        "max_ms": 0.7268999979714863,
+        "total_ms": 106.91610007052077,
+        "exclusive_ms": 106.91610007052077,
+        "exclusive_wall_percent": 0.4274719592455505
+      },
+      "decode_lines": {
+        "count": 1159,
+        "median_ms": 0.012699994840659201,
+        "p95_ms": 0.01930000144056976,
+        "p99_ms": 0.038420002674684,
+        "max_ms": 0.11529999756021425,
+        "total_ms": 16.022699979657773,
+        "exclusive_ms": 16.022699979657773,
+        "exclusive_wall_percent": 0.06406196024911356
+      },
+      "extract": {
+        "count": 50020,
+        "median_ms": 0.01799999881768599,
+        "p95_ms": 0.03399999695830047,
+        "p99_ms": 0.048800000513438135,
+        "max_ms": 1.161800006229896,
+        "total_ms": 1013.1202989432495,
+        "exclusive_ms": 1013.1202989432495,
+        "exclusive_wall_percent": 4.050657654507162
+      },
+      "csv_log": {
+        "count": 1159,
+        "median_ms": 0.8527000027243048,
+        "p95_ms": 1.4572499982023144,
+        "p99_ms": 1.7434639985731344,
+        "max_ms": 2.7468999978736974,
+        "total_ms": 1003.6733999440912,
+        "exclusive_ms": 1003.6733999440912,
+        "exclusive_wall_percent": 4.012887062226847
+      },
+      "append_store": {
+        "count": 1159,
+        "median_ms": 1.0562000024947338,
+        "p95_ms": 1.7908699977851925,
+        "p99_ms": 2.6435179980762773,
+        "max_ms": 54.84939999587368,
+        "total_ms": 1337.2004999546334,
+        "exclusive_ms": 1337.2004999546334,
+        "exclusive_wall_percent": 5.346395138269211
+      },
+      "receive_total": {
+        "count": 1159,
+        "median_ms": 3.3544999969308265,
+        "p95_ms": 5.409489996964108,
+        "p99_ms": 6.634780002641494,
+        "max_ms": 58.714999999210704,
+        "total_ms": 3978.834800036566,
+        "exclusive_ms": 501.9018011444132,
+        "exclusive_wall_percent": 2.0067038186256205
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70261,
+      "Value 1": 70261,
+      "Value 2": 70261,
+      "Value 3": 70261,
+      "Value 4": 70261,
+      "Value 5": 70261
+    },
+    "plotted_points": {
+      "Value 0": 276,
+      "Value 1": 275,
+      "Value 2": 545,
+      "Value 3": 548,
+      "Value 4": 537,
+      "Value 5": 532
+    },
+    "valid_for_comparison": true,
+    "source_sha256": {
+      "modules/core/plotter.py": "76ba07503215a174ed891d7b6d738fcb62b0d1edfc8129668036bdb551c69c52",
+      "modules/core/buckets.py": "43e48aecd609c81edde5172b1792aed3fcfe2bfd4a36ea1f36d2866e0600444c",
+      "modules/widgets/plot_widget.py": "f7f4c92fa487686669b4efaf59570389855ab135929a73ff8b6c00556dca3be2",
+      "modules/widgets/console_widget.py": "d63afd293edb7f601ee2f2b2e0633be9474e32f3e3c8b6af18061536212b1807"
+    }
+  },
+  "prepare_frame33": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": 33,
+      "no_vsync": false,
+      "detail": false,
+      "prepare_view": true,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\prepare_frame33"
+    },
+    "elapsed_seconds": 24.997968999996374,
+    "counts": {
+      "bytes": 2496342,
+      "chunks": 4988,
+      "max_chunk_bytes": 6350,
+      "lines": 49996,
+      "values": 299976
+    },
+    "sequence": {
+      "first": 2031780,
+      "last": 2081775,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "refresh_interval_ms": 33,
+    "bytes_per_second": 99861.79277205929,
+    "lines_per_second": 2000.0024802017817,
+    "latency": {
+      "count": 1176,
+      "median_ms": 3.2049499968707096,
+      "p95_ms": 20.549399996525608,
+      "p99_ms": 23.645349996513687,
+      "max_ms": 52.189799993357155
+    },
+    "stages": {
+      "console_log": {
+        "count": 4988,
+        "median_ms": 0.046799999836366624,
+        "p95_ms": 0.09439999848837033,
+        "p99_ms": 0.15437799680512404,
+        "max_ms": 1.7348000037600286,
+        "total_ms": 257.1905001968844,
+        "exclusive_ms": 257.1905001968844,
+        "exclusive_wall_percent": 1.0288455842029474
+      },
+      "decode_lines": {
+        "count": 4988,
+        "median_ms": 0.00670000008540228,
+        "p95_ms": 0.012899996363557875,
+        "p99_ms": 0.02491300052497537,
+        "max_ms": 0.2747999969869852,
+        "total_ms": 38.5449001842062,
+        "exclusive_ms": 38.5449001842062,
+        "exclusive_wall_percent": 0.15419212730526943
+      },
+      "extract": {
+        "count": 49996,
+        "median_ms": 0.018200000340584666,
+        "p95_ms": 0.03809999907389283,
+        "p99_ms": 0.05540499987546384,
+        "max_ms": 48.29250000329921,
+        "total_ms": 1131.5019003668567,
+        "exclusive_ms": 1131.5019003668567,
+        "exclusive_wall_percent": 4.526375324199421
+      },
+      "csv_log": {
+        "count": 4988,
+        "median_ms": 0.09694999971543439,
+        "p95_ms": 0.7090950006386264,
+        "p99_ms": 0.9503389967721887,
+        "max_ms": 5.832199996802956,
+        "total_ms": 1047.9264999303268,
+        "exclusive_ms": 1047.9264999303268,
+        "exclusive_wall_percent": 4.192046561584579
+      },
+      "append_store": {
+        "count": 4988,
+        "median_ms": 0.12399999832268804,
+        "p95_ms": 0.891560000673052,
+        "p99_ms": 1.2320780019945232,
+        "max_ms": 3.052100000786595,
+        "total_ms": 1333.8765000080457,
+        "exclusive_ms": 1333.8765000080457,
+        "exclusive_wall_percent": 5.335939491757267
+      },
+      "receive_total": {
+        "count": 4988,
+        "median_ms": 0.49234999823966064,
+        "p95_ms": 2.8053499994712174,
+        "p99_ms": 3.641655999745126,
+        "max_ms": 51.18210000364343,
+        "total_ms": 4552.283299897681,
+        "exclusive_ms": 743.2429992113612,
+        "exclusive_wall_percent": 2.9732135407139237
+      },
+      "paint": {
+        "count": 12962,
+        "median_ms": 0.03909999941242859,
+        "p95_ms": 0.21599500032607455,
+        "p99_ms": 12.058072997970157,
+        "max_ms": 37.84299999824725,
+        "total_ms": 6794.159999284602,
+        "exclusive_ms": 6794.159999284602,
+        "exclusive_wall_percent": 27.178848006754418
+      },
+      "read_downsample": {
+        "count": 3198,
+        "median_ms": 0.38750000385334715,
+        "p95_ms": 0.609745000838302,
+        "p99_ms": 0.7540120004705385,
+        "max_ms": 1.135200000135228,
+        "total_ms": 1304.1857002317556,
+        "exclusive_ms": 1304.1857002317556,
+        "exclusive_wall_percent": 5.217166643545901
+      },
+      "curve_update": {
+        "count": 533,
+        "median_ms": 4.095899996173102,
+        "p95_ms": 5.437359998177271,
+        "p99_ms": 5.919675999321042,
+        "max_ms": 6.969800000661053,
+        "total_ms": 2232.4967000313336,
+        "exclusive_ms": 928.310999799578,
+        "exclusive_wall_percent": 3.713545687650515
+      },
+      "prepare_scene": {
+        "count": 533,
+        "median_ms": 1.7441999953007326,
+        "p95_ms": 2.369119999639224,
+        "p99_ms": 2.6854639983503135,
+        "max_ms": 3.029300001799129,
+        "total_ms": 978.6704999569338,
+        "exclusive_ms": 978.6704999569338,
+        "exclusive_wall_percent": 3.9150000544327255
+      },
+      "range_update": {
+        "count": 533,
+        "median_ms": 7.267900000442751,
+        "p95_ms": 8.760259998962283,
+        "p99_ms": 9.301368003943933,
+        "max_ms": 10.403499996755272,
+        "total_ms": 3898.3033000549767,
+        "exclusive_ms": 687.1361000667093,
+        "exclusive_wall_percent": 2.748767710156009
+      },
+      "console_flush": {
+        "count": 400,
+        "median_ms": 4.848399999900721,
+        "p95_ms": 6.276510003590373,
+        "p99_ms": 6.870653001242317,
+        "max_ms": 8.650400006445125,
+        "total_ms": 1972.8006000004825,
+        "exclusive_ms": 1972.8006000004825,
+        "exclusive_wall_percent": 7.891843533371726
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70305,
+      "Value 1": 70305,
+      "Value 2": 70305,
+      "Value 3": 70305,
+      "Value 4": 70305,
+      "Value 5": 70305
+    },
+    "plotted_points": {
+      "Value 0": 276,
+      "Value 1": 276,
+      "Value 2": 542,
+      "Value 3": 547,
+      "Value 4": 540,
+      "Value 5": 532
+    },
+    "valid_for_comparison": true,
+    "source_sha256": {
+      "modules/core/plotter.py": "76ba07503215a174ed891d7b6d738fcb62b0d1edfc8129668036bdb551c69c52",
+      "modules/core/buckets.py": "43e48aecd609c81edde5172b1792aed3fcfe2bfd4a36ea1f36d2866e0600444c",
+      "modules/widgets/plot_widget.py": "f7f4c92fa487686669b4efaf59570389855ab135929a73ff8b6c00556dca3be2",
+      "modules/widgets/console_widget.py": "d63afd293edb7f601ee2f2b2e0633be9474e32f3e3c8b6af18061536212b1807"
+    }
+  },
+  "prepare_precise33": {
+    "settings": {
+      "port": "COM15",
+      "duration": 25,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": 33,
+      "no_vsync": false,
+      "detail": false,
+      "prepare_view": true,
+      "precise": true,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\prepare_precise33"
+    },
+    "elapsed_seconds": 24.999742099993455,
+    "counts": {
+      "bytes": 2496592,
+      "lines": 50001,
+      "chunks": 4746,
+      "max_chunk_bytes": 6381,
+      "values": 300006
+    },
+    "sequence": {
+      "first": 2102050,
+      "last": 2152050,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "refresh_interval_ms": 33,
+    "bytes_per_second": 99864.71020437662,
+    "lines_per_second": 2000.0606326260097,
+    "latency": {
+      "count": 1148,
+      "median_ms": 3.832749996945495,
+      "p95_ms": 20.80359999272332,
+      "p99_ms": 23.395129998752964,
+      "max_ms": 67.53699999535456
+    },
+    "stages": {
+      "console_flush": {
+        "count": 400,
+        "median_ms": 4.9989500039373524,
+        "p95_ms": 6.536114999471465,
+        "p99_ms": 7.069192999333609,
+        "max_ms": 10.353300000133459,
+        "total_ms": 2017.204399991897,
+        "exclusive_ms": 2017.204399991897,
+        "exclusive_wall_percent": 8.068900838750753
+      },
+      "console_log": {
+        "count": 4746,
+        "median_ms": 0.048350000724894926,
+        "p95_ms": 0.10107500565936789,
+        "p99_ms": 0.15133999877434703,
+        "max_ms": 0.6463000026997179,
+        "total_ms": 252.58409981324803,
+        "exclusive_ms": 252.58409981324803,
+        "exclusive_wall_percent": 1.0103468219910723
+      },
+      "decode_lines": {
+        "count": 4746,
+        "median_ms": 0.006999995093792677,
+        "p95_ms": 0.013199998647905886,
+        "p99_ms": 0.02470999897923324,
+        "max_ms": 0.09890000364976004,
+        "total_ms": 37.0650998011115,
+        "exclusive_ms": 37.0650998011115,
+        "exclusive_wall_percent": 0.14826192867454102
+      },
+      "extract": {
+        "count": 50001,
+        "median_ms": 0.01809999957913533,
+        "p95_ms": 0.03809999907389283,
+        "p99_ms": 0.05560000136028975,
+        "max_ms": 49.31310000392841,
+        "total_ms": 1124.673400321626,
+        "exclusive_ms": 1124.673400321626,
+        "exclusive_wall_percent": 4.498740010289628
+      },
+      "csv_log": {
+        "count": 4746,
+        "median_ms": 0.10784999903989956,
+        "p95_ms": 0.743499997042818,
+        "p99_ms": 0.9721749989694218,
+        "max_ms": 2.3905999987618998,
+        "total_ms": 1055.7425002771197,
+        "exclusive_ms": 1055.7425002771197,
+        "exclusive_wall_percent": 4.223013565717528
+      },
+      "append_store": {
+        "count": 4746,
+        "median_ms": 0.13699999544769526,
+        "p95_ms": 0.930599999264814,
+        "p99_ms": 1.2592900009622106,
+        "max_ms": 27.363399996829685,
+        "total_ms": 1370.5640997795854,
+        "exclusive_ms": 1370.5640997795854,
+        "exclusive_wall_percent": 5.482312954660217
+      },
+      "receive_total": {
+        "count": 4746,
+        "median_ms": 0.5289000037009828,
+        "p95_ms": 2.8670250030700117,
+        "p99_ms": 3.7012050022894982,
+        "max_ms": 52.40559999947436,
+        "total_ms": 4569.053899998835,
+        "exclusive_ms": 728.4247000061441,
+        "exclusive_wall_percent": 2.913728858052239
+      },
+      "read_downsample": {
+        "count": 3192,
+        "median_ms": 0.38579999818466604,
+        "p95_ms": 0.6037599989213048,
+        "p99_ms": 0.7308130013552735,
+        "max_ms": 1.083499999367632,
+        "total_ms": 1296.1246000777464,
+        "exclusive_ms": 1296.1246000777464,
+        "exclusive_wall_percent": 5.184551884149579
+      },
+      "curve_update": {
+        "count": 532,
+        "median_ms": 4.060200000822078,
+        "p95_ms": 5.44925000067451,
+        "p99_ms": 5.973715001455274,
+        "max_ms": 6.332199998723809,
+        "total_ms": 2215.145400041365,
+        "exclusive_ms": 919.0207999636186,
+        "exclusive_wall_percent": 3.6761211227209394
+      },
+      "prepare_scene": {
+        "count": 532,
+        "median_ms": 1.7545999980939087,
+        "p95_ms": 2.3673799987591337,
+        "p99_ms": 2.674621995101913,
+        "max_ms": 3.427600000577513,
+        "total_ms": 986.6379998857155,
+        "exclusive_ms": 986.6379998857155,
+        "exclusive_wall_percent": 3.9465927125943185
+      },
+      "range_update": {
+        "count": 532,
+        "median_ms": 7.25859999874956,
+        "p95_ms": 8.705985000051442,
+        "p99_ms": 9.350086998892948,
+        "max_ms": 9.718799999973271,
+        "total_ms": 3892.562800036103,
+        "exclusive_ms": 690.7794001090224,
+        "exclusive_wall_percent": 2.7631461050520327
+      },
+      "paint": {
+        "count": 12845,
+        "median_ms": 0.03909999941242859,
+        "p95_ms": 0.22898000315763048,
+        "p99_ms": 12.335331998183383,
+        "max_ms": 23.932500000228174,
+        "total_ms": 6889.916399930371,
+        "exclusive_ms": 6889.916399930371,
+        "exclusive_wall_percent": 27.559949908171955
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 70263,
+      "Value 1": 70263,
+      "Value 2": 70263,
+      "Value 3": 70263,
+      "Value 4": 70263,
+      "Value 5": 70263
+    },
+    "plotted_points": {
+      "Value 0": 276,
+      "Value 1": 276,
+      "Value 2": 539,
+      "Value 3": 548,
+      "Value 4": 537,
+      "Value 5": 533
+    },
+    "valid_for_comparison": true,
+    "source_sha256": {
+      "modules/core/plotter.py": "76ba07503215a174ed891d7b6d738fcb62b0d1edfc8129668036bdb551c69c52",
+      "modules/core/buckets.py": "43e48aecd609c81edde5172b1792aed3fcfe2bfd4a36ea1f36d2866e0600444c",
+      "modules/widgets/plot_widget.py": "f7f4c92fa487686669b4efaf59570389855ab135929a73ff8b6c00556dca3be2",
+      "modules/widgets/console_widget.py": "d63afd293edb7f601ee2f2b2e0633be9474e32f3e3c8b6af18061536212b1807"
+    }
+  },
+  "baseline_gl_repeat": {
+    "settings": {
+      "port": "COM15",
+      "duration": 60.0,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": null,
+      "no_vsync": false,
+      "detail": false,
+      "prepare_view": false,
+      "precise": false,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\baseline_gl_repeat",
+      "source_snapshot": "logs\\latency_diagnostics\\baseline_source"
+    },
+    "elapsed_seconds": 60.0211335999993,
+    "counts": {
+      "bytes": 5992116,
+      "chunks": 1714,
+      "max_chunk_bytes": 10931,
+      "lines": 120008,
+      "values": 720048
+    },
+    "sequence": {
+      "first": 2312446,
+      "last": 2432453,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "refresh_interval_ms": 20,
+    "bytes_per_second": 99833.43600161643,
+    "lines_per_second": 1999.429081092887,
+    "latency": {
+      "count": 1292,
+      "median_ms": 28.87409999675583,
+      "p95_ms": 48.90326499735238,
+      "p99_ms": 54.39281399398149,
+      "max_ms": 96.06579999672249
+    },
+    "stages": {
+      "paint": {
+        "count": 22343,
+        "median_ms": 0.06730000313837081,
+        "p95_ms": 12.757460001739668,
+        "p99_ms": 14.594164001464376,
+        "max_ms": 21.38810000178637,
+        "total_ms": 22498.677200106613,
+        "exclusive_ms": 22498.677200106613,
+        "exclusive_wall_percent": 37.484592260528174
+      },
+      "read_downsample": {
+        "count": 8580,
+        "median_ms": 0.6931499992788304,
+        "p95_ms": 1.0045050014014123,
+        "p99_ms": 1.2171999987913296,
+        "max_ms": 1.742199994623661,
+        "total_ms": 6162.999299929652,
+        "exclusive_ms": 6162.999299929652,
+        "exclusive_wall_percent": 10.268048819274089
+      },
+      "curve_update": {
+        "count": 1430,
+        "median_ms": 6.1564499992528,
+        "p95_ms": 7.761584999752813,
+        "p99_ms": 8.320754999294877,
+        "max_ms": 11.25049999973271,
+        "total_ms": 8901.232500160404,
+        "exclusive_ms": 2738.233200230752,
+        "exclusive_wall_percent": 4.562115101789387
+      },
+      "range_update": {
+        "count": 1430,
+        "median_ms": 7.463150002877228,
+        "p95_ms": 9.055520002220874,
+        "p99_ms": 9.69789599730575,
+        "max_ms": 12.62000000133412,
+        "total_ms": 10750.890599934792,
+        "exclusive_ms": 1849.6580997743877,
+        "exclusive_wall_percent": 3.08167805043657
+      },
+      "console_log": {
+        "count": 1714,
+        "median_ms": 0.09480000153416768,
+        "p95_ms": 0.17990499472944063,
+        "p99_ms": 0.26548400164756425,
+        "max_ms": 0.4487999976845458,
+        "total_ms": 181.5964000998065,
+        "exclusive_ms": 181.5964000998065,
+        "exclusive_wall_percent": 0.30255409921116283
+      },
+      "decode_lines": {
+        "count": 1714,
+        "median_ms": 0.017299993487540632,
+        "p95_ms": 0.031034998755785626,
+        "p99_ms": 0.043061000469606335,
+        "max_ms": 0.1860999982454814,
+        "total_ms": 32.607500070298556,
+        "exclusive_ms": 32.607500070298556,
+        "exclusive_wall_percent": 0.05432669813870182
+      },
+      "extract": {
+        "count": 120008,
+        "median_ms": 0.017799997294787318,
+        "p95_ms": 0.03229999856557697,
+        "p99_ms": 0.049700000090524554,
+        "max_ms": 1.0964000030071475,
+        "total_ms": 2379.361098712252,
+        "exclusive_ms": 2379.361098712252,
+        "exclusive_wall_percent": 3.964205532286514
+      },
+      "csv_log": {
+        "count": 1714,
+        "median_ms": 1.3857499980076682,
+        "p95_ms": 1.918334999572835,
+        "p99_ms": 2.2490989986545133,
+        "max_ms": 4.771600004460197,
+        "total_ms": 2428.059400008351,
+        "exclusive_ms": 2428.059400008351,
+        "exclusive_wall_percent": 4.0453407897787175
+      },
+      "append_store": {
+        "count": 1714,
+        "median_ms": 1.7210000005434267,
+        "p95_ms": 2.4143750018993155,
+        "p99_ms": 2.9299630017339933,
+        "max_ms": 78.72889999998733,
+        "total_ms": 3246.3994002100662,
+        "exclusive_ms": 3246.3994002100662,
+        "exclusive_wall_percent": 5.408760557314938
+      },
+      "receive_total": {
+        "count": 1714,
+        "median_ms": 5.308199997671181,
+        "p95_ms": 6.846784997105714,
+        "p99_ms": 7.725513001132634,
+        "max_ms": 82.70420000189915,
+        "total_ms": 9394.265199982328,
+        "exclusive_ms": 1126.241400881554,
+        "exclusive_wall_percent": 1.8764080805057755
+      },
+      "console_flush": {
+        "count": 954,
+        "median_ms": 5.328350001946092,
+        "p95_ms": 7.396880001033423,
+        "p99_ms": 8.419711001552061,
+        "max_ms": 11.819699997431599,
+        "total_ms": 4869.168900084333,
+        "exclusive_ms": 4869.168900084333,
+        "exclusive_wall_percent": 8.11242408804553
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 140163,
+      "Value 1": 140163,
+      "Value 2": 140163,
+      "Value 3": 140163,
+      "Value 4": 140163,
+      "Value 5": 140163
+    },
+    "plotted_points": {
+      "Value 0": 274,
+      "Value 1": 274,
+      "Value 2": 548,
+      "Value 3": 546,
+      "Value 4": 546,
+      "Value 5": 544
+    },
+    "valid_for_comparison": true,
+    "source_sha256": {
+      "modules/core/plotter.py": "04580df819fb947f526dedd2364f79849e574afac0e70f657b8548691191b0f8",
+      "modules/core/buckets.py": "43e48aecd609c81edde5172b1792aed3fcfe2bfd4a36ea1f36d2866e0600444c",
+      "modules/widgets/plot_widget.py": "f7f4c92fa487686669b4efaf59570389855ab135929a73ff8b6c00556dca3be2",
+      "modules/widgets/console_widget.py": "d63afd293edb7f601ee2f2b2e0633be9474e32f3e3c8b6af18061536212b1807"
+    }
+  },
+  "final_gl": {
+    "settings": {
+      "port": "COM15",
+      "duration": 60.0,
+      "warmup": 10,
+      "renderer": "gl",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": null,
+      "no_vsync": false,
+      "detail": false,
+      "prepare_view": false,
+      "precise": false,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\final_gl"
+    },
+    "elapsed_seconds": 60.00089250000019,
+    "counts": {
+      "bytes": 5989766,
+      "lines": 119961,
+      "chunks": 10823,
+      "max_chunk_bytes": 9348,
+      "values": 719766
+    },
+    "sequence": {
+      "first": 2172283,
+      "last": 2292243,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "refresh_interval_ms": 33,
+    "bytes_per_second": 99827.94839260068,
+    "lines_per_second": 1999.3202601111245,
+    "latency": {
+      "count": 2750,
+      "median_ms": 4.283599999325816,
+      "p95_ms": 21.195264999550993,
+      "p99_ms": 25.414385995391,
+      "max_ms": 77.28479999786941
+    },
+    "stages": {
+      "console_flush": {
+        "count": 960,
+        "median_ms": 4.960849997587502,
+        "p95_ms": 6.43243000122311,
+        "p99_ms": 7.206373000080929,
+        "max_ms": 8.006600000953767,
+        "total_ms": 4825.889699866821,
+        "exclusive_ms": 4825.889699866821,
+        "exclusive_wall_percent": 8.043029859708845
+      },
+      "console_log": {
+        "count": 10823,
+        "median_ms": 0.049100002797786146,
+        "p95_ms": 0.09690000224509276,
+        "p99_ms": 0.15337799806729896,
+        "max_ms": 0.9666000041761436,
+        "total_ms": 574.7933000238845,
+        "exclusive_ms": 574.7933000238845,
+        "exclusive_wall_percent": 0.9579745835012082
+      },
+      "decode_lines": {
+        "count": 10823,
+        "median_ms": 0.007199996616691351,
+        "p95_ms": 0.013700002455152571,
+        "p99_ms": 0.025400002632522956,
+        "max_ms": 0.11529999756021425,
+        "total_ms": 87.02509965951322,
+        "exclusive_ms": 87.02509965951322,
+        "exclusive_wall_percent": 0.1450396753006848
+      },
+      "extract": {
+        "count": 119961,
+        "median_ms": 0.018499995348975062,
+        "p95_ms": 0.03880000440403819,
+        "p99_ms": 0.055999997130129486,
+        "max_ms": 1.7593000011402182,
+        "total_ms": 2621.8513025305583,
+        "exclusive_ms": 2621.8513025305583,
+        "exclusive_wall_percent": 4.36968717178757
+      },
+      "csv_log": {
+        "count": 10823,
+        "median_ms": 0.12240000069141388,
+        "p95_ms": 0.7725000024947803,
+        "p99_ms": 1.0039079963462452,
+        "max_ms": 3.6466000019572675,
+        "total_ms": 2547.28390006494,
+        "exclusive_ms": 2547.28390006494,
+        "exclusive_wall_percent": 4.2454100163008945
+      },
+      "append_store": {
+        "count": 10823,
+        "median_ms": 0.1503000021330081,
+        "p95_ms": 0.9625900027458556,
+        "p99_ms": 1.3125899991428016,
+        "max_ms": 78.35979999799747,
+        "total_ms": 3356.3205001701135,
+        "exclusive_ms": 3356.3205001701135,
+        "exclusive_wall_percent": 5.59378429274215
+      },
+      "receive_total": {
+        "count": 10823,
+        "median_ms": 0.56669999321457,
+        "p95_ms": 3.009690004546428,
+        "p99_ms": 3.879128002008658,
+        "max_ms": 80.29700000042794,
+        "total_ms": 10951.302499925077,
+        "exclusive_ms": 1764.0283974760678,
+        "exclusive_wall_percent": 2.9400035965732716
+      },
+      "read_downsample": {
+        "count": 7674,
+        "median_ms": 0.39459999970858917,
+        "p95_ms": 0.6310700005997204,
+        "p99_ms": 0.7953399985854038,
+        "max_ms": 1.3652000052388757,
+        "total_ms": 3210.1077000043006,
+        "exclusive_ms": 3210.1077000043006,
+        "exclusive_wall_percent": 5.350099917270882
+      },
+      "curve_update": {
+        "count": 1279,
+        "median_ms": 6.0607999985222705,
+        "p95_ms": 7.697879995976108,
+        "p99_ms": 8.359627998725045,
+        "max_ms": 9.476400002313312,
+        "total_ms": 7856.799199704255,
+        "exclusive_ms": 4646.691499699955,
+        "exclusive_wall_percent": 7.744370635320033
+      },
+      "range_update": {
+        "count": 1279,
+        "median_ms": 7.353699998930097,
+        "p95_ms": 9.087460002774602,
+        "p99_ms": 9.838562000077221,
+        "max_ms": 11.220799999136943,
+        "total_ms": 9523.791100116796,
+        "exclusive_ms": 1666.9919004125404,
+        "exclusive_wall_percent": 2.778278507128098
+      },
+      "paint": {
+        "count": 30032,
+        "median_ms": 0.0394000016967766,
+        "p95_ms": 0.2385700016020547,
+        "p99_ms": 12.25008699992031,
+        "max_ms": 18.260400000144728,
+        "total_ms": 16365.979899172089,
+        "exclusive_ms": 16365.979899172089,
+        "exclusive_wall_percent": 27.276227431403687
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 140189,
+      "Value 1": 140189,
+      "Value 2": 140189,
+      "Value 3": 140189,
+      "Value 4": 140189,
+      "Value 5": 140189
+    },
+    "plotted_points": {
+      "Value 0": 274,
+      "Value 1": 274,
+      "Value 2": 547,
+      "Value 3": 546,
+      "Value 4": 545,
+      "Value 5": 544
+    },
+    "valid_for_comparison": true,
+    "source_sha256": {
+      "modules/core/plotter.py": "76ba07503215a174ed891d7b6d738fcb62b0d1edfc8129668036bdb551c69c52",
+      "modules/core/buckets.py": "43e48aecd609c81edde5172b1792aed3fcfe2bfd4a36ea1f36d2866e0600444c",
+      "modules/widgets/plot_widget.py": "0873c69914431a4c4a8e97d8751d614ddc8b0c12231e3d39f5a8d938711cffb3",
+      "modules/widgets/console_widget.py": "d63afd293edb7f601ee2f2b2e0633be9474e32f3e3c8b6af18061536212b1807"
+    }
+  },
+  "final_raster": {
+    "settings": {
+      "port": "COM15",
+      "duration": 60.0,
+      "warmup": 10,
+      "renderer": "raster",
+      "no_console": false,
+      "no_plot": false,
+      "no_logging": false,
+      "frame_ms": null,
+      "no_vsync": false,
+      "detail": false,
+      "prepare_view": false,
+      "precise": false,
+      "profile": false,
+      "output": "logs\\latency_diagnostics\\final_raster",
+      "source_snapshot": null
+    },
+    "elapsed_seconds": 59.99927149999712,
+    "counts": {
+      "bytes": 5991528,
+      "lines": 119997,
+      "chunks": 18970,
+      "max_chunk_bytes": 7931,
+      "values": 719982
+    },
+    "sequence": {
+      "first": 2452846,
+      "last": 2572842,
+      "gaps": 0,
+      "backwards": 0
+    },
+    "window_visible": true,
+    "window_minimized": false,
+    "window_exposed": true,
+    "refresh_interval_ms": 33,
+    "bytes_per_second": 99860.0124669895,
+    "lines_per_second": 1999.9742830211824,
+    "latency": {
+      "count": 3007,
+      "median_ms": 0.64820000261534,
+      "p95_ms": 19.932909993804042,
+      "p99_ms": 22.485765994351823,
+      "max_ms": 66.36939999589231
+    },
+    "stages": {
+      "console_flush": {
+        "count": 959,
+        "median_ms": 4.947699999320321,
+        "p95_ms": 6.155230005242628,
+        "p99_ms": 6.887665998365264,
+        "max_ms": 8.099699996819254,
+        "total_ms": 4764.942299996619,
+        "exclusive_ms": 4764.942299996619,
+        "exclusive_wall_percent": 7.941666925067328
+      },
+      "read_downsample": {
+        "count": 7668,
+        "median_ms": 0.3939000016544014,
+        "p95_ms": 0.6150650002382463,
+        "p99_ms": 0.7886989980033832,
+        "max_ms": 1.3914000010117888,
+        "total_ms": 3183.1826999405166,
+        "exclusive_ms": 3183.1826999405166,
+        "exclusive_wall_percent": 5.3053689159220365
+      },
+      "curve_update": {
+        "count": 1278,
+        "median_ms": 6.005899998854147,
+        "p95_ms": 7.549465000920463,
+        "p99_ms": 8.199245001087547,
+        "max_ms": 9.772100005648099,
+        "total_ms": 7774.733099984587,
+        "exclusive_ms": 4591.550400044071,
+        "exclusive_wall_percent": 7.652676916326044
+      },
+      "range_update": {
+        "count": 1278,
+        "median_ms": 7.273250001162523,
+        "p95_ms": 8.816075001595891,
+        "p99_ms": 9.549280001519946,
+        "max_ms": 11.63809999707155,
+        "total_ms": 9387.344600094366,
+        "exclusive_ms": 1612.6115001097787,
+        "exclusive_wall_percent": 2.6877184668981458
+      },
+      "paint": {
+        "count": 31378,
+        "median_ms": 0.036799996451009065,
+        "p95_ms": 0.19911500166926976,
+        "p99_ms": 13.802613000952986,
+        "max_ms": 17.4057999975048,
+        "total_ms": 18664.650499544223,
+        "exclusive_ms": 18664.650499544223,
+        "exclusive_wall_percent": 31.10812853710252
+      },
+      "console_log": {
+        "count": 18970,
+        "median_ms": 0.03410000499570742,
+        "p95_ms": 0.07750000077066943,
+        "p99_ms": 0.12549300015962256,
+        "max_ms": 1.3049000044702552,
+        "total_ms": 806.6720992937917,
+        "exclusive_ms": 806.6720992937917,
+        "exclusive_wall_percent": 1.344469822927484
+      },
+      "decode_lines": {
+        "count": 18970,
+        "median_ms": 0.005399997462518513,
+        "p95_ms": 0.011199997970834374,
+        "p99_ms": 0.021930999646429104,
+        "max_ms": 0.4335999983595684,
+        "total_ms": 126.53629995475058,
+        "exclusive_ms": 126.53629995475058,
+        "exclusive_wall_percent": 0.21089639389164355
+      },
+      "extract": {
+        "count": 119997,
+        "median_ms": 0.018699996871873736,
+        "p95_ms": 0.03819999983534217,
+        "p99_ms": 0.054299998737405986,
+        "max_ms": 64.24870000046212,
+        "total_ms": 2827.9620998800965,
+        "exclusive_ms": 2827.9620998800965,
+        "exclusive_wall_percent": 4.713327394117163
+      },
+      "csv_log": {
+        "count": 18970,
+        "median_ms": 0.06240000220714137,
+        "p95_ms": 0.5982650007354093,
+        "p99_ms": 0.8293479995336394,
+        "max_ms": 2.747899998212233,
+        "total_ms": 2564.304100116715,
+        "exclusive_ms": 2564.304100116715,
+        "exclusive_wall_percent": 4.2738920590341465
+      },
+      "append_store": {
+        "count": 18970,
+        "median_ms": 0.08879999950295314,
+        "p95_ms": 0.7497999977204017,
+        "p99_ms": 1.0633480037358833,
+        "max_ms": 4.039399995235726,
+        "total_ms": 3302.457299803791,
+        "exclusive_ms": 3302.457299803791,
+        "exclusive_wall_percent": 5.5041623293775315
+      },
+      "receive_total": {
+        "count": 18970,
+        "median_ms": 0.3642999945441261,
+        "p95_ms": 2.3567550029838458,
+        "p99_ms": 3.2121309969807044,
+        "max_ms": 66.9761999961338,
+        "total_ms": 11748.635699732404,
+        "exclusive_ms": 2120.703800683259,
+        "exclusive_wall_percent": 3.534549249791076
+      }
+    },
+    "errors": [],
+    "samples_per_series": {
+      "Value 0": 140285,
+      "Value 1": 140285,
+      "Value 2": 140285,
+      "Value 3": 140285,
+      "Value 4": 140285,
+      "Value 5": 140285
+    },
+    "plotted_points": {
+      "Value 0": 274,
+      "Value 1": 274,
+      "Value 2": 548,
+      "Value 3": 544,
+      "Value 4": 544,
+      "Value 5": 546
+    },
+    "valid_for_comparison": true,
+    "source_sha256": {
+      "modules/core/plotter.py": "76ba07503215a174ed891d7b6d738fcb62b0d1edfc8129668036bdb551c69c52",
+      "modules/core/buckets.py": "43e48aecd609c81edde5172b1792aed3fcfe2bfd4a36ea1f36d2866e0600444c",
+      "modules/widgets/plot_widget.py": "0873c69914431a4c4a8e97d8751d614ddc8b0c12231e3d39f5a8d938711cffb3",
+      "modules/widgets/console_widget.py": "d63afd293edb7f601ee2f2b2e0633be9474e32f3e3c8b6af18061536212b1807"
+    }
+  },
+  "validation": {
+    "final_gl": {
+      "csv_counts": {
+        "Value 0": 140189,
+        "Value 1": 140189,
+        "Value 2": 140189,
+        "Value 3": 140189,
+        "Value 4": 140189,
+        "Value 5": 140189
+      },
+      "counter_discontinuities": 0,
+      "matches_stored_samples": true
+    },
+    "final_raster": {
+      "csv_counts": {
+        "Value 0": 140285,
+        "Value 1": 140285,
+        "Value 2": 140285,
+        "Value 3": 140285,
+        "Value 4": 140285,
+        "Value 5": 140285
+      },
+      "counter_discontinuities": 0,
+      "matches_stored_samples": true
+    },
+    "baseline_gl_repeat": {
+      "csv_counts": {
+        "Value 0": 140163,
+        "Value 1": 140163,
+        "Value 2": 140163,
+        "Value 3": 140163,
+        "Value 4": 140163,
+        "Value 5": 140163
+      },
+      "counter_discontinuities": 0,
+      "matches_stored_samples": true
+    }
+  }
+}

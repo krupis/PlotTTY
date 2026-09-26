@@ -4,6 +4,9 @@ This is an isolated experiment; it does not change the application's plot widget
 or its requirements. See [RESULTS.md](RESULTS.md) for measured results and the
 replacement assessment.
 
+Live-device diagnostics are separate: see [LIVE_LATENCY.md](LIVE_LATENCY.md) for
+the COM15 investigation, before/after measurements, and rerun instructions.
+
 ## Run on Windows
 
 From the repository root, using the existing application virtual environment:

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import math
 
 
-BUCKET_SIZES = (4, 8, 16, 32, 64, 128, 256, 512, 1_000, 10_000, 100_000, 1_000_000)
+BUCKET_SIZES = (4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192)
 
 Point = tuple[float, float]
 

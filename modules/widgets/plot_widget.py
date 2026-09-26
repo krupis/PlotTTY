@@ -14,7 +14,9 @@ from ..core.models import CapturedValue
 from ..core.plotter import Plotter
 
 
-PLOT_REFRESH_INTERVAL_MS = 50
+# Leave time for serial callbacks and input between six-panel redraws.
+# This limits display refreshes, not acquisition or raw sample storage.
+PLOT_REFRESH_INTERVAL_MS = 33
 PLOT_BACKGROUND = "#1f2328"
 PLOT_AXIS = "#5c6370"
 PLOT_TEXT = "#dce3ea"
@@ -38,6 +40,7 @@ class PlotWidget(QWidget):
         self._is_setting_time_range = False
 
         self.graph = pg.GraphicsLayoutWidget()
+        self.graph.useOpenGL(True)
         self.graph.setBackground(PLOT_BACKGROUND)
 
         self.visible_points_label = QLabel("Points: 0")
@@ -53,6 +56,16 @@ class PlotWidget(QWidget):
         self.series_button = QPushButton("Series")
         self.series_button.setMenu(self.series_menu)
         self.series_button.setEnabled(False)
+
+        self.opengl_button = QPushButton("OpenGL")
+        self.opengl_button.setObjectName("PlotModeButton")
+        self.opengl_button.setCheckable(True)
+        self.opengl_button.setChecked(True)
+        self.opengl_button.setToolTip(
+            "Use OpenGL rendering when enabled, or CPU rendering when disabled. "
+            "Allow the rolling UI latency window to refill after switching."
+        )
+        self.opengl_button.toggled.connect(self.on_toggle_opengl)
 
         self.auto_scroll_button = QPushButton("Auto Scroll")
         self.auto_scroll_button.setObjectName("PlotModeButton")
@@ -72,6 +85,7 @@ class PlotWidget(QWidget):
         toolbar.addStretch()
         toolbar.addWidget(self.visible_points_label)
         toolbar.addWidget(self.downsample_ratio_label)
+        toolbar.addWidget(self.opengl_button)
         toolbar.addWidget(self.series_button)
         toolbar.addWidget(self.show_all_button)
         toolbar.addWidget(self.auto_scroll_button)
@@ -132,6 +146,26 @@ class PlotWidget(QWidget):
             self.show_all_data()
         else:
             self._update_visible_curve_data()
+
+    @Slot(bool)
+    def on_toggle_opengl(self, enabled: bool) -> None:
+        # Curve GPU resources belong to the old viewport. Recreate only the
+        # curves so repeated switches never reuse a destroyed OpenGL context.
+        curves = [(label, self._plots[label], curve.opts["pen"]) for label, curve in self._curves.items()]
+        was_setting_time_range = self._is_setting_time_range
+        self._is_setting_time_range = True
+        try:
+            for label, curve in self._curves.items():
+                self._plots[label].removeItem(curve)
+            self._curves.clear()
+            self.graph.useOpenGL(enabled)
+            for label, plot, pen in curves:
+                curve = plot.plot(pen=pen)
+                curve.setDownsampling(auto=False)
+                self._curves[label] = curve
+            self._update_visible_curve_data()
+        finally:
+            self._is_setting_time_range = was_setting_time_range
 
     @Slot(bool)
     def on_toggle_auto_scroll(self, enabled: bool) -> None:
@@ -286,6 +320,10 @@ class PlotWidget(QWidget):
         visible_point_count = max(visible_counts, default=0)
         self.visible_points_label.setText(f"Points: {visible_point_count:,}")
         self.downsample_ratio_label.setText(f"Downsample: {_format_downsample_ratio(max(downsample_ratios, default=1.0))}")
+
+        # Resolve auto-ranges and transforms before Qt enters paintEvent.
+        # Updating them during painting can schedule another costly repaint.
+        self.graph.scene().prepareForPaint()
 
     def _bucket_count_for_series(self, label: str) -> int:
         plot = self._plots.get(label)

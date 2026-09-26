@@ -18,11 +18,14 @@ class Plotter:
     def __init__(self):
         self._file = tempfile.TemporaryFile(prefix="plottty_series_", suffix=".bin")
         self._sample_count = 0
+        self._first_timestamp: float | None = None
         self._latest_timestamp: float | None = None
         self._pending_sample_bytes = bytearray()
         self._buckets = Buckets()
 
     def add_sample(self, timestamp: float, value: float) -> None:
+        if self._first_timestamp is None:
+            self._first_timestamp = timestamp
         self._pending_sample_bytes.extend(RAW_SAMPLE_STRUCT.pack(timestamp, value))
         if len(self._pending_sample_bytes) >= PENDING_BYTES_LIMIT:
             self._write_pending_samples_to_file()
@@ -31,9 +34,7 @@ class Plotter:
         self._latest_timestamp = timestamp
         self._buckets.add_sample(timestamp, value)
 
-    def read_visible_samples(
-        self, start_time: float, end_time: float, buckets: int
-    ) -> tuple[int, list[float], list[float]]:
+    def read_visible_samples(self, start_time: float, end_time: float, buckets: int) -> tuple[int, list[float], list[float]]:
         start_index, stop_index = self._sample_indexes_for_range(start_time, end_time)
         if stop_index <= start_index:
             return 0, [], []
@@ -71,7 +72,8 @@ class Plotter:
         self._file.flush()
 
     def _read_raw_samples_by_index(self, start_index: int, stop_index: int) -> tuple[list[float], list[float]]:
-        """Read a contiguous range after the range lookup has flushed pending samples."""
+        """Flush only when raw data is actually needed, then read the range."""
+        self._flush_samples_to_file()
         x_values: list[float] = []
         y_values: list[float] = []
         self._file.seek(start_index * RAW_SAMPLE_STRUCT.size)
@@ -85,11 +87,28 @@ class Plotter:
         return x_values, y_values
 
     def _sample_indexes_for_range(self, start_time: float, end_time: float) -> tuple[int, int]:
+        """Return an index slice including samples at both requested times."""
+        if not self._sample_count:
+            return 0, 0
+
+        # An empty or completely out-of-capture range contains no samples.
+        if start_time > end_time or end_time < self._first_timestamp or start_time > self._latest_timestamp:
+            return 0, 0
+
+        # "See all" already has known indexes; no disk access is needed.
+        start_index = 0
+        stop_index = self._sample_count
+        if start_time <= self._first_timestamp and end_time >= self._latest_timestamp:
+            return start_index, stop_index
+
         self._flush_samples_to_file()
-        return (
-            self._find_sample_index(start_time, lower_bound=True),
-            self._find_sample_index(end_time, lower_bound=False),
-        )
+        if start_time > self._first_timestamp:
+            # First sample at or after start_time.
+            start_index = self._find_sample_index(start_time, lower_bound=True)
+        if end_time < self._latest_timestamp:
+            # First sample after end_time, so equal timestamps are included.
+            stop_index = self._find_sample_index(end_time, lower_bound=False)
+        return start_index, stop_index
 
     def _find_sample_index(self, target_x: float, lower_bound: bool) -> int:
         low = 0
