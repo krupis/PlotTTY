@@ -59,7 +59,7 @@ class SerialSettingsDialog(QDialog):
         for label, value in (("LF", "\n"), ("CR", "\r"), ("CRLF", "\r\n"), ("None", "")):
             self.line_ending_combo.addItem(label, value)
 
-        log_to_file_tooltip = "Save received serial data and extracted plot values to log files."
+        log_to_file_tooltip = "Save serial text to a console log and plot values to a compressed PlotTTY capture."
         raw_capture_mode_tooltip = "Show and log raw serial data without parsing it into plot values."
         console_line_limit_tooltip = (
             "Keep only the latest console lines for smoother rendering. "

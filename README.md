@@ -21,6 +21,23 @@ For rendering benchmarks and live-device diagnostics, see
 [benchmarks/README.md](benchmarks/README.md). Their additional dependencies are
 optional and are not needed to run PlotTTY.
 
+## Recording and opening captures
+
+With **Log to file** enabled, PlotTTY saves extracted plot values to compressed
+`.plotty` files and serial console text to a separate `.log` file. Captures retain
+all numeric values, timestamps, labels, units, and raw serial text without
+reducing numeric precision. Disconnect the device to finish the recording before
+opening or exporting it.
+
+Use **File → Load plot data** to open a `.plotty` capture. Loading happens in the
+background and can be cancelled. Use **File → Export capture as CSV...** to create
+a readable CSV for other tools; exporting also runs in the background. Cancelled
+or failed exports do not replace an existing destination file. CSV import is not
+supported.
+
+The [capture format specification](docs/CAPTURE_FORMAT.md) describes the versioned
+binary format. No additional Python dependencies are required.
+
 ## License
 
 PlotTTY's original source code is licensed under the [MIT License](LICENSE).

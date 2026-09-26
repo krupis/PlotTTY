@@ -2,7 +2,7 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtGui import QColor, QIcon, QPalette
+from PySide6.QtGui import QAction, QColor, QIcon, QPalette
 from PySide6.QtCore import QEvent, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
@@ -22,7 +22,7 @@ from modules.controllers.profile_controller import ProfileController
 from modules.controllers.serial_session import SerialSession
 from modules.core.extraction import default_rules
 from modules.core.rule_suggestions import suggest_rules
-from modules.core.serial_log import read_plot_csv
+from modules.controllers.capture_job import CaptureJob
 from modules.core.ui_latency import EventLoopLatencyMonitor
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.loading_dialog import LoadingDialog
@@ -80,6 +80,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_DISPLAY_NAME)
         self.setWindowIcon(QIcon(APP_ICON_RESOURCE))
 
+        self._capture_job: CaptureJob | None = None
+        self._loading_dialog: LoadingDialog | None = None
+        self._close_after_capture = False
         self.session = SerialSession(self)
         self.profile = ProfileController(self)
 
@@ -88,6 +91,9 @@ class MainWindow(QMainWindow):
         self.rules_table = RulesTable(self.ui.RulesTable, self)
 
         self._configure_console()
+        self._export_csv_action = QAction("Export capture as CSV...", self)
+        self.ui.menuFile.addAction(self._export_csv_action)
+        self._export_csv_action.triggered.connect(self.on_export_csv)
         self._connect_signals()
         self.rules_table.set_rules(default_rules())
         self._start_latency_monitor()
@@ -166,40 +172,85 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_load_log(self) -> None:
-        path, _selected_filter = QFileDialog.getOpenFileName(
-            self,
-            "Load Plot Data",
-            str(self.session.log_dir),
-            "Plot CSV (*.csv)",
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load Plot Data", str(self.session.log_dir), "PlotTTY capture (*.plotty)",
         )
-        if not path:
+        if path:
+            self._start_capture_job(path)
+
+    @Slot()
+    def on_export_csv(self) -> None:
+        source, _ = QFileDialog.getOpenFileName(
+            self, "Choose capture to export", str(self.session.log_dir), "PlotTTY capture (*.plotty)",
+        )
+        if not source:
             return
+        destination, _ = QFileDialog.getSaveFileName(
+            self, "Export capture as CSV", str(Path(source).with_suffix(".csv")), "CSV (*.csv)",
+        )
+        if destination:
+            self._start_capture_job(source, destination)
 
-        self.console.clear()
-        self.plot.clear_values()
-        self.console.append_status(f"[loading plot data from {Path(path).name}]\n")
-        self.statusBar().showMessage(f"Loading plot data from {Path(path).name}...")
-        self.console.flush()
-        loading_dialog = LoadingDialog(f"Loading {Path(path).name}", self)
-        loading_dialog.start()
+    def _start_capture_job(self, path: str, destination: str | None = None) -> None:
+        if self._capture_job is not None:
+            return
+        if destination is None:
+            self.session.disconnect_serial()  # Do not mix live samples into an imported time base.
+        job = self._capture_job = CaptureJob(path, destination, parent=self)
+        message = f"{'Exporting' if destination else 'Loading'} {Path(path).name}..."
+        dialog = self._loading_dialog = LoadingDialog(message, self)
+        self.ui.actionLoad_log.setEnabled(False)
+        self._export_csv_action.setEnabled(False)
+        job.progress.connect(self._on_capture_progress)
+        job.finished.connect(self._finish_capture_job)
+        dialog.cancel_requested.connect(job.requestInterruption)
+        self.statusBar().showMessage(message)
+        dialog.start()
+        job.start()
 
-        def update_load_progress(row_count: int) -> None:
-            message = f"Loaded {row_count:,} rows"
-            loading_dialog.set_message(message)
+    @Slot(int)
+    def _on_capture_progress(self, count: int) -> None:
+        job = self._capture_job
+        if job is not None and not job.isInterruptionRequested():
+            verb = "Exported" if job.destination is not None else "Prepared"
+            message = f"{verb} {count:,} values"
+            self._loading_dialog.set_message(message)
             self.statusBar().showMessage(message)
 
-        try:
-            captured_values = read_plot_csv(path, update_load_progress)
-            loading_dialog.set_message("Rendering plot...")
-            self.plot.append_values(captured_values)
-            self.plot.show_all_data()
-        except Exception as exc:
-            QMessageBox.warning(self, "Load Plot Data Failed", str(exc))
+    @Slot()
+    def _finish_capture_job(self) -> None:
+        job = self._capture_job
+        if job is None:
             return
+        self._loading_dialog.accept()
+        operation = "CSV export" if job.destination is not None else "Log import"
+        try:
+            if job.error:
+                raise RuntimeError(job.error)
+            if job.cancelled or self._close_after_capture or (
+                job.destination is None and job.isInterruptionRequested()
+            ):
+                self.statusBar().showMessage(f"{operation} cancelled")
+            elif job.destination is not None:
+                self.statusBar().showMessage(f"Saved {job.row_count:,} values to {job.destination}")
+            else:
+                self.plot.replace_series(job.take_series(), job.start_time)
+                self.console.clear()
+                self.console.append_status(f"[loaded plot data from {job.path.name}]\n")
+                self.statusBar().showMessage(f"Loaded {job.path.name}: {job.row_count:,} values")
+        except Exception as exc:
+            self.statusBar().showMessage(f"{operation} failed")
+            QMessageBox.warning(self, f"{operation} failed", str(exc))
         finally:
-            loading_dialog.close()
-
-        self.statusBar().showMessage(f"Loaded plot data {Path(path).name}: {len(captured_values):,} rows")
+            job.discard_series()
+            job.deleteLater()
+            self._loading_dialog.deleteLater()
+            self._loading_dialog = None
+            self._capture_job = None
+            self.ui.actionLoad_log.setEnabled(True)
+            self._export_csv_action.setEnabled(True)
+        if self._close_after_capture:
+            self.close()
 
     @Slot()
     def on_generate_rules(self) -> None:
@@ -293,6 +344,11 @@ class MainWindow(QMainWindow):
         self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
 
     def closeEvent(self, event) -> None:
+        if self._capture_job is not None:
+            self._close_after_capture = True
+            self._capture_job.requestInterruption()
+            event.ignore()
+            return
         self.console.flush()
         self.session.disconnect_serial()
         super().closeEvent(event)

@@ -133,6 +133,20 @@ class PlotWidget(QWidget):
         self.graph.clear()
         self.on_toggle_auto_scroll(True)
 
+    def replace_series(self, series: dict[str, Plotter], start_time: float | None) -> None:
+        """Adopt prepared stores without replaying their samples on the GUI thread."""
+        self.clear_values()
+        self._series = series
+        self._start_time = start_time
+        self._visible_labels = set(series)
+        self.auto_scroll_button.setChecked(False)
+        self.show_all_button.setChecked(True)
+        for label in series:
+            self._add_series_menu_item(label)
+        self._rebuild_plots()
+        self.show_all_data()
+        self._has_pending_refresh = False
+
     # This method is called periodically to refresh the plot with any new data that has been added since the last refresh.
     @Slot()
     def on_refresh_pending_data(self) -> None:

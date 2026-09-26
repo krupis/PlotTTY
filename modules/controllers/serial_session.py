@@ -11,7 +11,8 @@ from PySide6.QtCore import QObject, QTimer, Signal, Slot
 from ..core.extraction import ExtractionEngine
 from ..core.line_decoder import LineDecoder
 from ..core.models import CapturedValue, ExtractionRule
-from ..core.serial_log import PlotSessionLog, SerialSessionLog
+from ..core.serial_log import SerialSessionLog
+from ..core.binary_logging import PlotSessionLog
 from ..core.serial_transport import SerialSettings, SerialTransport
 
 
@@ -43,6 +44,10 @@ class SerialSession(QObject):
         self._receive_rate_timer.setInterval(RECEIVE_RATE_REFRESH_INTERVAL_MS)
         self._receive_rate_timer.timeout.connect(self.update_receive_rate)
         self._receive_rate_timer.start()
+        self._log_flush_timer = QTimer(self)
+        self._log_flush_timer.setInterval(1000)
+        self._log_flush_timer.timeout.connect(self.flush_plot_log)
+        self._log_flush_timer.start()
 
     @property
     def is_connected(self) -> bool:
@@ -136,7 +141,10 @@ class SerialSession(QObject):
 
         if captured_values:
             if self.settings.log_to_file:
-                self._plot_log.write_values(captured_values)
+                try:
+                    self._plot_log.write_values(captured_values)
+                except (OSError, ValueError) as exc:
+                    self._handle_log_error(exc)
             self.valuesCaptured.emit(captured_values)
 
     @Slot(str)
@@ -144,6 +152,20 @@ class SerialSession(QObject):
         if self._transport is not None:
             self.disconnect_serial()
         self.errorOccurred.emit(message)
+
+    @Slot()
+    def flush_plot_log(self) -> None:
+        try:
+            self._plot_log.flush()
+        except (OSError, ValueError) as exc:
+            self._handle_log_error(exc)
+
+    def _handle_log_error(self, error: Exception) -> None:
+        try:
+            self.disconnect_serial()
+        except (OSError, ValueError):
+            pass  # The original write error is the useful diagnostic.
+        self.errorOccurred.emit(f"Recording stopped: {error}")
 
     @Slot()
     def update_receive_rate(self) -> None:
