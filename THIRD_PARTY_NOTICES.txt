@@ -1,0 +1,35 @@
+PlotTTY third-party notices
+
+PlotTTY's original code and icon are MIT licensed; see LICENSE.
+Dependency versions are recorded in VERSIONS.json in the executable release.
+Full license texts and upstream notices are collected in licenses/:
+
+  Qt-PySide.txt  Qt, PySide6 and Shiboken: LGPLv3; bundled components have
+                additional terms, preserved with their original attribution.
+  numpy.txt     NumPy and its bundled numerical libraries: BSD and other terms.
+  pyqtgraph.txt pyqtgraph: MIT.
+  colorama.txt  Colorama (included through pyqtgraph): BSD-3-Clause.
+  Python.txt    CPython and its bundled components, including libffi.
+  OpenSSL.txt   OpenSSL: Apache-2.0.
+  nuitka.txt    Nuitka runtime: AGPLv3 with its runtime linking exception.
+
+The Qt notice collection covers the upstream modules used in this build.
+It also preserves their bundled-component notices; some apply only to other
+platforms or optional features. It does not change PlotTTY's MIT license.
+
+Corresponding source and library replacement
+
+Distribute the matching PlotTTY-<version>-sources.zip alongside the application
+ZIP. For a download release, place both files on the same release page with
+equally accessible download links. When sharing privately, send both ZIPs.
+The source ZIP contains the unmodified corresponding Qt/PySide/Shiboken sources,
+their upstream build instructions, and PlotTTY's source and deployment recipe.
+Sources do not need to be extracted to run PlotTTY.
+
+You may modify or replace the LGPL libraries and reverse-engineer the application
+to debug those modifications. Replace DLLs/extensions in their existing locations
+with Windows x64 builds compatible with the recorded Python and Qt versions.
+No signature check prevents running with modified libraries. For changes needing
+a rebuild, follow README.md in the application source, install the versions in
+VERSIONS.json (substituting your rebuilt libraries), and run pyside6-deploy.
+These instructions do not restrict any rights granted by the dependency licenses.

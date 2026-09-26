@@ -29,7 +29,7 @@ from modules.widgets.loading_dialog import LoadingDialog
 from modules.widgets.application_style import ApplicationStyle
 from modules.widgets.rules_table import RulesTable
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
-import resources_rc  # noqa: F401
+import rc_resources  # noqa: F401
 
 
 STYLESHEET_PATH = Path(__file__).resolve().parent / "styles" / "application.qss"

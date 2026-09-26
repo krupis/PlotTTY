@@ -80,6 +80,7 @@ __pycache__/
 .coverage
 htmlcov/
 dist/
+/deployment/
 
 # Binaries
 # --------

@@ -38,6 +38,47 @@ supported.
 The [capture format specification](docs/CAPTURE_FORMAT.md) describes the versioned
 binary format. No additional Python dependencies are required.
 
+## Windows standalone build
+
+Use Python 3.13 x64, the application dependencies in `.venv`, and Visual Studio
+2022 C++ build tools. Qt's deployment tool reads `pysidedeploy.spec` and runs
+Nuitka internally:
+
+```powershell
+.venv\Scripts\pyside6-rcc.exe resources.qrc -o rc_resources.py
+.venv\Scripts\pyside6-deploy.exe -c pysidedeploy.spec --force
+```
+
+`--force` accepts the deployment tool's setup prompts. It installs the Nuitka
+version specified in the configuration if needed. Run these commands from the
+project root. Qt may update the spec's detected paths/modules during deployment.
+The icon resource is generated as `rc_resources.py`, following Qt's naming convention.
+
+Run `dist/PlotTTY.dist/PlotTTY.exe`; Python is not needed on the recipient's machine.
+The DLLs, plugin folders and stylesheet must remain beside the executable.
+Qt uses `deployment/` for temporary build files. Start from a fresh
+`dist/PlotTTY.dist` folder when changing dependencies: Qt overlays that directory
+and does not remove obsolete files from previous builds.
+
+To prepare a distributable release:
+
+```powershell
+.venv\Scripts\python.exe package_windows.py
+```
+
+This small packaging helper collects notices into flat text files and creates:
+
+- `dist/PlotTTY-1.0.0-windows-x64.zip`: the application and license notices.
+- `dist/PlotTTY-1.0.0-sources.zip`: matching library sources and application source.
+
+Publish both ZIPs together on the same release page, or send both when sharing
+privately. Only the application ZIP needs extracting to run the app. Recordings
+are written under `logs` in the working directory; use a writable folder.
+The executable is unsigned. Source downloads are cached in `build/release-sources`.
+See [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) for library replacement and
+source-distribution instructions. The helper covers the current dependencies;
+review the build report and update it when dependencies change.
+
 ## License
 
 PlotTTY's original source code is licensed under the [MIT License](LICENSE).
