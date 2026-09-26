@@ -2,14 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QMovie
-from PySide6.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
-
-
-SPINNER_PATH = Path(__file__).resolve().parents[2] / "icons" / "spinner_transparent.gif"
+from PySide6.QtWidgets import QApplication, QDialog, QLabel, QProgressBar, QVBoxLayout
 
 
 class LoadingDialog(QDialog):
@@ -20,29 +14,23 @@ class LoadingDialog(QDialog):
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         self.setFixedSize(260, 150)
 
-        self.spinner_label = QLabel()
-        self.spinner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.movie = QMovie(str(SPINNER_PATH), parent=self)
-        self.spinner_label.setMovie(self.movie)
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)
+        self.progress.setTextVisible(False)
 
         self.message_label = QLabel(message)
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         layout = QVBoxLayout(self)
         layout.addStretch()
-        layout.addWidget(self.spinner_label)
+        layout.addWidget(self.progress)
         layout.addWidget(self.message_label)
         layout.addStretch()
 
     def start(self) -> None:
-        self.movie.start()
         self.show()
         QApplication.processEvents()
 
     def set_message(self, message: str) -> None:
         self.message_label.setText(message)
         QApplication.processEvents()
-
-    def closeEvent(self, event) -> None:
-        self.movie.stop()
-        super().closeEvent(event)

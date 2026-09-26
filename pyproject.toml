@@ -1,6 +1,9 @@
 [project]
 name = "plottty"
 version = "1.0.0"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "licenses/*.txt"]
 
 [tool.pyside6-project]
 files = [
