@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import shutil
 import ssl
+import subprocess
 import sys
 import tarfile
 import tomllib
@@ -17,6 +18,30 @@ from PySide6.QtCore import qVersion
 ROOT = Path(__file__).resolve().parent
 APP = ROOT / "dist/PlotTTY.dist"
 CACHE = ROOT / "build/release-sources"
+
+
+def build_launcher():
+    """Use the same Visual Studio toolchain as pyside6-deploy."""
+    import os
+    vswhere = Path(os.environ["ProgramFiles(x86)"]) / "Microsoft Visual Studio/Installer/vswhere.exe"
+    installation = subprocess.check_output([
+        str(vswhere), "-latest", "-products", "*", "-requires",
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"
+    ], text=True).strip()
+    if not installation:
+        raise SystemExit("Install Visual Studio C++ build tools to build the launcher.")
+    folder = ROOT / "build/launcher"
+    folder.mkdir(parents=True, exist_ok=True)
+    # Resource paths use forward slashes to avoid C-style escape sequences.
+    (folder / "launcher.rc").write_text(f'1 ICON "{(ROOT / "icons/Plottty.ico").as_posix()}"\n')
+    script = folder / "compile.cmd"
+    setup = Path(installation) / "VC/Auxiliary/Build/vcvars64.bat"
+    script.write_text(f'@echo off\ncall "{setup}" >nul\nif errorlevel 1 exit /b 1\n'
+                      'rc /nologo launcher.rc\nif errorlevel 1 exit /b 1\n'
+                      f'cl /nologo /O2 /MT /W3 "{ROOT / "launcher.c"}" launcher.res '
+                      '/Fe:PlotTTY.exe /link /SUBSYSTEM:WINDOWS user32.lib\n')
+    subprocess.run(["cmd.exe", "/d", "/c", str(script)], cwd=folder, check=True)
+    return folder / "PlotTTY.exe"
 
 
 def download(url, filename=None):
@@ -55,6 +80,7 @@ def qt_notices(archive):
 def main():
     if not (APP / "PlotTTY.exe").is_file():
         raise SystemExit("Run pyside6-deploy -c pysidedeploy.spec first.")
+    launcher = build_launcher()
     # Nuitka excludes qpdf via the spec but still copies its unused dependency.
     if not (APP / "PySide6/qt-plugins/imageformats/qpdf.dll").exists():
         (APP / "qt6pdf.dll").unlink(missing_ok=True)
@@ -97,7 +123,7 @@ def main():
         out.writestr("libraries/ORIGINS.txt", "\n".join(urls))
         files = [ROOT / name for name in ("mainwindow.py", "ui_form.py", "rc_resources.py", "resources.qrc",
                  "form.ui", "requirements.txt", "pyproject.toml", "LICENSE", "README.md",
-                 "THIRD_PARTY_NOTICES.txt", "package_windows.py", "pysidedeploy.spec")]
+                 "THIRD_PARTY_NOTICES.txt", "package_windows.py", "pysidedeploy.spec", "launcher.c")]
         for folder, pattern in (("modules", "*.py"), ("styles", "*.qss"), ("icons", "Plottty.*")):
             files.extend((ROOT / folder).rglob(pattern))
         for file in files:
@@ -105,11 +131,12 @@ def main():
         out.write(APP / "VERSIONS.json", "PlotTTY/VERSIONS.json")
     output = ROOT / f"dist/PlotTTY-{app_version}-windows-x64.zip"
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as out:
+        out.write(launcher, "PlotTTY/PlotTTY.exe")
         for file in sorted(APP.rglob("*")):
             relative = file.relative_to(APP)
             if (file.is_file() and relative.parts[0] != "logs" and file.name != "profile.json"
                     and not file.name.endswith((".err.txt", ".out.txt"))):
-                out.write(file, Path("PlotTTY") / file.relative_to(APP))
+                out.write(file, Path("PlotTTY/app") / file.relative_to(APP))
     for file in (output, sources):
         digest = hashlib.sha256(file.read_bytes()).hexdigest()
         file.with_suffix(".zip.sha256").write_text(f"{digest}  {file.name}\n")

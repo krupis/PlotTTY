@@ -7,7 +7,7 @@ project_file = pyproject.toml
 icon = icons/Plottty.ico
 
 [python]
-python_path = .venv/Scripts/python.exe
+python_path = C:\Users\petri\Desktop\WORK\Coding\QT\Plottty\.venv\Scripts\python.exe
 packages = Nuitka==4.1.3
 
 [qt]

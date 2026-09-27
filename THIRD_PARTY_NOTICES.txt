@@ -1,5 +1,8 @@
 PlotTTY third-party notices
 
+In the portable release, this file, the license texts, and the runtime libraries
+are under app/. The top-level PlotTTY.exe is a launcher for app/PlotTTY.exe.
+
 PlotTTY's original code and icon are MIT licensed; see LICENSE.
 Dependency versions are recorded in VERSIONS.json in the executable release.
 Full license texts and upstream notices are collected in licenses/:
@@ -27,7 +30,7 @@ their upstream build instructions, and PlotTTY's source and deployment recipe.
 Sources do not need to be extracted to run PlotTTY.
 
 You may modify or replace the LGPL libraries and reverse-engineer the application
-to debug those modifications. Replace DLLs/extensions in their existing locations
+to debug those modifications. Replace DLLs/extensions in their existing locations under app/
 with Windows x64 builds compatible with the recorded Python and Qt versions.
 No signature check prevents running with modified libraries. For changes needing
 a rebuild, follow README.md in the application source, install the versions in

@@ -71,9 +71,25 @@ This small packaging helper collects notices into flat text files and creates:
 - `dist/PlotTTY-1.0.0-windows-x64.zip`: the application and license notices.
 - `dist/PlotTTY-1.0.0-sources.zip`: matching library sources and application source.
 
+The application ZIP has a portable launcher layout:
+
+```text
+PlotTTY/
+    PlotTTY.exe
+    app/
+```
+
+Run the top-level `PlotTTY.exe`. The `app` folder contains the actual application,
+DLLs, styles, and license notices; keep it beside the launcher. The packaging
+helper compiles `launcher.c` with the same Visual Studio C++ tools used for the
+application and embeds the PlotTTY icon. No separate Python installation is
+needed. Launch arguments are forwarded to the application.
+
 Publish both ZIPs together on the same release page, or send both when sharing
 privately. Only the application ZIP needs extracting to run the app. Recordings
-are written under `logs` in the working directory; use a writable folder.
+are written under `logs` beside the launcher, and any default relative profile
+path is also resolved there, even when launching from another directory. Use a
+writable folder. These data files/folders may appear after using the application.
 The executable is unsigned. Source downloads are cached in `build/release-sources`.
 See [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) for library replacement and
 source-distribution instructions. The helper covers the current dependencies;
