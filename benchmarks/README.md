@@ -55,8 +55,8 @@ To print tables and regenerate the chart:
   `glFinish` so GPU submission alone is not mistaken for completed rendering.
   Vsync is requested off. These are update-and-render service times, **not**
   measured display FPS, input latency, or an assertion about scanout timing.
-- Separate `current-widget` and `current-widget-gl` cases use the actual
-  `PlotWidget`, `Plotter`, and `Buckets`, with 1,000,000 raw samples per series.
+- The `current-widget` case uses the actual QPainter-based `PlotWidget`,
+  `Plotter`, and `Buckets`, with 1,000,000 raw samples per series.
   They time 40 refreshes and 40 range changes after ten warmups. Their timer is
   stopped and stored history is fixed; ingestion, serial parsing, and logging
   are not part of those timings. Storage reads/conversion are also timed alone.
@@ -103,12 +103,10 @@ tests. Small differences should not drive a migration decision.
 `clear_values`, and `show_all_data`. `form.ui` promotes a QWidget to `PlotWidget`.
 Keeping that class and those methods preserves the external application API.
 
-Inside `PlotWidget`, pyqtgraph is intertwined with `_rebuild_plots`,
-`_configure_plot`, range synchronization, `_time_range`, curve updates, and
-viewport-width lookup. Storage, extraction, and serial transport are already
-separate and can stay in place.
+`PlotWidget` now draws with QPainter while retaining the existing storage,
+extraction, serial transport, series controls, and time-range behavior.
 
-A migration should first put drawing behind a small adapter:
+The drawing boundary is:
 
 ```text
 canvas.widget                            QWidget to add to the existing layout

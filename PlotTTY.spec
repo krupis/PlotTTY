@@ -1,8 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_data_files
-
 datas = [('styles/application.qss', 'styles')]
-datas += collect_data_files('pyqtgraph')
 
 
 a = Analysis(

@@ -1,8 +1,8 @@
 # PlotTTY
 
 PlotTTY is a Python desktop application for viewing serial data and plotting
-extracted values in real time. It uses PySide6 for the interface and serial port
-access, and pyqtgraph for plotting.
+extracted values in real time. It uses PySide6 for the interface, serial port
+access, and QPainter-based plotting.
 
 ## Run from source
 
@@ -103,11 +103,8 @@ separately include their own license texts:
 
 - [PySide6 and Qt](https://doc.qt.io/qtforpython-6/licenses.html): community
   LGPLv3/GPL options, with module-specific and bundled-component terms.
-- [pyqtgraph](https://github.com/pyqtgraph/pyqtgraph/blob/master/LICENSE.txt): MIT.
-- [NumPy](https://numpy.org/doc/stable/license.html): BSD-3-Clause for the main
-  project, with additional licenses for bundled components.
-
-Optional benchmarks also use [Matplotlib](https://matplotlib.org/stable/project/license.html),
+Optional benchmarks use [pyqtgraph](https://github.com/pyqtgraph/pyqtgraph),
+[NumPy](https://numpy.org/), [Matplotlib](https://matplotlib.org/stable/project/license.html),
 [VisPy](https://github.com/vispy/vispy/blob/main/LICENSE.txt), and
 [PyOpenGL](https://github.com/mcfletch/pyopengl), under their respective licenses.
 

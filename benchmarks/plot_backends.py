@@ -25,7 +25,7 @@ os.environ.setdefault("QT_API", "pyside6")
 os.environ.setdefault("MPLCONFIGDIR", str(HERE / "results" / "mplconfig"))
 
 BACKENDS = ["pyqtgraph", "pyqtgraph-gl", "matplotlib", "matplotlib-blit",
-            "vispy", "qpainter", "qgraphicsview", "opengl", "current-widget", "current-widget-gl"]
+            "vispy", "qpainter", "qgraphicsview", "opengl", "current-widget"]
 COLORS = ["#7cd1a8", "#89b4fa", "#f9c74f", "#f7768e", "#cba6f7"]
 WIDTH, HEIGHT = 1000, 900
 
@@ -338,10 +338,8 @@ def environment():
 def current_widget(args, app):
     """Separately measure the actual storage + widget path, with one million samples/series."""
     import numpy as np
-    import pyqtgraph as pg
     from modules.widgets.plot_widget import PlotWidget
     from modules.core.plotter import Plotter
-    pg.setConfigOption("useOpenGL",args.worker.endswith("-gl"))
     widget = PlotWidget()
     widget._timer.stop()
     widget.resize(WIDTH, HEIGHT)
@@ -365,30 +363,14 @@ def current_widget(args, app):
             start=0 if mode=="refresh" else (latest-span)*.5
             t=time.perf_counter_ns()
             widget._set_time_range(start,start+span)
-            widget.graph.viewport().repaint()
+            widget.graph.repaint()
             app.processEvents()
-            if args.worker.endswith("-gl"):
-                v=widget.graph.viewport()
-                v.makeCurrent()
-                v.context().functions().glFinish()
-                v.doneCurrent()
             if k>=10:
                 elapsed.append((time.perf_counter_ns()-t)/1e6)
         rows.append({"mode":mode, "raw_samples_per_series":args.raw_samples,
                      "plotted_points_per_series":[len(c.xData) for c in widget._curves.values()],
                      **stats(elapsed), "samples_ms":elapsed})
-    if args.worker.endswith("-gl"):
-        from OpenGL import GL
-        from PySide6 import QtGui
-        v=widget.graph.viewport()
-        v.makeCurrent()
-        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER,v.defaultFramebufferObject())
-        w,h=round(v.width()*v.devicePixelRatioF()),round(v.height()*v.devicePixelRatioF())
-        data=GL.glReadPixels(0,0,w,h,GL.GL_RGBA,GL.GL_UNSIGNED_BYTE)
-        QtGui.QImage(data,w,h,QtGui.QImage.Format.Format_RGBA8888).mirrored().save(str(args.output/f"{args.worker}.png"))
-        v.doneCurrent()
-    else:
-        widget.grab().save(str(args.output/f"{args.worker}.png"))
+    widget.grab().save(str(args.output/f"{args.worker}.png"))
     # Separate read/downsample/array conversion from rendering.
     from modules.widgets.plot_widget import _prepare_plot_arrays
     costs=[]
@@ -416,7 +398,7 @@ def worker(args):
         errors.append("".join(traceback.format_exception(typ,value,tb)))
         sys.__excepthook__(typ,value,tb)
     sys.excepthook=hook
-    if args.worker.startswith("current-widget"):
+    if args.worker == "current-widget":
         result=current_widget(args,app)
         if errors:
             raise RuntimeError(errors[0])

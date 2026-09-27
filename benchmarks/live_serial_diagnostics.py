@@ -59,7 +59,8 @@ def main():
     from modules.core.extraction import ExtractionEngine
     from modules.core.line_decoder import LineDecoder
     from modules.core.plotter import Plotter
-    from modules.core.serial_log import SerialSessionLog, PlotSessionLog
+    from modules.core.serial_log import SerialSessionLog
+    from modules.core.binary_logging import PlotSessionLog
     from modules.core.serial_transport import SerialSettings
     from modules.core.models import ExtractionRule
     from modules.core.ui_latency import EventLoopLatencyMonitor
@@ -197,7 +198,8 @@ def main():
     window.session.settings = SerialSettings(port=args.port, log_to_file=not args.no_logging)
     window.session._serial_log.log_dir = args.output
     window.session._plot_log.log_dir = args.output
-    window.plot.opengl_button.setChecked(args.renderer == 'gl')
+    if hasattr(window.plot, 'opengl_button'):
+        window.plot.opengl_button.setChecked(args.renderer == 'gl')
     window.plot.on_toggle_show_all(True)
     if args.frame_ms:
         window.plot._timer.setInterval(args.frame_ms)

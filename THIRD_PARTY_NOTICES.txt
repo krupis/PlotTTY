@@ -9,9 +9,6 @@ Full license texts and upstream notices are collected in licenses/:
 
   Qt-PySide.txt  Qt, PySide6 and Shiboken: LGPLv3; bundled components have
                 additional terms, preserved with their original attribution.
-  numpy.txt     NumPy and its bundled numerical libraries: BSD and other terms.
-  pyqtgraph.txt pyqtgraph: MIT.
-  colorama.txt  Colorama (included through pyqtgraph): BSD-3-Clause.
   Python.txt    CPython and its bundled components, including libffi.
   OpenSSL.txt   OpenSSL: Apache-2.0.
   nuitka.txt    Nuitka runtime: AGPLv3 with its runtime linking exception.

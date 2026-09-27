@@ -100,7 +100,7 @@ def main():
              for name in ("qtbase", "qtserialport", "qtsvg", "qtimageformats")]
     archives = [download(url) for url in urls]
     write_notices(licenses / "Qt-PySide.txt", (entry for archive in archives for entry in qt_notices(archive)))
-    packages = ("numpy", "pyqtgraph", "colorama", "nuitka")
+    packages = ("nuitka",)
     for name in packages:
         package = distribution(name)
         write_notices(licenses / f"{name}.txt", (
