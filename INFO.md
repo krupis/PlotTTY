@@ -43,8 +43,8 @@ Output: `dist\pyinstaller\PlotTTY\PlotTTY.exe`. Share the entire output folder, 
 Push a version tag matching `pyproject.toml`:
 
 ```bat
-git tag v1.0.0
-git push origin v1.0.0
+git tag 1.0.0
+git push origin 1.0.0
 ```
 
 GitHub Actions builds and publishes Windows x64, Linux x64, macOS Intel, and macOS Apple Silicon archives. Run **Build release** manually from the Actions tab to test packaging without creating a release.
