@@ -19,6 +19,10 @@ PLOT_BACKGROUND = QColor("#1f2328")
 PLOT_AXIS = QColor("#5c6370")
 PLOT_GRID = QColor(92, 99, 112, 56)
 PLOT_TEXT = QColor("#dce3ea")
+PLOT_LEFT_MARGIN = 68
+PLOT_RIGHT_MARGIN = 12
+PLOT_TOP_MARGIN = 22
+PLOT_BOTTOM_MARGIN = 24
 AUTO_SCROLL_TOOLTIP = "Keep the plot view following the newest incoming data."
 SHOW_ALL_TOOLTIP = "Zoom the plot out to show all captured data."
 
@@ -52,21 +56,44 @@ class _PlotCanvas(QWidget):
         self.setObjectName("PlotCanvas")
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setToolTip(
+            "Wheel or drag the plot to zoom or pan time. "
+            "Wheel or drag a Y axis to adjust its range; double-click it to restore automatic range."
+        )
         self._curves: dict[str, _CurveData] = {}
+        self._y_ranges: dict[str, tuple[float, float]] = {}
         self._time_range = (0.0, 10.0)
         self._drag_position: QPoint | None = None
         self._drag_range = self._time_range
+        self._drag_label: str | None = None
+        self._drag_y_range = (-1.0, 1.0)
 
     def set_curves(self, curves: dict[str, _CurveData]) -> None:
         self._curves = curves
+        self._y_ranges = {label: value for label, value in self._y_ranges.items() if label in curves}
         self.update()
 
     def set_time_range(self, start_time: float, end_time: float) -> None:
-        self._time_range = (start_time, end_time)
+        self._time_range = _nonnegative_time_range(start_time, end_time)
         self.update()
 
     def plot_width(self) -> int:
-        return max(1, self.width() - 80)
+        return max(1, self.width() - PLOT_LEFT_MARGIN - PLOT_RIGHT_MARGIN)
+
+    def _panel_at(self, position) -> tuple[str, QRectF, QRectF] | None:
+        if not self._curves or not 0 <= position.y() < self.height():
+            return None
+        labels = list(self._curves)
+        panel_height = self.height() / len(labels)
+        row = min(len(labels) - 1, int(position.y() / panel_height))
+        panel = QRectF(0, row * panel_height, self.width(), panel_height)
+        plot = panel.adjusted(
+            PLOT_LEFT_MARGIN, PLOT_TOP_MARGIN, -PLOT_RIGHT_MARGIN, -PLOT_BOTTOM_MARGIN
+        )
+        return labels[row], panel, plot
+
+    def _y_range(self, label: str) -> tuple[float, float]:
+        return self._y_ranges.get(label, _value_range(self._curves[label].yData))
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -84,13 +111,15 @@ class _PlotCanvas(QWidget):
             self._draw_panel(painter, panel, label, self._curves[label])
 
     def _draw_panel(self, painter: QPainter, panel: QRectF, label: str, curve: _CurveData) -> None:
-        plot = panel.adjusted(68, 22, -12, -30)
+        plot = panel.adjusted(
+            PLOT_LEFT_MARGIN, PLOT_TOP_MARGIN, -PLOT_RIGHT_MARGIN, -PLOT_BOTTOM_MARGIN
+        )
         if plot.width() <= 1 or plot.height() <= 1:
             return
         start_time, end_time = self._time_range
         if end_time <= start_time:
             end_time = start_time + 1.0
-        minimum, maximum = _value_range(curve.yData)
+        minimum, maximum = self._y_range(label)
 
         painter.setPen(PLOT_TEXT)
         painter.drawText(QRectF(plot.left(), panel.top(), plot.width(), 20),
@@ -116,17 +145,16 @@ class _PlotCanvas(QWidget):
                 tick_box.moveRight(x)
                 alignment = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
             painter.drawText(tick_box, alignment,
-                             _format_axis_value(start_time + fraction * (end_time - start_time)))
+                             _format_time_value(
+                                 start_time + fraction * (end_time - start_time),
+                                 end_time - start_time,
+                             ))
             painter.drawText(QRectF(0, y - 9, plot.left() - 5, 18),
                              Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                              _format_axis_value(minimum + fraction * (maximum - minimum)))
         painter.setPen(axis_pen)
         painter.drawLine(plot.bottomLeft(), plot.bottomRight())
         painter.drawLine(plot.topLeft(), plot.bottomLeft())
-        painter.setPen(PLOT_TEXT)
-        painter.drawText(QRectF(plot.left(), plot.bottom() + 18, plot.width(), 12),
-                         Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, "Time (s)")
-
         if curve.path.isEmpty():
             return
         x_scale = plot.width() / (end_time - start_time)
@@ -145,37 +173,85 @@ class _PlotCanvas(QWidget):
         painter.restore()
 
     def wheelEvent(self, event: QWheelEvent) -> None:
+        selected = self._panel_at(event.position())
+        if selected is not None and (
+            event.position().x() < selected[2].left()
+            or event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+        ):
+            label, _panel, plot = selected
+            minimum, maximum = self._y_range(label)
+            span = maximum - minimum
+            fraction = min(1.0, max(0.0, (plot.bottom() - event.position().y()) / plot.height()))
+            anchor = minimum + fraction * span
+            new_span = max(1e-12, span * (0.8 if event.angleDelta().y() > 0 else 1.25))
+            self._y_ranges[label] = (
+                anchor - fraction * new_span,
+                anchor + (1.0 - fraction) * new_span,
+            )
+            self.update()
+            event.accept()
+            return
+
         start_time, end_time = self._time_range
         span = end_time - start_time
         if span <= 0:
             return
-        position = min(1.0, max(0.0, (event.position().x() - 68) / self.plot_width()))
+        position = min(1.0, max(0.0, (event.position().x() - PLOT_LEFT_MARGIN) / self.plot_width()))
         anchor = start_time + position * span
         new_span = max(1e-9, span * (0.8 if event.angleDelta().y() > 0 else 1.25))
         new_start = anchor - position * new_span
-        self.timeRangeChanged.emit(new_start, new_start + new_span)
+        self.timeRangeChanged.emit(*_nonnegative_time_range(new_start, new_start + new_span))
         event.accept()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_position = event.position().toPoint()
-            self._drag_range = self._time_range
+            selected = self._panel_at(event.position())
+            if selected is not None and event.position().x() < selected[2].left():
+                self._drag_label = selected[0]
+                self._drag_y_range = self._y_range(selected[0])
+            else:
+                self._drag_label = None
+                self._drag_range = self._time_range
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self._drag_position is None:
             return
+        if self._drag_label is not None:
+            selected = self._panel_at(self._drag_position)
+            if selected is None:
+                return
+            minimum, maximum = self._drag_y_range
+            delta = (event.position().y() - self._drag_position.y()) * (
+                maximum - minimum
+            ) / max(1.0, selected[2].height())
+            self._y_ranges[self._drag_label] = (minimum + delta, maximum + delta)
+            self.update()
+            event.accept()
+            return
         start_time, end_time = self._drag_range
         delta = -(event.position().x() - self._drag_position.x()) * (end_time - start_time) / self.plot_width()
-        self.timeRangeChanged.emit(start_time + delta, end_time + delta)
+        self.timeRangeChanged.emit(*_nonnegative_time_range(start_time + delta, end_time + delta))
         event.accept()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_position = None
+            self._drag_label = None
             self.unsetCursor()
             event.accept()
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        selected = self._panel_at(event.position())
+        if (event.button() == Qt.MouseButton.LeftButton and selected is not None
+                and event.position().x() < selected[2].left()):
+            self._y_ranges.pop(selected[0], None)
+            self.update()
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
 
 
 class PlotWidget(QWidget):
@@ -199,6 +275,9 @@ class PlotWidget(QWidget):
         self.downsample_ratio_label.setToolTip("Raw visible points compared to points drawn. 1:1 means every visible point is drawn.")
         renderer_label = QLabel("QPainter")
         renderer_label.setToolTip("The graph is rendered directly by Qt's QPainter.")
+        self.time_axis_label = QLabel("Time (s)")
+        self.time_axis_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.time_axis_label.setContentsMargins(0, 0, 0, 2)
         self.series_menu = QMenu(self)
         self.series_button = QPushButton("Series")
         self.series_button.setMenu(self.series_menu)
@@ -224,7 +303,8 @@ class PlotWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(toolbar)
-        layout.addWidget(self.graph)
+        layout.addWidget(self.graph, 1)
+        layout.addWidget(self.time_axis_label)
         self._timer = QTimer(self)
         self._timer.setInterval(PLOT_REFRESH_INTERVAL_MS)
         self._timer.timeout.connect(self.on_refresh_pending_data)
@@ -308,6 +388,7 @@ class PlotWidget(QWidget):
         self._set_time_range(0.0, max(self._time_window, self._latest_sample_time()))
 
     def _set_time_range(self, start_time: float, end_time: float) -> None:
+        start_time, end_time = _nonnegative_time_range(start_time, end_time)
         self._last_time_range = (start_time, end_time)
         self.graph.set_time_range(start_time, end_time)
         self._update_visible_curve_data(start_time, end_time)
@@ -389,11 +470,37 @@ def _value_range(values: list[float]) -> tuple[float, float]:
     return minimum - padding, maximum + padding
 
 
+def _nonnegative_time_range(start_time: float, end_time: float) -> tuple[float, float]:
+    span = max(1e-9, end_time - start_time)
+    if start_time < 0:
+        return 0.0, span
+    return start_time, start_time + span
+
+
 def _format_axis_value(value: float) -> str:
     if abs(value) < 1e-9:
         return "0"
     absolute = abs(value)
     return f"{value:.2e}" if absolute >= 100_000 or (absolute and absolute < 0.001) else f"{value:.4g}"
+
+
+def _format_time_value(value: float, visible_span: float) -> str:
+    """Format elapsed seconds without switching to scientific notation."""
+    tick_step = abs(visible_span) / 4
+    if tick_step >= 10:
+        decimal_places = 0
+    elif tick_step >= 1:
+        decimal_places = 1
+    elif tick_step >= 0.1:
+        decimal_places = 2
+    elif tick_step >= 0.01:
+        decimal_places = 3
+    else:
+        decimal_places = 6
+    text = f"{value:,.{decimal_places}f}"
+    if decimal_places:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in ("-0", "-0.0") else text
 
 
 def _color_for_index(index: int) -> str:
