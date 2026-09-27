@@ -273,8 +273,6 @@ class PlotWidget(QWidget):
         self.visible_points_label.setToolTip("Maximum number of data points currently visible in any shown series.")
         self.downsample_ratio_label = QLabel("Downsample: 1:1")
         self.downsample_ratio_label.setToolTip("Raw visible points compared to points drawn. 1:1 means every visible point is drawn.")
-        renderer_label = QLabel("QPainter")
-        renderer_label.setToolTip("The graph is rendered directly by Qt's QPainter.")
         self.time_axis_label = QLabel("Time (s)")
         self.time_axis_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.time_axis_label.setContentsMargins(0, 0, 0, 2)
@@ -288,7 +286,7 @@ class PlotWidget(QWidget):
         self.auto_scroll_button.setChecked(True)
         self.auto_scroll_button.setToolTip(AUTO_SCROLL_TOOLTIP)
         self.auto_scroll_button.clicked.connect(self.on_toggle_auto_scroll)
-        self.show_all_button = QPushButton("See all plot")
+        self.show_all_button = QPushButton("Show All")
         self.show_all_button.setObjectName("PlotModeButton")
         self.show_all_button.setCheckable(True)
         self.show_all_button.setToolTip(SHOW_ALL_TOOLTIP)
@@ -297,7 +295,7 @@ class PlotWidget(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
         toolbar.addStretch()
-        for widget in (self.visible_points_label, self.downsample_ratio_label, renderer_label,
+        for widget in (self.visible_points_label, self.downsample_ratio_label,
                        self.series_button, self.show_all_button, self.auto_scroll_button):
             toolbar.addWidget(widget)
         layout = QVBoxLayout(self)
