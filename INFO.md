@@ -32,8 +32,19 @@ Output: `dist\PlotTTY.dist\PlotTTY.exe`.
 **PyInstaller:**
 
 ```bat
-.venv\Scripts\python.exe -m pip install PyInstaller
+.venv\Scripts\python.exe -m pip install PyInstaller==6.22.3
 .venv\Scripts\python.exe -m PyInstaller --distpath dist/pyinstaller --workpath build/pyinstaller PlotTTY.spec
 ```
 
 Output: `dist\pyinstaller\PlotTTY\PlotTTY.exe`. Share the entire output folder, including `app`.
+
+## GitHub releases
+
+Push a version tag matching `pyproject.toml`:
+
+```bat
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions builds and publishes Windows x64, Linux x64, macOS Intel, and macOS Apple Silicon archives. Run **Build release** manually from the Actions tab to test packaging without creating a release.

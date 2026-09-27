@@ -1,5 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
-datas = [('styles/application.qss', 'styles')]
+import sys
+import tomllib
+from pathlib import Path
+
+
+datas = [
+    ('styles/application.qss', 'styles'),
+    ('LICENSE', '.'),
+    ('THIRD_PARTY_NOTICES.txt', '.'),
+]
+
+windows_icon = 'icons/Plottty.ico' if sys.platform == 'win32' else None
+app_version = tomllib.loads(
+    Path('pyproject.toml').read_text(encoding='utf-8')
+)['project']['version']
 
 
 a = Analysis(
@@ -33,7 +47,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icons/Plottty.ico'],
+    icon=windows_icon,
     contents_directory='app',
 )
 coll = COLLECT(
@@ -45,3 +59,15 @@ coll = COLLECT(
     upx_exclude=[],
     name='PlotTTY',
 )
+
+if sys.platform == 'darwin':
+    app = BUNDLE(
+        coll,
+        name='PlotTTY.app',
+        icon=None,
+        bundle_identifier='io.github.krupis.PlotTTY',
+        version=app_version,
+        info_plist={
+            'NSPrincipalClass': 'NSApplication',
+        },
+    )
