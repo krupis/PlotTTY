@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PlotTTY turns live serial data into responsive, readable plots. Available for Windows, macOS, and Linux.">
+  <meta name="theme-color" content="#0d1715">
+  <title>PlotTTY — Real-time serial plotting</title>
+  <link rel="icon" href="assets/plottty.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="PlotTTY home">
+      <img src="assets/plottty.png" alt="" width="38" height="38">
+      <span>PlotTTY</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#features">Features</a>
+      <a href="#workflow">How it works</a>
+      <a href="#downloads">Downloads</a>
+      <a class="nav-github" href="https://github.com/krupis/QT_PlotTTY">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-glow hero-glow-one"></div>
+      <div class="hero-glow hero-glow-two"></div>
+      <div class="hero-copy">
+        <div class="eyebrow"><span></span> Serial data, clearly</div>
+        <h1>Turn raw serial output into <em>live plots.</em></h1>
+        <p class="hero-lede">Connect a device, select the values you care about, and inspect high-rate streams without losing the full capture.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" id="primary-download" href="https://github.com/krupis/QT_PlotTTY/releases/latest">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
+            <span>Download latest</span>
+          </a>
+          <a class="button button-secondary" href="https://github.com/krupis/QT_PlotTTY">View source</a>
+        </div>
+        <p class="release-note"><span class="status-dot"></span><span id="release-label">Latest stable release</span> · MIT licensed</p>
+      </div>
+
+      <div class="product-stage" aria-label="PlotTTY application preview">
+        <div class="app-window">
+          <div class="window-bar">
+            <div class="window-mark"><img src="assets/plottty.png" alt="" width="22" height="22"><span>PlotTTY</span></div>
+            <div class="window-controls"><i></i><i></i><i></i></div>
+          </div>
+          <div class="app-body">
+            <aside class="device-panel">
+              <span class="panel-label">SERIAL DEVICE</span>
+              <div class="select-row"><span>COM15</span><b>115200</b></div>
+              <button type="button" tabindex="-1"><span></span> Connected</button>
+              <div class="rule-title"><span>Active series</span><b>4</b></div>
+              <div class="rule"><i class="cyan"></i><span>Voltage</span><small>V</small></div>
+              <div class="rule"><i class="green"></i><span>Current</span><small>mA</small></div>
+              <div class="rule"><i class="yellow"></i><span>Temperature</span><small>°C</small></div>
+              <div class="rule"><i class="purple"></i><span>Signal</span><small>%</small></div>
+            </aside>
+            <div class="chart-area">
+              <div class="chart-toolbar"><span>Live capture</span><div><b>18,492</b> points <strong>Auto scroll</strong></div></div>
+              <div class="chart-stack">
+                <div class="chart-card">
+                  <div class="chart-meta"><span>Voltage</span><b>3.31 V</b></div>
+                  <svg viewBox="0 0 640 92" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="grid" d="M0 18H640M0 46H640M0 74H640M110 0V92M220 0V92M330 0V92M440 0V92M550 0V92"/>
+                    <path class="line cyan-line" d="M0 63L18 61L37 64L57 55L76 59L96 54L116 57L135 46L155 49L174 43L194 48L213 38L233 42L252 34L272 37L291 29L311 35L330 25L350 30L369 22L389 27L408 17L428 23L447 20L467 13L486 18L506 11L525 15L545 9L564 13L584 8L603 11L622 5L640 8"/>
+                  </svg>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-meta"><span>Current</span><b>142 mA</b></div>
+                  <svg viewBox="0 0 640 92" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="grid" d="M0 18H640M0 46H640M0 74H640M110 0V92M220 0V92M330 0V92M440 0V92M550 0V92"/>
+                    <path class="line green-line" d="M0 72L13 66L23 72L36 20L46 70L59 61L69 71L82 28L92 68L105 57L115 70L128 16L138 69L151 55L161 70L174 24L184 66L197 60L207 71L220 18L230 68L243 56L253 69L266 25L276 65L289 52L299 68L312 13L322 68L335 58L345 70L358 21L368 66L381 54L391 68L404 29L414 65L427 57L437 69L450 17L460 67L473 51L483 69L496 24L506 66L519 59L529 70L542 20L552 67L565 53L575 68L588 27L598 64L611 55L621 67L634 19L640 54"/>
+                  </svg>
+                </div>
+                <div class="chart-card chart-card-small">
+                  <div class="chart-meta"><span>Temperature</span><b>36.2 °C</b></div>
+                  <svg viewBox="0 0 640 66" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="grid" d="M0 16H640M0 45H640M110 0V66M220 0V66M330 0V66M440 0V66M550 0V66"/>
+                    <path class="line yellow-line" d="M0 47C50 48 69 34 110 38S176 50 220 37S294 30 330 36S400 48 440 35S510 30 550 38S600 45 640 31"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="timeline"><span>0s</span><span>10s</span><span>20s</span><span>30s</span><span>40s</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="floating-stat"><span>UI latency</span><b>9.8 <small>ms</small></b><i>p95</i></div>
+      </div>
+    </section>
+
+    <section class="trust-strip" aria-label="Product highlights">
+      <div><b>Windows · macOS · Linux</b><span>Native desktop releases</span></div>
+      <div><b>Open source</b><span>MIT licensed on GitHub</span></div>
+      <div><b>Full-fidelity capture</b><span>Plot live, retain every value</span></div>
+    </section>
+
+    <section class="section features" id="features">
+      <div class="section-heading">
+        <div class="eyebrow"><span></span> Built for the bench</div>
+        <h2>From serial noise to useful signals.</h2>
+        <p>PlotTTY keeps setup quick while giving long-running captures room to grow.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card feature-wide">
+          <div class="feature-icon">⌁</div>
+          <div>
+            <h3>Responsive real-time plots</h3>
+            <p>Explore active streams with smooth zooming, panning, auto-scroll, and independent Y-axis control.</p>
+          </div>
+          <div class="mini-chart" aria-hidden="true">
+            <svg viewBox="0 0 420 116" preserveAspectRatio="none">
+              <path class="grid" d="M0 23H420M0 58H420M0 93H420M70 0V116M140 0V116M210 0V116M280 0V116M350 0V116"/>
+              <path class="area" d="M0 94L20 82L40 88L60 48L80 72L100 63L120 77L140 35L160 64L180 52L200 69L220 27L240 51L260 43L280 61L300 22L320 48L340 36L360 54L380 18L400 38L420 29V116H0Z"/>
+              <path class="line green-line" d="M0 94L20 82L40 88L60 48L80 72L100 63L120 77L140 35L160 64L180 52L200 69L220 27L240 51L260 43L280 61L300 22L320 48L340 36L360 54L380 18L400 38L420 29"/>
+            </svg>
+          </div>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">{ }</div>
+          <h3>Flexible extraction rules</h3>
+          <p>Read delimited fields, named values, or matching patterns from the output your device already sends.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">↓</div>
+          <h3>Compact recordings</h3>
+          <p>Save compressed <code>.plotty</code> captures, reopen them later, and export portable CSV files when needed.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">◫</div>
+          <h3>Raw console included</h3>
+          <p>Keep the original serial text beside the charts so no context disappears during analysis.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section workflow" id="workflow">
+      <div class="section-heading centered">
+        <div class="eyebrow"><span></span> Simple workflow</div>
+        <h2>Useful plots in three steps.</h2>
+      </div>
+      <div class="steps">
+        <article><span>01</span><div><h3>Connect</h3><p>Choose the serial port and baud rate, then open the connection.</p></div></article>
+        <article><span>02</span><div><h3>Extract</h3><p>Paste a few sample lines and configure the values you want to track.</p></div></article>
+        <article><span>03</span><div><h3>Inspect</h3><p>Plot, navigate, record, and export without interrupting the stream.</p></div></article>
+      </div>
+    </section>
+
+    <section class="section downloads" id="downloads">
+      <div class="download-panel">
+        <div class="download-intro">
+          <div class="eyebrow light"><span></span> Download PlotTTY</div>
+          <h2>Pick your platform.<br>Start plotting.</h2>
+          <p>Portable releases include everything needed to run PlotTTY. No separate Python installation required.</p>
+          <a href="https://github.com/krupis/QT_PlotTTY/releases/latest">Release notes and checksums <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="download-list">
+          <a class="download-row" data-asset="windows-x64.zip" href="https://github.com/krupis/QT_PlotTTY/releases/latest">
+            <span class="platform-icon windows" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span><b>Windows</b><small>Windows 10/11 · x64</small></span>
+            <strong>Download <span>↓</span></strong>
+          </a>
+          <a class="download-row" data-asset="macos-arm64.zip" href="https://github.com/krupis/QT_PlotTTY/releases/latest">
+            <span class="platform-icon apple" aria-hidden="true">●</span>
+            <span><b>macOS</b><small>Apple Silicon</small></span>
+            <strong>Download <span>↓</span></strong>
+          </a>
+          <a class="download-row" data-asset="macos-x64.zip" href="https://github.com/krupis/QT_PlotTTY/releases/latest">
+            <span class="platform-icon apple" aria-hidden="true">●</span>
+            <span><b>macOS</b><small>Intel</small></span>
+            <strong>Download <span>↓</span></strong>
+          </a>
+          <a class="download-row" data-asset="linux-x64.tar.gz" href="https://github.com/krupis/QT_PlotTTY/releases/latest">
+            <span class="platform-icon linux" aria-hidden="true">⌘</span>
+            <span><b>Linux</b><small>x64 portable archive</small></span>
+            <strong>Download <span>↓</span></strong>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a class="brand" href="#top"><img src="assets/plottty.png" alt="" width="32" height="32"><span>PlotTTY</span></a>
+    <p>Serial data, clearly.</p>
+    <div><a href="https://github.com/krupis/QT_PlotTTY">Source</a><a href="https://github.com/krupis/QT_PlotTTY/issues">Issues</a><a href="https://github.com/krupis/QT_PlotTTY/blob/main/LICENSE">License</a></div>
+  </footer>
+</body>
+</html>
