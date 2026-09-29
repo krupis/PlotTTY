@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, QObject, Slot
-from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QComboBox, QHeaderView, QStyledItemDelegate, QStyleOptionViewItem, QTableWidget, QTableWidgetItem
 
 from ..core.models import ExtractionMode, ExtractionRule
@@ -32,9 +32,8 @@ COLUMN_TOOLTIPS = [
 ]
 PATTERN_DELIMITER_COLUMN = 4
 COLUMN_NUMBER_COLUMN = 5
-EDITABLE_RULE_CELL_BACKGROUND = QColor("#243840")
+EDITABLE_RULE_CELL_BACKGROUND = QColor("#2b333c")
 EDITABLE_RULE_CELL_FOREGROUND = QColor("#f3f7fb")
-EDITABLE_RULE_CELL_BORDER = QColor("#5fa88f")
 INACTIVE_RULE_CELL_BACKGROUND = QColor("#20262d")
 INACTIVE_RULE_CELL_FOREGROUND = QColor("#7f8994")
 INACTIVE_CELL_TEXT = "N/A"
@@ -129,8 +128,9 @@ class RulesTable(QObject):
         self._table.setColumnCount(6)
         self._table.verticalHeader().setVisible(False)
         self._table.setAlternatingRowColors(True)
-        self._table.setSelectionMode(self._table.SelectionMode.NoSelection)
-        self._table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._table.setSelectionMode(self._table.SelectionMode.ExtendedSelection)
+        self._table.setSelectionBehavior(self._table.SelectionBehavior.SelectRows)
+        self._table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -320,9 +320,3 @@ class RuleCellDelegate(QStyledItemDelegate):
             style_option.backgroundBrush = INACTIVE_RULE_CELL_BACKGROUND
 
         super().paint(painter, style_option, index)
-
-        if editable:
-            painter.save()
-            painter.setPen(QPen(EDITABLE_RULE_CELL_BORDER))
-            painter.drawRect(option.rect.adjusted(2, 2, -3, -3))
-            painter.restore()

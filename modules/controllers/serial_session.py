@@ -57,6 +57,11 @@ class SerialSession(QObject):
     def log_dir(self) -> Path:
         return self._serial_log.log_dir
 
+    @property
+    def recording_paths(self) -> tuple[Path, ...]:
+        """Current/most recent recording paths, for status and tooltips."""
+        return tuple(path for path in (self._serial_log.path, self._plot_log.path) if path is not None)
+
     def set_rules(self, rules: list[ExtractionRule]) -> None:
         self._engine = ExtractionEngine(rules)
 
@@ -64,7 +69,7 @@ class SerialSession(QObject):
         if self.is_connected:
             return
         if not self.settings.port:
-            raise RuntimeError("Use the Settings button and choose a serial port first.")
+            raise RuntimeError("Choose a serial port in the top bar first.")
 
         transport = SerialTransport(self.settings, self)
         message = f"[connected to {self.settings.port} at {self.settings.baudrate} baud]"

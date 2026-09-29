@@ -18,18 +18,22 @@ class Plotter:
     def __init__(self):
         self._file = tempfile.TemporaryFile(prefix="plottty_series_", suffix=".bin")
         self._sample_count = 0
+        self.unit = ""
+        self._latest_value: float | None = None
         self._first_timestamp: float | None = None
         self._latest_timestamp: float | None = None
         self._pending_sample_bytes = bytearray()
         self._buckets = Buckets()
 
-    def add_sample(self, timestamp: float, value: float) -> None:
+    def add_sample(self, timestamp: float, value: float, unit: str = "") -> None:
         if self._first_timestamp is None:
             self._first_timestamp = timestamp
         self._pending_sample_bytes.extend(RAW_SAMPLE_STRUCT.pack(timestamp, value))
         if len(self._pending_sample_bytes) >= PENDING_BYTES_LIMIT:
             self._write_pending_samples_to_file()
 
+        self.unit = unit or self.unit
+        self._latest_value = value
         self._sample_count += 1
         self._latest_timestamp = timestamp
         self._buckets.add_sample(timestamp, value)
@@ -49,6 +53,10 @@ class Plotter:
             start_index, stop_index, bucket_count
         )
         return visible_samples, x_values, y_values
+
+    def latest_value(self) -> float | None:
+        """Exact latest captured value, independent of the viewed range."""
+        return self._latest_value
 
     def latest_timestamp(self) -> float | None:
         return self._latest_timestamp

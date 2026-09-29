@@ -1,13 +1,17 @@
 # This Python file uses the following encoding: utf-8
 import sys
+from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtGui import QAction, QColor, QIcon, QPalette
-from PySide6.QtCore import QEvent, Qt, Slot
+from PySide6.QtGui import QAction, QColor, QIcon, QPalette, QPixmap
+from PySide6.QtCore import QSettings, QTimer, Qt, Slot
+from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QLabel,
+    QListWidgetItem,
+    QSizePolicy,
     QMessageBox,
     QMainWindow,
 )
@@ -21,14 +25,13 @@ from ui_form import Ui_MainWindow
 from modules.controllers.profile_controller import ProfileController
 from modules.controllers.serial_session import SerialSession
 from modules.core.extraction import default_rules
-from modules.core.rule_suggestions import suggest_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.core.ui_latency import EventLoopLatencyMonitor
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.loading_dialog import LoadingDialog
 from modules.widgets.application_style import ApplicationStyle
-from modules.widgets.rules_table import RulesTable
-from modules.widgets.serial_settings_dialog import SerialSettingsDialog
+from modules.widgets.rules_dialog import RulesDialog
+from modules.widgets.serial_settings_dialog import SerialSettingsDialog, SUPPORTED_BAUD_RATES
 import rc_resources  # noqa: F401
 
 
@@ -88,30 +91,150 @@ class MainWindow(QMainWindow):
 
         self.plot = self.ui.Plot
         self.console = ConsoleWidget(self.ui.ConsoleTextEdit, self)
-        self.rules_table = RulesTable(self.ui.RulesTable, self)
+        self.applied_rules = []
 
-        self._configure_console()
+        self._configure_workspace()
         self._export_csv_action = QAction("Export capture as CSV...", self)
         self.ui.menuFile.addAction(self._export_csv_action)
         self._export_csv_action.triggered.connect(self.on_export_csv)
         self._connect_signals()
-        self.rules_table.set_rules(default_rules())
+        self.apply_rules(default_rules())
         self._start_latency_monitor()
         self.on_connected_changed(False)
+        QTimer.singleShot(0, self.restore_layout)
 
-    def _configure_console(self) -> None:
-        self.ui.SendCommandTextEdit.setLineWrapMode(self.ui.SendCommandTextEdit.LineWrapMode.NoWrap)
-        self.ui.SendCommandTextEdit.setPlaceholderText("Type command and press Enter")
-        self.ui.SendCommandTextEdit.installEventFilter(self)
+    def _configure_workspace(self):
+        self.ui.CommandEdit.setPlaceholderText("Type command and press Enter")
+        self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
+        self.ui.SendButton.clicked.connect(self.on_send_command)
+        self.ui.ConsoleToggle.setDefaultAction(self.ui.actionConsole)
+        self.ui.ConsoleToggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.ui.ConsoleToggle.setArrowType(Qt.ArrowType.RightArrow)
+        self.ui.ConsoleToggle.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.ui.actionConsole.toggled.connect(self.set_console_visible)
+        self.ui.actionSidebar.toggled.connect(self.ui.SeriesSidebar.setVisible)
+        self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
+        self.ui.actionClearCapturedData.triggered.connect(self.on_clear_console_and_plot)
+        self.ui.SeriesList.itemChanged.connect(self._series_visibility_changed)
+        self.ui.RefreshPortsButton.clicked.connect(self.refresh_ports)
+        self.ui.PortCombo.setMinimumWidth(150)
+        self.ui.BaudCombo.addItems([str(value) for value in SUPPORTED_BAUD_RATES])
+        self.refresh_ports()
+        self.apply_settings(self.session.settings)
+        self.ui.PortCombo.currentTextChanged.connect(self._connection_settings_changed)
+        self.ui.BaudCombo.currentTextChanged.connect(self._connection_settings_changed)
+        self._recording_label = QLabel("Not recording")
+        self._rate_label = QLabel("0 B/s")
+        self.statusBar().addWidget(self._recording_label, 1)
+        self.statusBar().addPermanentWidget(self._rate_label)
+        self.ui.MainSplitter.setSizes([220, 1036])
+        self.ui.MainSplitter.setCollapsible(0, False)
+        self.ui.MainSplitter.setStretchFactor(0, 0)
+        self.ui.MainSplitter.setStretchFactor(1, 1)
+        self.ui.WorkspaceSplitter.setCollapsible(0, False)
+        self.ui.WorkspaceSplitter.setCollapsible(1, False)
+        self._console_height = 180
+        self.ui.ConsolePanel.hide()
+        self.ui.actionSidebar.setChecked(True)
+        self._preferences = QSettings("PlotTTY", "PlotTTY")
+        self._sidebar_structure = None
+        self.rebuild_sidebar()
+
+    def refresh_ports(self):
+        selected = self.session.settings.port
+        self.ui.PortCombo.blockSignals(True)
+        self.ui.PortCombo.clear()
+        self.ui.PortCombo.addItem("")
+        for port in QSerialPortInfo.availablePorts():
+            self.ui.PortCombo.addItem(port.portName())
+            self.ui.PortCombo.setItemData(self.ui.PortCombo.count() - 1, port.description(), Qt.ItemDataRole.ToolTipRole)
+        if selected and self.ui.PortCombo.findText(selected) < 0:
+            self.ui.PortCombo.addItem(selected)
+        self.ui.PortCombo.setCurrentText(selected)
+        self.ui.PortCombo.blockSignals(False)
+
+    def _connection_settings_changed(self):
+        if not self.session.is_connected:
+            self.apply_settings(replace(self.session.settings, port=self.ui.PortCombo.currentText(),
+                                        baudrate=int(self.ui.BaudCombo.currentText())))
+
+    def apply_settings(self, settings):
+        self.session.settings = settings
+        for combo, value in ((self.ui.PortCombo, settings.port), (self.ui.BaudCombo, str(settings.baudrate))):
+            combo.blockSignals(True)
+            if combo.findText(value) < 0:
+                combo.addItem(value)
+            combo.setCurrentText(value)
+            combo.blockSignals(False)
+        self.console.set_line_limit_enabled(settings.console_line_limit)
+
+    def rebuild_sidebar(self):
+        self.ui.SeriesList.blockSignals(True)
+        info = self.plot.series_info()
+        structure = [(entry["label"], entry["unit"], entry["color"].name()) for entry in info]
+        if structure == self._sidebar_structure:
+            for row, entry in enumerate(info):
+                self.ui.SeriesList.item(row).setCheckState(Qt.CheckState.Checked if entry["visible"] else Qt.CheckState.Unchecked)
+            self.ui.SeriesList.blockSignals(False)
+            return
+        self._sidebar_structure = structure
+        self.ui.SeriesList.clear()
+        if not info:
+            item = QListWidgetItem("Waiting for series", self.ui.SeriesList)
+            item.setFlags(Qt.ItemFlag.NoItemFlags)
+        for entry in info:
+            text = entry["label"] + (f" ({entry['unit']})" if entry["unit"] else "")
+            item = QListWidgetItem(text, self.ui.SeriesList)
+            item.setData(Qt.ItemDataRole.UserRole, entry["label"])
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked if entry["visible"] else Qt.CheckState.Unchecked)
+            swatch = QPixmap(12, 12)
+            swatch.fill(entry["color"])
+            item.setIcon(QIcon(swatch))
+            item.setToolTip(text)
+        self.ui.SeriesList.blockSignals(False)
+
+    def _series_visibility_changed(self, item):
+        self.plot.set_series_visible(item.data(Qt.ItemDataRole.UserRole), item.checkState() == Qt.CheckState.Checked)
+
+    def set_console_visible(self, visible):
+        if not visible and self.ui.ConsolePanel.isVisible():
+            self._console_height = max(80, self.ui.WorkspaceSplitter.sizes()[1])
+        self.ui.ConsoleToggle.setArrowType(Qt.ArrowType.DownArrow if visible else Qt.ArrowType.RightArrow)
+        self.ui.ConsolePanel.setVisible(visible)
+        if visible:
+            height = self.ui.WorkspaceSplitter.height()
+            self.ui.WorkspaceSplitter.setSizes([max(220, height - self._console_height), self._console_height])
+
+    def set_diagnostics_visible(self, visible):
+        self._latency_label.setVisible(visible)
+        self.plot.visible_points_label.setVisible(visible)
+        self.plot.downsample_ratio_label.setVisible(visible)
+
+    def restore_layout(self):
+        settings = self._preferences
+        try:
+            geometry = settings.value("geometry")
+            if geometry:
+                self.restoreGeometry(geometry)
+            if not any(screen.availableGeometry().intersects(self.frameGeometry()) for screen in QApplication.screens()):
+                self.resize(1280, 800)
+                self.move(QApplication.primaryScreen().availableGeometry().topLeft())
+            for name in ("MainSplitter", "WorkspaceSplitter"):
+                state = settings.value(name)
+                if state:
+                    getattr(self.ui, name).restoreState(state)
+            self._console_height = max(80, min(int(settings.value("consoleHeight", 180)), 1000))
+            for name, default in (("Console", False), ("Sidebar", True), ("Diagnostics", False)):
+                getattr(self.ui, "action" + name).setChecked(settings.value(name, default, type=bool))
+        except (TypeError, ValueError):
+            self.resize(1280, 800)
 
     def _connect_signals(self) -> None:
         self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
-        self.ui.pushButton.clicked.connect(self.on_open_serial_settings)
-        self.ui.ClearConsoleButton.clicked.connect(self.on_clear_console_and_plot)
-        self.ui.AddRuleButton.clicked.connect(self.rules_table.add_rule)
-        self.ui.RemoveRuleButton.clicked.connect(self.rules_table.remove_selected_rules)
-        self.ui.GenerateRulesButton.clicked.connect(self.on_generate_rules)
-        self.rules_table.rulesChanged.connect(self.on_rules_changed)
+        self.ui.SettingsButton.clicked.connect(self.on_open_serial_settings)
+        self.ui.ClearConsoleButton.clicked.connect(self.console.clear)
+        self.ui.EditRulesButton.clicked.connect(self.open_rules_dialog)
         self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
         self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
         self.ui.actionLoad_log.triggered.connect(self.on_load_log)
@@ -121,7 +244,8 @@ class MainWindow(QMainWindow):
         self.session.statusText.connect(self.console.append_status)
         self.session.valuesCaptured.connect(self.plot.append_values)
         self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
-        self.session.statusChanged.connect(self.statusBar().showMessage)
+        self.session.statusChanged.connect(self.update_recording_status)
+        self.plot.seriesChanged.connect(self.rebuild_sidebar)
         self.session.errorOccurred.connect(self.on_serial_error)
 
     def _start_latency_monitor(self) -> None:
@@ -130,10 +254,19 @@ class MainWindow(QMainWindow):
         self._latency_monitor = EventLoopLatencyMonitor(self)
         self._latency_monitor.summaryChanged.connect(self._latency_label.setText)
         self._latency_monitor.start()
+        self.set_diagnostics_visible(False)
+        self.statusBar().addPermanentWidget(self.plot.visible_points_label)
+        self.statusBar().addPermanentWidget(self.plot.downsample_ratio_label)
 
-    @Slot()
-    def on_rules_changed(self) -> None:
-        self.session.set_rules(self.rules_table.rules())
+    def apply_rules(self, rules):
+        self.applied_rules = [replace(rule) for rule in rules]
+        self.session.set_rules([replace(rule) for rule in self.applied_rules])
+
+    def open_rules_dialog(self):
+        dialog = RulesDialog(self.applied_rules, self)
+        dialog.rulesApplied.connect(self.apply_rules)
+        dialog.exec()
+        dialog.deleteLater()
 
     @Slot()
     def on_open_profile(self) -> None:
@@ -147,7 +280,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Open Profile Failed", str(exc))
             return
 
-        self.rules_table.set_rules(profile.rules or default_rules())
+        self.apply_rules(profile.rules)
         self.statusBar().showMessage(f"Loaded {self.profile.profile_name}")
 
     @Slot()
@@ -163,7 +296,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.profile.save(path, self.rules_table.rules())
+            self.profile.save(path, self.applied_rules)
         except Exception as exc:
             QMessageBox.warning(self, "Save Profile Failed", str(exc))
             return
@@ -235,6 +368,8 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"Saved {job.row_count:,} values to {job.destination}")
             else:
                 self.plot.replace_series(job.take_series(), job.start_time)
+                self.plot.capture_title.setText(job.path.name)
+                self.plot.capture_title.setToolTip(str(job.path))
                 self.console.clear()
                 self.console.append_status(f"[loaded plot data from {job.path.name}]\n")
                 self.statusBar().showMessage(f"Loaded {job.path.name}: {job.row_count:,} values")
@@ -253,25 +388,13 @@ class MainWindow(QMainWindow):
             self.close()
 
     @Slot()
-    def on_generate_rules(self) -> None:
-        rules = suggest_rules(self.ui.SampleOutputTextEdit.toPlainText())
-        if not rules:
-            self.statusBar().showMessage("No numeric values found in sample output")
-            return
-
-        self.rules_table.set_rules(rules)
-        self.statusBar().showMessage(f"Generated {len(rules)} rule(s) from sample output")
-
-    @Slot()
     def on_open_serial_settings(self) -> None:
         dialog = SerialSettingsDialog(self.session.settings, self)
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
 
         settings = dialog.selected_settings()
-        self.session.settings = settings
-        self.console.set_line_limit_enabled(settings.console_line_limit)
-        self._update_port_status_label(False)
+        self.apply_settings(settings)
 
     @Slot()
     def on_toggle_connection(self) -> None:
@@ -297,7 +420,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_send_command(self) -> None:
-        command = self.ui.SendCommandTextEdit.toPlainText().strip()
+        command = self.ui.CommandEdit.text().strip()
         if not command:
             return
 
@@ -310,38 +433,31 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(str(exc))
             return
 
-        self.ui.SendCommandTextEdit.clear()
-
-    def eventFilter(self, watched, event) -> bool:
-        if (
-            watched is self.ui.SendCommandTextEdit
-            and event.type() == QEvent.Type.KeyPress
-            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
-        ):
-            self.on_send_command()
-            return True
-
-        return super().eventFilter(watched, event)
+        self.ui.CommandEdit.clear()
 
     @Slot(bool)
     def on_connected_changed(self, connected: bool) -> None:
         self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
-        self.ui.ConnectButton.setObjectName("red_button" if connected else "green_button")
-        self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
-        self.ui.ConnectButton.style().polish(self.ui.ConnectButton)
-        self.ui.pushButton.setEnabled(not connected)
-        self.ui.SendCommandTextEdit.setEnabled(connected)
-        self._update_port_status_label(connected)
+        for widget in (self.ui.SettingsButton, self.ui.PortCombo, self.ui.BaudCombo, self.ui.RefreshPortsButton):
+            widget.setEnabled(not connected)
+        self.ui.CommandEdit.setEnabled(connected)
+        self.ui.SendButton.setEnabled(connected)
+        self.ui.PortStatusLabel.setText("● Connected" if connected else "● Disconnected")
+        self.ui.PortStatusLabel.setProperty("connected", connected)
+        self.ui.PortStatusLabel.style().unpolish(self.ui.PortStatusLabel)
+        self.ui.PortStatusLabel.style().polish(self.ui.PortStatusLabel)
+        self.update_recording_status()
 
-    def _update_port_status_label(self, connected: bool) -> None:
-        port = self.session.settings.port or "No port"
-        color = "#1f8f3a" if connected else "#c62828"
-        self.ui.PortStatusLabel.setText(port)
-        self.ui.PortStatusLabel.setStyleSheet(f"color: {color}; font-weight: 600;")
+    def update_recording_status(self, _message=None):
+        self.statusBar().clearMessage()
+        paths = self.session.recording_paths
+        recording = self.session.is_connected and self.session.settings.log_to_file
+        self._recording_label.setText(f"Recording · {paths[-1].name}" if recording and paths else "Not recording")
+        self._recording_label.setToolTip("\n".join(str(path) for path in paths))
 
     @Slot(float)
     def on_receive_rate_changed(self, bytes_per_second: float) -> None:
-        self.ui.DataReceivedLabel.setText(f"{bytes_per_second:,.0f} B/s")
+        self._rate_label.setText(f"{bytes_per_second:,.0f} B/s")
 
     def closeEvent(self, event) -> None:
         if self._capture_job is not None:
@@ -349,6 +465,16 @@ class MainWindow(QMainWindow):
             self._capture_job.requestInterruption()
             event.ignore()
             return
+        settings = self._preferences
+        settings.setValue("geometry", self.saveGeometry())
+        for name in ("MainSplitter", "WorkspaceSplitter"):
+            settings.setValue(name, getattr(self.ui, name).saveState())
+        if self.ui.actionConsole.isChecked():
+            self._console_height = max(80, self.ui.WorkspaceSplitter.sizes()[1])
+        settings.setValue("consoleHeight", self._console_height)
+        for name in ("Console", "Sidebar", "Diagnostics"):
+            settings.setValue(name, getattr(self.ui, "action" + name).isChecked())
+        self.plot.clear_values()
         self.console.flush()
         self.session.disconnect_serial()
         super().closeEvent(event)

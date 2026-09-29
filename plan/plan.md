@@ -2,7 +2,7 @@
 
 ## 1. Target layout and design decisions
 
-Use [the saved mockup](tmp/design/plottty-direction-a.png) as the visual reference.
+Use [the saved mockup](design/plottty-direction-a.png) as the visual reference.
 
 The finished window will contain:
 

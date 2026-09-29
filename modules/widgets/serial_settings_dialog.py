@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Slot
-from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
-    QHBoxLayout,
     QLabel,
-    QPushButton,
     QVBoxLayout,
-    QWidget,
 )
 
 from ..core.serial_transport import SerialSettings
+
+
+SUPPORTED_BAUD_RATES = (9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600)
 
 
 class SerialSettingsDialog(QDialog):
@@ -27,12 +25,7 @@ class SerialSettingsDialog(QDialog):
         self.setModal(True)
         self.setFixedWidth(360)
 
-        self.port_combo = QComboBox()
-
-        self.baud_combo = QComboBox()
-        for baudrate in (9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600):
-            self.baud_combo.addItem(str(baudrate))
-
+        self._settings = settings
         self.data_bits_combo = QComboBox()
         for data_bits in (5, 6, 7, 8):
             self.data_bits_combo.addItem(str(data_bits), data_bits)
@@ -74,20 +67,7 @@ class SerialSettingsDialog(QDialog):
         self.console_line_limit_checkbox.setToolTip(console_line_limit_tooltip)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        self.refresh_button = QPushButton("Refresh")
-        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setObjectName("green_button")
-        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setObjectName("red_button")
-
-        port_row = QWidget()
-        port_layout = QHBoxLayout(port_row)
-        port_layout.setContentsMargins(0, 0, 0, 0)
-        port_layout.setSpacing(6)
-        port_layout.addWidget(self.port_combo, 1)
-        port_layout.addWidget(self.refresh_button)
-
         form = QFormLayout()
-        form.addRow("Port", port_row)
-        form.addRow("Baud", self.baud_combo)
         form.addRow("Data bits", self.data_bits_combo)
         form.addRow("Parity", self.parity_combo)
         form.addRow("Stop bits", self.stop_bits_combo)
@@ -107,17 +87,15 @@ class SerialSettingsDialog(QDialog):
         layout.addLayout(form)
         layout.addWidget(self.buttons)
 
-        self.refresh_button.clicked.connect(self.on_refresh_ports_clicked)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
-        self.refresh_ports(settings.port)
         self.set_settings(settings)
 
     def selected_settings(self) -> SerialSettings:
         return SerialSettings(
-            port=self.selected_port(),
-            baudrate=int(self.baud_combo.currentText() or 115200),
+            port=self._settings.port,
+            baudrate=self._settings.baudrate,
             data_bits=int(self.data_bits_combo.currentData() or 8),
             parity=str(self.parity_combo.currentData() or "N"),
             stop_bits=float(self.stop_bits_combo.currentData() or 1.0),
@@ -128,30 +106,7 @@ class SerialSettingsDialog(QDialog):
             console_line_limit=self.console_line_limit_checkbox.isChecked(),
         )
 
-    def selected_port(self) -> str:
-        return self.port_combo.currentText().strip()
-
-    @Slot()
-    def on_refresh_ports_clicked(self) -> None:
-        self.refresh_ports(self.selected_port())
-
-    def refresh_ports(self, selected_port: str = "") -> None:
-        self.port_combo.clear()
-        for port in QSerialPortInfo.availablePorts():
-            self.port_combo.addItem(port.portName())
-            if port.description():
-                self.port_combo.setItemData(
-                    self.port_combo.count() - 1,
-                    port.description(),
-                    Qt.ItemDataRole.ToolTipRole,
-                )
-
-        if selected_port:
-            _select_text(self.port_combo, selected_port)
-
     def set_settings(self, settings: SerialSettings) -> None:
-        _select_text(self.port_combo, settings.port)
-        _select_text(self.baud_combo, str(settings.baudrate))
         _select_data(self.data_bits_combo, settings.data_bits)
         _select_data(self.parity_combo, settings.parity)
         _select_data(self.stop_bits_combo, settings.stop_bits)

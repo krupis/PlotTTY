@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 import math
 
 from PySide6.QtCore import QPoint, QRectF, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QAction, QColor, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.models import CapturedValue
 from ..core.plotter import Plotter
@@ -21,8 +21,8 @@ PLOT_GRID = QColor(92, 99, 112, 56)
 PLOT_TEXT = QColor("#dce3ea")
 PLOT_LEFT_MARGIN = 68
 PLOT_RIGHT_MARGIN = 12
-PLOT_TOP_MARGIN = 22
-PLOT_BOTTOM_MARGIN = 24
+PLOT_TOP_MARGIN = 36
+PLOT_BOTTOM_MARGIN = 16
 AUTO_SCROLL_TOOLTIP = "Keep the plot view following the newest incoming data."
 SHOW_ALL_TOOLTIP = "Zoom the plot out to show all captured data."
 
@@ -30,6 +30,7 @@ SHOW_ALL_TOOLTIP = "Zoom the plot out to show all captured data."
 @dataclass(slots=True)
 class _CurveData:
     color: QColor
+    latest: str = ""
     xData: list[float] = field(default_factory=list)
     yData: list[float] = field(default_factory=list)
     path: QPainterPath = field(default_factory=QPainterPath)
@@ -57,9 +58,11 @@ class _PlotCanvas(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setToolTip(
+            "Headers show the latest captured sample, including when viewing older history. "
             "Wheel or drag the plot to zoom or pan time. "
             "Wheel or drag a Y axis to adjust its range; double-click it to restore automatic range."
         )
+        self.empty_message = "Waiting for series"
         self._curves: dict[str, _CurveData] = {}
         self._y_ranges: dict[str, tuple[float, float]] = {}
         self._time_range = (0.0, 10.0)
@@ -70,7 +73,7 @@ class _PlotCanvas(QWidget):
 
     def set_curves(self, curves: dict[str, _CurveData]) -> None:
         self._curves = curves
-        self._y_ranges = {label: value for label, value in self._y_ranges.items() if label in curves}
+        self.setMinimumHeight(max(150, len(curves) * 150))
         self.update()
 
     def set_time_range(self, start_time: float, end_time: float) -> None:
@@ -80,17 +83,18 @@ class _PlotCanvas(QWidget):
     def plot_width(self) -> int:
         return max(1, self.width() - PLOT_LEFT_MARGIN - PLOT_RIGHT_MARGIN)
 
+    def panel_geometry(self, row):
+        height = self.height() / max(1, len(self._curves))
+        panel = QRectF(0, row * height, self.width(), height)
+        return panel, panel.adjusted(PLOT_LEFT_MARGIN, PLOT_TOP_MARGIN,
+                                      -PLOT_RIGHT_MARGIN, -PLOT_BOTTOM_MARGIN)
+
     def _panel_at(self, position) -> tuple[str, QRectF, QRectF] | None:
         if not self._curves or not 0 <= position.y() < self.height():
             return None
         labels = list(self._curves)
-        panel_height = self.height() / len(labels)
-        row = min(len(labels) - 1, int(position.y() / panel_height))
-        panel = QRectF(0, row * panel_height, self.width(), panel_height)
-        plot = panel.adjusted(
-            PLOT_LEFT_MARGIN, PLOT_TOP_MARGIN, -PLOT_RIGHT_MARGIN, -PLOT_BOTTOM_MARGIN
-        )
-        return labels[row], panel, plot
+        row = min(len(labels) - 1, int(position.y() / (self.height() / len(labels))))
+        return labels[row], *self.panel_geometry(row)
 
     def _y_range(self, label: str) -> tuple[float, float]:
         return self._y_ranges.get(label, _value_range(self._curves[label].yData))
@@ -101,19 +105,15 @@ class _PlotCanvas(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         if not self._curves:
             painter.setPen(PLOT_TEXT)
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Waiting for data")
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self.empty_message)
             return
 
-        labels = list(self._curves)
-        panel_height = self.height() / len(labels)
-        for row, label in enumerate(labels):
-            panel = QRectF(0, row * panel_height, self.width(), panel_height)
-            self._draw_panel(painter, panel, label, self._curves[label])
+        for row, (label, curve) in enumerate(self._curves.items()):
+            panel, plot = self.panel_geometry(row)
+            if panel.intersects(QRectF(_event.rect())):
+                self._draw_panel(painter, panel, plot, label, curve)
 
-    def _draw_panel(self, painter: QPainter, panel: QRectF, label: str, curve: _CurveData) -> None:
-        plot = panel.adjusted(
-            PLOT_LEFT_MARGIN, PLOT_TOP_MARGIN, -PLOT_RIGHT_MARGIN, -PLOT_BOTTOM_MARGIN
-        )
+    def _draw_panel(self, painter: QPainter, panel: QRectF, plot: QRectF, label: str, curve: _CurveData) -> None:
         if plot.width() <= 1 or plot.height() <= 1:
             return
         start_time, end_time = self._time_range
@@ -122,39 +122,33 @@ class _PlotCanvas(QWidget):
         minimum, maximum = self._y_range(label)
 
         painter.setPen(PLOT_TEXT)
-        painter.drawText(QRectF(plot.left(), panel.top(), plot.width(), 20),
-                         Qt.AlignmentFlag.AlignCenter, label)
-        axis_pen = QPen(PLOT_AXIS)
-        axis_pen.setCosmetic(True)
+        header = QRectF(12, panel.top() + 4, self.width() - 24, 24)
+        value_width = min(header.width() * .55, painter.fontMetrics().horizontalAdvance(curve.latest) + 16)
+        name_rect = header.adjusted(0, 0, -value_width, 0)
+        name = painter.fontMetrics().elidedText(label, Qt.TextElideMode.ElideRight, int(name_rect.width()))
+        painter.drawText(name_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name)
+        painter.setPen(curve.color)
+        value_rect = QRectF(header.right() - value_width, header.top(), value_width, header.height())
+        painter.drawText(value_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                         painter.fontMetrics().elidedText(curve.latest, Qt.TextElideMode.ElideRight, int(value_width)))
         grid_pen = QPen(PLOT_GRID)
         grid_pen.setCosmetic(True)
-        for tick in range(5):
-            fraction = tick / 4
+        for fraction in _time_tick_fractions():
             x = plot.left() + fraction * plot.width()
-            y = plot.bottom() - fraction * plot.height()
             painter.setPen(grid_pen)
             painter.drawLine(x, plot.top(), x, plot.bottom())
+        tick_count = 5 if plot.height() > 260 else 3
+        for tick in range(tick_count):
+            fraction = tick / (tick_count - 1)
+            y = plot.bottom() - fraction * plot.height()
+            painter.setPen(grid_pen)
             painter.drawLine(plot.left(), y, plot.right(), y)
-            painter.setPen(PLOT_TEXT)
-            tick_box = QRectF(x - 35, plot.bottom() + 3, 70, 17)
-            alignment = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
-            if tick == 0:
-                tick_box.moveLeft(x)
-                alignment = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-            elif tick == 4:
-                tick_box.moveRight(x)
-                alignment = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-            painter.drawText(tick_box, alignment,
-                             _format_time_value(
-                                 start_time + fraction * (end_time - start_time),
-                                 end_time - start_time,
-                             ))
-            painter.drawText(QRectF(0, y - 9, plot.left() - 5, 18),
+            painter.setPen(QColor("#929da8"))
+            painter.drawText(QRectF(0, y - 9, plot.left() - 8, 18),
                              Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                              _format_axis_value(minimum + fraction * (maximum - minimum)))
-        painter.setPen(axis_pen)
-        painter.drawLine(plot.bottomLeft(), plot.bottomRight())
-        painter.drawLine(plot.topLeft(), plot.bottomLeft())
+        painter.setPen(grid_pen)
+        painter.drawLine(panel.bottomLeft(), panel.bottomRight())
         if curve.path.isEmpty():
             return
         x_scale = plot.width() / (end_time - start_time)
@@ -254,7 +248,61 @@ class _PlotCanvas(QWidget):
         super().mouseDoubleClickEvent(event)
 
 
+def _time_tick_fractions():
+    return (0.0, .25, .5, .75, 1.0)
+
+
+class _TimeAxis(QWidget):
+    """Fixed shared footer; its width follows the scrolling canvas viewport."""
+    def __init__(self, graph, parent=None):
+        super().__init__(parent)
+        self.graph = graph
+        self.setFixedHeight(34)
+        self.setToolTip("Elapsed time (seconds). Wheel or drag to navigate time.")
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), PLOT_BACKGROUND)
+        painter.setPen(QColor("#929da8"))
+        start, end = self.graph._time_range
+        for fraction in _time_tick_fractions():
+            x = PLOT_LEFT_MARGIN + fraction * self.graph.plot_width()
+            box = QRectF(x - 40, 5, 80, 24)
+            alignment = Qt.AlignmentFlag.AlignHCenter
+            if fraction == 0:
+                box.moveLeft(x)
+                alignment = Qt.AlignmentFlag.AlignLeft
+            elif fraction == 1:
+                box.moveRight(x)
+                alignment = Qt.AlignmentFlag.AlignRight
+            painter.drawText(box, alignment, _format_time_value(start + fraction * (end - start), end - start) + " s")
+
+    def wheelEvent(self, event):
+        # Footer navigation always controls time, including under the Y labels.
+        start, end = self.graph._time_range
+        fraction = min(1., max(0., (event.position().x() - PLOT_LEFT_MARGIN) / self.graph.plot_width()))
+        span = max(1e-9, (end - start) * (.8 if event.angleDelta().y() > 0 else 1.25))
+        left = start + fraction * (end - start) - fraction * span
+        self.graph.timeRangeChanged.emit(*_nonnegative_time_range(left, left + span))
+        event.accept()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.graph._drag_position = event.position().toPoint()
+            self.graph._drag_label = None
+            self.graph._drag_range = self.graph._time_range
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        self.graph.mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self.graph.mouseReleaseEvent(event)
+
+
 class PlotWidget(QWidget):
+    seriesChanged = Signal()
+
     def __init__(self, parent=None, time_window: float = 10.0):
         super().__init__(parent)
         self.setObjectName("LivePlot")
@@ -273,20 +321,21 @@ class PlotWidget(QWidget):
         self.visible_points_label.setToolTip("Maximum number of data points currently visible in any shown series.")
         self.downsample_ratio_label = QLabel("Downsample: 1:1")
         self.downsample_ratio_label.setToolTip("Raw visible points compared to points drawn. 1:1 means every visible point is drawn.")
-        self.time_axis_label = QLabel("Time (s)")
-        self.time_axis_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.time_axis_label.setContentsMargins(0, 0, 0, 2)
-        self.series_menu = QMenu(self)
-        self.series_button = QPushButton("Series")
-        self.series_button.setMenu(self.series_menu)
-        self.series_button.setEnabled(False)
-        self.auto_scroll_button = QPushButton("Auto Scroll")
+        self.time_axis_label = _TimeAxis(self.graph)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setWidget(self.graph)
+        self.capture_title = QLabel("Live capture")
+        self.capture_title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.auto_scroll_button = QPushButton("Auto scroll")
         self.auto_scroll_button.setObjectName("PlotModeButton")
         self.auto_scroll_button.setCheckable(True)
         self.auto_scroll_button.setChecked(True)
         self.auto_scroll_button.setToolTip(AUTO_SCROLL_TOOLTIP)
         self.auto_scroll_button.clicked.connect(self.on_toggle_auto_scroll)
-        self.show_all_button = QPushButton("Show All")
+        self.show_all_button = QPushButton("Fit capture")
         self.show_all_button.setObjectName("PlotModeButton")
         self.show_all_button.setCheckable(True)
         self.show_all_button.setToolTip(SHOW_ALL_TOOLTIP)
@@ -294,14 +343,16 @@ class PlotWidget(QWidget):
 
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
+        toolbar.addWidget(self.capture_title, 1)
         toolbar.addStretch()
-        for widget in (self.visible_points_label, self.downsample_ratio_label,
-                       self.series_button, self.show_all_button, self.auto_scroll_button):
+        for widget in (self.show_all_button, self.auto_scroll_button):
             toolbar.addWidget(widget)
+        self.visible_points_label.hide()
+        self.downsample_ratio_label.hide()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(toolbar)
-        layout.addWidget(self.graph, 1)
+        layout.addWidget(self.scroll_area, 1)
         layout.addWidget(self.time_axis_label)
         self._timer = QTimer(self)
         self._timer.setInterval(PLOT_REFRESH_INTERVAL_MS)
@@ -317,12 +368,15 @@ class PlotWidget(QWidget):
             if captured.label not in self._series:
                 self._series[captured.label] = Plotter()
                 self._visible_labels.add(captured.label)
-                self._add_series_menu_item(captured.label)
                 added_series = True
-            self._series[captured.label].add_sample(captured.timestamp - self._start_time, captured.value)
+            series = self._series[captured.label]
+            if captured.unit and captured.unit != series.unit:
+                added_series = True
+            series.add_sample(captured.timestamp - self._start_time, captured.value, captured.unit)
             self._has_pending_refresh = True
         if added_series:
             self._rebuild_plots()
+            self.seriesChanged.emit()
 
     def clear_values(self) -> None:
         for series in self._series.values():
@@ -332,12 +386,15 @@ class PlotWidget(QWidget):
         self._visible_labels.clear()
         self._start_time = None
         self._has_pending_refresh = False
-        self.series_menu.clear()
-        self.series_button.setEnabled(False)
+        self.graph._y_ranges.clear()
+        self.graph.empty_message = "Waiting for series"
+        self.capture_title.setText("Live capture")
+        self.capture_title.setToolTip("")
         self.graph.set_curves({})
         self.visible_points_label.setText("Points: 0")
         self.downsample_ratio_label.setText("Downsample: 1:1")
         self.on_toggle_auto_scroll(True)
+        self.seriesChanged.emit()
 
     def replace_series(self, series: dict[str, Plotter], start_time: float | None) -> None:
         self.clear_values()
@@ -346,10 +403,9 @@ class PlotWidget(QWidget):
         self._visible_labels = set(series)
         self.auto_scroll_button.setChecked(False)
         self.show_all_button.setChecked(True)
-        for label in series:
-            self._add_series_menu_item(label)
         self._rebuild_plots()
         self.show_all_data()
+        self.seriesChanged.emit()
         self._has_pending_refresh = False
 
     @Slot()
@@ -389,6 +445,7 @@ class PlotWidget(QWidget):
         start_time, end_time = _nonnegative_time_range(start_time, end_time)
         self._last_time_range = (start_time, end_time)
         self.graph.set_time_range(start_time, end_time)
+        self.time_axis_label.update()
         self._update_visible_curve_data(start_time, end_time)
 
     @Slot(float, float)
@@ -397,31 +454,28 @@ class PlotWidget(QWidget):
         self.show_all_button.setChecked(False)
         self._set_time_range(start_time, end_time)
 
-    def _add_series_menu_item(self, label: str) -> None:
-        action = QAction(label, self)
-        action.setCheckable(True)
-        action.setChecked(True)
-        action.setData(label)
-        action.toggled.connect(self.on_series_visibility_toggled)
-        self.series_menu.addAction(action)
-        self.series_button.setEnabled(True)
+    def series_info(self):
+        return [{"label": label, "unit": series.unit, "color": QColor(_color_for_index(row)),
+                 "visible": label in self._visible_labels}
+                for row, (label, series) in enumerate(self._series.items())]
 
-    @Slot(bool)
-    def on_series_visibility_toggled(self, visible: bool) -> None:
-        action = self.sender()
-        if isinstance(action, QAction) and (label := str(action.data() or "")):
-            self._set_series_visibility(label, visible)
-
-    def _set_series_visibility(self, label: str, visible: bool) -> None:
+    def set_series_visible(self, label: str, visible: bool) -> None:
+        if label not in self._series or (label in self._visible_labels) == visible:
+            return
         self._visible_labels.add(label) if visible else self._visible_labels.discard(label)
         self._rebuild_plots()
         self._has_pending_refresh = True
+        self.seriesChanged.emit()
+
+    # Retain the existing internal navigation entry point for callers.
+    _set_series_visibility = set_series_visible
 
     def _rebuild_plots(self) -> None:
         self._curves = {
             label: _CurveData(QColor(_color_for_index(row)))
-            for row, label in enumerate(label for label in self._series if label in self._visible_labels)
+            for row, label in enumerate(self._series) if label in self._visible_labels
         }
+        self.graph.empty_message = "No series selected" if self._series else "Waiting for series"
         self.graph.set_curves(self._curves)
         self.graph.set_time_range(*self._last_time_range)
 
@@ -438,6 +492,9 @@ class PlotWidget(QWidget):
         visible_counts = []
         downsample_ratios = []
         for label, curve in self._curves.items():
+            series = self._series[label]
+            latest = series.latest_value()
+            curve.latest = (_format_axis_value(latest) + (" " + series.unit if series.unit else "")) if latest is not None else "—"
             visible_samples, x_values, y_values = self._series[label].read_visible_samples(
                 start_time, end_time, self._bucket_count_for_series(label)
             )
@@ -454,9 +511,15 @@ class PlotWidget(QWidget):
     def _bucket_count_for_series(self, _label: str) -> int:
         return max(1, self.graph.plot_width() // 4)
 
+    def resizeEvent(self, event):
+        self._has_pending_refresh = True
+        self.time_axis_label.update()
+        super().resizeEvent(event)
+
     def closeEvent(self, event) -> None:
         for series in self._series.values():
             series.close()
+        self._series.clear()
         super().closeEvent(event)
 
 

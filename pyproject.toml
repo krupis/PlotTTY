@@ -36,6 +36,7 @@ files = [
     "modules/widgets/console_widget.py",
     "modules/widgets/plot_widget.py",
     "modules/widgets/rules_table.py",
+    "modules/widgets/rules_dialog.py",
     "modules/widgets/serial_settings_dialog.py",
     "styles/application.qss",
 ]

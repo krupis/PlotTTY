@@ -21,6 +21,30 @@ For rendering benchmarks and live-device diagnostics, see
 [benchmarks/README.md](benchmarks/README.md). Their additional dependencies are
 optional and are not needed to run PlotTTY.
 
+## Plot workspace
+
+Choose a port and baud rate in the top bar, then connect. **Settings** contains
+advanced serial options and recording preferences. Use the series sidebar to
+show or hide traces; hidden series continue recording and retain their colors.
+
+**Edit rules…** opens a draft editor. Generate rules from sample output or edit
+the table, then use **Apply** or **OK** to update parsing for future samples.
+**Cancel** discards edits made since the last Apply. Profiles save applied rules.
+
+Each plot header shows the latest captured value and unit, even when viewing
+older history. **Fit capture** and **Auto scroll** control the shared time range.
+Wheel or drag plots to zoom/pan time; use the Y axis to adjust its range and
+double-click it to reset. Larger stacks scroll vertically above a fixed time axis.
+
+Open the **Console** drawer to send commands with Enter or Send. **Clear console**
+only clears text; **File → Clear captured data** also clears plotted history,
+without deleting recordings. The **View** menu controls the console, sidebar,
+and diagnostics. Window geometry and these layout choices are remembered
+separately from profiles; reopening does not reconnect or resume recording.
+
+For redesign screenshots, tests, and benchmark results, see
+[the verification notes](plan/verification.md).
+
 ## Recording and opening captures
 
 With **Log to file** enabled, PlotTTY saves extracted plot values to compressed
@@ -29,7 +53,7 @@ all numeric values, timestamps, labels, units, and raw serial text without
 reducing numeric precision. Disconnect the device to finish the recording before
 opening or exporting it.
 
-Use **File → Load plot data** to open a `.plotty` capture. Loading happens in the
+Use **File → Load capture…** to open a `.plotty` capture. Loading happens in the
 background and can be cancelled. Use **File → Export capture as CSV...** to create
 a readable CSV for other tools; exporting also runs in the background. Cancelled
 or failed exports do not replace an existing destination file. CSV import is not
