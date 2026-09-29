@@ -308,6 +308,16 @@ class _TimeAxis(QWidget):
             event.accept()
 
 
+class _CaptureTitle(QLabel):
+    """Keep full capture names available while fitting the shared toolbar."""
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setPen(self.palette().windowText().color())
+        text = self.fontMetrics().elidedText(self.text(), Qt.TextElideMode.ElideMiddle, self.contentsRect().width())
+        painter.drawText(self.contentsRect(), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, text)
+
+
 class PlotWidget(QWidget):
     seriesChanged = Signal()
 
@@ -335,8 +345,12 @@ class PlotWidget(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.setWidget(self.graph)
-        self.capture_title = QLabel("Live capture")
-        self.capture_title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.capture_title = _CaptureTitle("")
+        self.capture_title.hide()
+        self.capture_title.setObjectName("CaptureTitle")
+        self.capture_title.setTextFormat(Qt.TextFormat.PlainText)
+        self.capture_title.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        self.capture_title.setMaximumWidth(240)
         self.auto_scroll_button = QPushButton("Auto scroll")
         self.auto_scroll_button.setObjectName("PlotModeButton")
         self.auto_scroll_button.setCheckable(True)
@@ -349,10 +363,9 @@ class PlotWidget(QWidget):
         self.fit_capture_button.setToolTip(FIT_CAPTURE_TOOLTIP)
         self.fit_capture_button.clicked.connect(self.on_toggle_fit_capture)
 
-        toolbar = QHBoxLayout()
+        toolbar = self.controls_layout = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
-        toolbar.addWidget(self.capture_title, 1)
-        toolbar.addStretch()
+        toolbar.addWidget(self.capture_title)
         for widget in (self.fit_capture_button, self.auto_scroll_button):
             toolbar.addWidget(widget)
         self.visible_points_label.hide()
@@ -396,7 +409,8 @@ class PlotWidget(QWidget):
         self._has_pending_refresh = False
         self.graph.clear_y_ranges()
         self.graph.empty_message = "Waiting for series"
-        self.capture_title.setText("Live capture")
+        self.capture_title.clear()
+        self.capture_title.hide()
         self.capture_title.setToolTip("")
         self.graph.set_curves({})
         self.visible_points_label.setText("Points: 0")

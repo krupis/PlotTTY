@@ -3,6 +3,7 @@
     selection-background-color: #365c70; selection-color: #ffffff; }
 QMainWindow, QDialog, #centralwidget { background: #242a30; }
 QLabel { background: transparent; }
+QLabel#CaptureTitle { color: #a2adb8; }
 QDialog#ConnectionPopover { border: 1px solid #627180; background: #2a323b; }
 QLabel#ConnectionHeading { font-weight: 600; font-size: 11pt; }
 QToolButton#SettingsSection { border: none; background: transparent; padding: 3px 0; }

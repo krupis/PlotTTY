@@ -104,6 +104,14 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self.restore_layout)
 
     def _configure_workspace(self):
+        self.plot.layout().removeItem(self.plot.controls_layout)
+        self.ui.ConnectionLayout.addLayout(self.plot.controls_layout)
+        self.ui.ConnectionLayout.setSpacing(12)
+        self.plot.controls_layout.setSpacing(8)
+        self.ui.MainLayout.setContentsMargins(12, 10, 12, 10)
+        self.ui.MainSplitter.setHandleWidth(1)
+        self.ui.SeriesLayout.setContentsMargins(0, 0, 12, 0)
+        self.ui.WorkspaceLayout.setContentsMargins(12, 0, 0, 0)
         self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
         self.ui.SendButton.clicked.connect(self.on_send_command)
         self.ui.ConsoleToggle.setDefaultAction(self.ui.actionConsole)
@@ -330,6 +338,7 @@ class MainWindow(QMainWindow):
                 self.plot.replace_series(job.take_series(), job.start_time)
                 self.plot.capture_title.setText(job.path.name)
                 self.plot.capture_title.setToolTip(str(job.path))
+                self.plot.capture_title.show()
                 self.console.clear()
                 self.console.append_status(f"[loaded plot data from {job.path.name}]\n")
                 self.statusBar().showMessage(f"Loaded {job.path.name}: {job.row_count:,} values")

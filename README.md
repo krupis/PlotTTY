@@ -33,7 +33,9 @@ the table, then use **Apply** or **OK** to update parsing for future samples.
 **Cancel** discards edits made since the last Apply. Profiles save applied rules.
 
 Each plot header shows the latest captured value and unit, even when viewing
-older history. **Fit capture** and **Auto scroll** control the shared time range.
+older history. **Fit capture** and **Auto scroll**, on the right of the shared
+connection toolbar, control the shared time range. The adjacent capture label
+appears only for loaded captures, showing the filename with its full path in a tooltip.
 Wheel or drag plots to zoom/pan time; use the Y axis to adjust its range and
 double-click it to reset. Larger stacks scroll vertically above a fixed time axis.
 
