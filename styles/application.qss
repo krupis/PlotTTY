@@ -19,7 +19,11 @@ QToolButton#ConsoleToggle:checked { border-color: #89b4fa; }
 QLineEdit, QComboBox, QPlainTextEdit, QTableWidget, QListWidget {
     background: #1f252b; border: 1px solid #414b55; border-radius: 4px; }
 QLineEdit, QComboBox { min-height: 24px; padding: 3px 8px; }
-QComboBox { padding-right: 24px; }
+QComboBox { padding-right: 26px; combobox-popup: 0; }
+QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: top right;
+    width: 22px; border: none; background: transparent; }
+QComboBox::down-arrow { image: url(:/icons/combo-chevron.svg); width: 12px; height: 8px; }
+QComboBox::down-arrow:disabled { image: none; }
 QCheckBox:disabled { color: #88929c; }
 QLineEdit:disabled, QComboBox:disabled { color: #88929c; background: #272e35; }
 QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTableWidget:focus, QListWidget:focus { border-color: #89b4fa; }
@@ -31,7 +35,7 @@ QListWidget::item { padding: 8px 4px; border: 1px solid transparent; }
 QListWidget::item:selected { background: #32434f; border-radius: 4px; }
 QListWidget::item:focus { border-color: #89b4fa; }
 QTableWidget { alternate-background-color: #262d35; gridline-color: #39434c; }
-QTableWidget QComboBox { margin: 2px; padding: 0 24px 0 6px; min-height: 24px; }
+QTableWidget QComboBox { margin: 2px; padding: 0 26px 0 6px; min-height: 24px; }
 QHeaderView::section { background: #303941; border: none; border-bottom: 1px solid #46515b; padding: 8px; }
 QMenuBar, QStatusBar { background: #20262c; }
 QMenuBar::item { padding: 6px 12px; }

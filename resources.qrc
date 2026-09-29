@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="/">
     <file>icons/Plottty.png</file>
+    <file>icons/combo-chevron.svg</file>
   </qresource>
 </RCC>
