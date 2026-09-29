@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 from time import time
-
-from .models import CapturedValue, ExtractionRule
+from typing import Literal
 
 
 NUMBER_PATTERN = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
@@ -15,6 +15,51 @@ AUTO_KEY_VALUE_RE = re.compile(
     rf"((?![A-Za-z_][\w.\-/]*\s*(?:=|:))[^\s,;=:]*)?"
 )
 FIRST_NUMBER_RE = re.compile(NUMBER_PATTERN)
+
+ExtractionMode = Literal["auto_key_value", "first_number", "regex", "delimiter_column"]
+
+
+@dataclass(frozen=True)
+class CapturedValue:
+    timestamp: float
+    label: str
+    value: float
+    unit: str = ""
+    raw_text: str = ""
+
+
+@dataclass
+class ExtractionRule:
+    label: str
+    mode: ExtractionMode = "auto_key_value"
+    enabled: bool = True
+    sample_counter: bool = False
+    extra_setting: str = ""
+    delimiter: str = ","
+    unit: str = ""
+
+
+def validate_rules(rules: Iterable[ExtractionRule]) -> None:
+    """Reject rules that the extraction engine cannot execute."""
+    errors = []
+    for row, rule in enumerate(rules, 1):
+        try:
+            if rule.mode not in ("auto_key_value", "first_number", "regex", "delimiter_column"):
+                raise ValueError(f"Unknown extraction mode: {rule.mode}")
+            if rule.mode == "regex":
+                if not rule.extra_setting:
+                    raise ValueError("Regex pattern is required.")
+                if re.compile(rule.extra_setting).groups < 1:
+                    raise ValueError("Regex must contain a capture group for the numeric value.")
+            if rule.mode == "delimiter_column":
+                if not rule.extra_setting.isdecimal():
+                    raise ValueError("Field index must be a nonnegative integer.")
+                if not rule.delimiter:
+                    raise ValueError("Delimiter must not be empty.")
+        except (TypeError, ValueError, re.error) as exc:
+            errors.append(f"Row {row}: {exc}")
+    if errors:
+        raise ValueError("\n".join(errors))
 
 
 class ExtractionEngine:

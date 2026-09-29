@@ -10,7 +10,7 @@ from modules.core.binary_logging import (
     BinaryCaptureWriter, BLOCK_HEADER, CaptureFormatError, MAGIC, MAX_BLOCK,
     iter_binary_capture, CaptureCancelled, export_capture_csv, PlotSessionLog,
 )
-from modules.core.models import CapturedValue
+from modules.core.extraction import CapturedValue
 
 
 class CaptureFileTest(unittest.TestCase):

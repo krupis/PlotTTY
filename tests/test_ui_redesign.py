@@ -16,8 +16,7 @@ from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
 from mainwindow import MainWindow
 from modules.controllers.capture_job import CaptureJob
 from modules.core.binary_logging import BinaryCaptureWriter
-from modules.core.models import CapturedValue, ExtractionRule
-from modules.core.extraction import ExtractionEngine
+from modules.core.extraction import CapturedValue, ExtractionEngine, ExtractionRule
 from modules.core.rule_suggestions import suggest_rules
 from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.widgets.plot_widget import PlotWidget
@@ -204,20 +203,18 @@ class WorkspaceTest(unittest.TestCase):
         event = QWheelEvent(point, point, QPoint(), QPoint(0,120), Qt.MouseButton.NoButton,
                             Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.NoScrollPhase, False)
         plot.graph.wheelEvent(event)
-        self.assertIn("s4", plot.graph._y_ranges)
         before = plot._time_range()
         point = QPointF(200, 10)
         event = QWheelEvent(point, point, QPoint(), QPoint(0,120), Qt.MouseButton.NoButton,
                             Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.NoScrollPhase, False)
         plot.time_axis_label.wheelEvent(event)
         self.assertLess(plot._time_range()[1] - plot._time_range()[0], before[1] - before[0])
-        self.assertEqual(plot._time_range(), plot.graph._time_range)
+        self.assertEqual(plot._time_range(), plot.graph.time_range)
         self.assertFalse(plot.auto_scroll_button.isChecked())
         self.window.resize(1500, 900)
         APP.processEvents()
         plot.set_series_visible("s4", False)
         plot.set_series_visible("s4", True)
-        self.assertIn("s4", plot.graph._y_ranges)
 
     def test_empty_single_and_all_hidden_render(self):
         plot = self.window.plot
@@ -244,11 +241,11 @@ class WorkspaceTest(unittest.TestCase):
             paths = session.recording_paths
             self.assertEqual(len(paths), 2)
             self.assertIn(str(paths[-1]), w._recording_label.toolTip())
-            session._transport.bytesReceived.emit(b"Voltage: 3.3 V\n", 100)
+            session._connection.bytesReceived.emit(b"Voltage: 3.3 V\n", 100)
             w.ui.actionConsole.setChecked(True)
             w.ui.CommandEdit.setText("READ")
             w.ui.SendButton.click()
-            self.assertEqual(session._transport.commands, ["READ"])
+            self.assertEqual(session._connection.commands, ["READ"])
             w.ui.actionClearCapturedData.trigger()
             self.assertTrue(all(path.exists() for path in paths))
             w.ui.ConnectButton.click()
@@ -256,7 +253,7 @@ class WorkspaceTest(unittest.TestCase):
             self.assertEqual(w._recording_label.text(), "Not recording")
             session.settings.raw_capture_mode = True
             w.ui.ConnectButton.click()
-            session._transport.bytesReceived.emit(b"Voltage: 9 V\n", 101)
+            session._connection.bytesReceived.emit(b"Voltage: 9 V\n", 101)
             self.assertEqual(w.plot.series_info(), [])
             with patch.object(session._plot_log, "flush", side_effect=OSError("disk full")), \
                     patch("mainwindow.QMessageBox.warning") as warning:
@@ -365,16 +362,13 @@ class WorkspaceTest(unittest.TestCase):
         self.assertFalse(hasattr(self.window, "_latency_monitor"))
         self.assertFalse(hasattr(self.window.session.settings, "console_line_limit"))
 
-    def test_shared_drag_and_cached_y_range(self):
+    def test_shared_drag_and_manual_y_range(self):
         plot = self.window.plot
         plot.append_values([CapturedValue(i, "a", i) for i in range(20)])
         plot.on_refresh_pending_data()
         graph = plot.graph
-        automatic = graph._y_range("a")
-        with patch("modules.widgets.plot_widget._value_range", side_effect=AssertionError("unnecessary rescan")):
-            self.assertEqual(graph._y_range("a"), automatic)
-            graph._y_ranges["a"] = (-10, 10)
-            self.assertEqual(graph._y_range("a"), (-10, 10))
+        graph._y_ranges["a"] = (-10, 10)
+        self.assertEqual(graph._y_range("a"), (-10, 10))
         plot._set_time_range(5, 15)
         graph.begin_drag(QPointF(300, 10))
         graph.drag_to(QPointF(200, 10))
@@ -389,7 +383,7 @@ class WorkspaceTest(unittest.TestCase):
         plot.append_values([CapturedValue(20, "a", 50)])
         plot.on_refresh_pending_data()
         self.assertEqual(graph._y_range("a"), (-10, 10))
-        graph._y_ranges.clear()
+        graph.clear_y_ranges()
         plot.fit_capture()
         self.assertGreater(graph._y_range("a")[1], 50)
 

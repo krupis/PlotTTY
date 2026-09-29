@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout, QLabel,
 
 from ..core.rule_suggestions import suggest_rules
 from .rules_table import RulesTable
-from ..core.models import validate_rules
+from ..core.extraction import validate_rules
 
 
 class RulesDialog(QDialog):

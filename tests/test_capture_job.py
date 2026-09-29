@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from modules.controllers.capture_job import CaptureJob
 from modules.core.binary_logging import BinaryCaptureWriter
-from modules.core.models import CapturedValue
+from modules.core.extraction import CapturedValue
 
 
 class CaptureJobTest(unittest.TestCase):

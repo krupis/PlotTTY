@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtCore import QSettings, QTimer
 from PySide6.QtWidgets import QApplication
 from mainwindow import MainWindow, apply_application_style
-from modules.core.models import ExtractionRule
+from modules.core.extraction import ExtractionRule
 from modules.core.serial_transport import SerialSettings
 from modules.controllers.serial_session import SerialSession
 from modules.widgets.console_widget import ConsoleWidget
@@ -81,7 +81,7 @@ def main():
     def captured(values):
         if active:
             counts["values"] += len(values)
-    window.session._transport.bytesReceived.connect(received)
+    window.session._connection.bytesReceived.connect(received)
     window.session.valuesCaptured.connect(captured)
     started = 0.
 

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .extraction import AUTO_KEY_VALUE_RE, FIRST_NUMBER_RE, NUMBER_PATTERN, clean_label
-from .models import ExtractionRule
+from .extraction import AUTO_KEY_VALUE_RE, FIRST_NUMBER_RE, NUMBER_PATTERN, ExtractionRule, clean_label
 
 
 DELIMITER_SPLIT_RE = re.compile(r"[,;\t]")

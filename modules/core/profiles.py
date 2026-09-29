@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .models import ExtractionRule, validate_rules
+from .extraction import ExtractionRule, validate_rules
 
 
 @dataclass

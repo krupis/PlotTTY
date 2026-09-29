@@ -7,7 +7,7 @@ from PySide6.QtCore import QCoreApplication
 
 from modules.controllers.serial_session import SerialSession
 from modules.core.binary_logging import iter_binary_capture
-from modules.core.models import ExtractionRule
+from modules.core.extraction import ExtractionRule
 from modules.core.serial_log import SerialSessionLog
 
 

@@ -10,7 +10,7 @@ from PySide6.QtCore import QPoint, QRectF, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
-from ..core.models import CapturedValue
+from ..core.extraction import CapturedValue
 from ..core.plotter import Plotter
 
 
@@ -33,12 +33,10 @@ class _CurveData:
     xData: list[float] = field(default_factory=list)
     yData: list[float] = field(default_factory=list)
     path: QPainterPath = field(default_factory=QPainterPath)
-    auto_y_range: tuple[float, float] | None = None
 
     def set_data(self, x_values: list[float], y_values: list[float]) -> None:
         self.xData = x_values
         self.yData = y_values
-        self.auto_y_range = None
         path = QPainterPath()
         if x_values:
             path.reserve(len(x_values))
@@ -81,6 +79,13 @@ class _PlotCanvas(QWidget):
         self._time_range = _nonnegative_time_range(start_time, end_time)
         self.update()
 
+    @property
+    def time_range(self) -> tuple[float, float]:
+        return self._time_range
+
+    def clear_y_ranges(self) -> None:
+        self._y_ranges.clear()
+
     def plot_width(self) -> int:
         return max(1, self.width() - PLOT_LEFT_MARGIN - PLOT_RIGHT_MARGIN)
 
@@ -98,12 +103,7 @@ class _PlotCanvas(QWidget):
         return labels[row], *self.panel_geometry(row)
 
     def _y_range(self, label: str) -> tuple[float, float]:
-        if label in self._y_ranges:
-            return self._y_ranges[label]
-        curve = self._curves[label]
-        if curve.auto_y_range is None:
-            curve.auto_y_range = _value_range(curve.yData)
-        return curve.auto_y_range
+        return self._y_ranges.get(label, _value_range(self._curves[label].yData))
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -196,7 +196,7 @@ class _PlotCanvas(QWidget):
         event.accept()
 
     def zoom_time(self, x: float, delta: int) -> None:
-        start, end = self._time_range
+        start, end = self.time_range
         fraction = min(1.0, max(0.0, (x - PLOT_LEFT_MARGIN) / self.plot_width()))
         span = max(1e-9, (end - start) * (0.8 if delta > 0 else 1.25))
         left = start + fraction * (end - start) - fraction * span
@@ -274,7 +274,7 @@ class _TimeAxis(QWidget):
         painter = QPainter(self)
         painter.fillRect(self.rect(), PLOT_BACKGROUND)
         painter.setPen(QColor("#929da8"))
-        start, end = self.graph._time_range
+        start, end = self.graph.time_range
         for fraction in _time_tick_fractions():
             x = PLOT_LEFT_MARGIN + fraction * self.graph.plot_width()
             box = QRectF(x - 40, 5, 80, 24)
@@ -394,7 +394,7 @@ class PlotWidget(QWidget):
         self._visible_labels.clear()
         self._start_time = None
         self._has_pending_refresh = False
-        self.graph._y_ranges.clear()
+        self.graph.clear_y_ranges()
         self.graph.empty_message = "Waiting for series"
         self.capture_title.setText("Live capture")
         self.capture_title.setToolTip("")
@@ -504,10 +504,8 @@ class PlotWidget(QWidget):
                 start_time, end_time, self._bucket_count_for_series(label)
             )
             x_values, y_values = _prepare_plot_arrays(x_values, y_values)
-            visible_counts.append(visible_samples)
             curve.set_data(x_values, y_values)
-            if label not in self.graph._y_ranges:
-                curve.auto_y_range = _value_range(y_values)
+            visible_counts.append(visible_samples)
             downsample_ratios.append(_downsample_ratio(visible_samples, len(x_values)))
         self.visible_points_label.setText(f"Points: {max(visible_counts, default=0):,}")
         self.downsample_ratio_label.setText(

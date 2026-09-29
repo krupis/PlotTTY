@@ -2,7 +2,14 @@
 from PySide6.QtCore import QObject, Qt
 from PySide6.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem
 
-from ..core.models import ExtractionRule, RULE_MODES
+from ..core.extraction import ExtractionRule
+
+RULE_MODES = {
+    "auto_key_value": ("Named values", "Extract all name/value pairs, such as Voltage: 3.31."),
+    "delimiter_column": ("Delimited values", "Extract a number from one zero-based field index."),
+    "regex": ("Regex pattern", "The first capture group must contain the numeric value."),
+    "first_number": ("First number", "Extract the first number found in each line."),
+}
 
 COLUMN_TOOLTIPS = [
     "Capture this rule as a plotted Y value.",

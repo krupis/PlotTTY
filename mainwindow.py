@@ -23,9 +23,8 @@ from PySide6.QtWidgets import (
 from ui_form import Ui_MainWindow
 
 from modules.core.profiles import AppProfile, load_profile, save_profile
-from modules.core.models import validate_rules
 from modules.controllers.serial_session import SerialSession
-from modules.core.extraction import default_rules
+from modules.core.extraction import default_rules, validate_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.rules_dialog import RulesDialog
@@ -234,7 +233,7 @@ class MainWindow(QMainWindow):
         self.session.connectedChanged.connect(self.on_connected_changed)
         self.session.receivedText.connect(self.console.append_received)
         self.session.sentText.connect(self.console.append_sent)
-        self.session.statusText.connect(self.console.append_status)
+        self.session.consoleText.connect(self.console.append_status)
         self.session.valuesCaptured.connect(self.plot.append_values)
         self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
         self.plot.seriesChanged.connect(self.rebuild_sidebar)

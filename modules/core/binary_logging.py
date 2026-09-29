@@ -13,7 +13,7 @@ import struct
 from typing import BinaryIO
 import zlib
 
-from .models import CapturedValue
+from .extraction import CapturedValue
 from .serial_log import create_log_path
 
 
