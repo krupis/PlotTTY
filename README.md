@@ -18,8 +18,7 @@ Development has been tested with Python 3.13. Dependencies are installed
 separately; the virtual environment is not part of the source distribution.
 
 For rendering benchmarks and live-device diagnostics, see
-[benchmarks/README.md](benchmarks/README.md). Their additional dependencies are
-optional and are not needed to run PlotTTY.
+[benchmarks/README.md](benchmarks/README.md). These tools need no dependencies beyond the application requirements.
 
 ## Plot workspace
 
@@ -39,7 +38,8 @@ double-click it to reset. Larger stacks scroll vertically above a fixed time axi
 Open the **Console** drawer to send commands with Enter or Send. **Clear console**
 only clears text; **File → Clear captured data** also clears plotted history,
 without deleting recordings. The **View** menu controls the console, sidebar,
-and diagnostics. Window geometry and these layout choices are remembered
+and diagnostics (point counts and downsampling). The console retains the latest
+50,000 lines; file logging preserves the full serial text when enabled. Window geometry and these layout choices are remembered
 separately from profiles; reopening does not reconnect or resume recording.
 
 For redesign screenshots, tests, and benchmark results, see
@@ -50,7 +50,7 @@ For redesign screenshots, tests, and benchmark results, see
 With **Log to file** enabled, PlotTTY saves extracted plot values to compressed
 `.plotty` files and serial console text to a separate `.log` file. Captures retain
 all numeric values, timestamps, labels, units, and raw serial text without
-reducing numeric precision. Disconnect the device to finish the recording before
+reducing numeric precision. Text and plot logs flush every second and on disconnect. Disconnect the device to finish the recording before
 opening or exporting it.
 
 Use **File → Load capture…** to open a `.plotty` capture. Loading happens in the

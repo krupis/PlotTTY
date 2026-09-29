@@ -7,7 +7,6 @@ codec is used. Numeric values are IEEE-754 doubles, matching CapturedValue.
 import csv
 import os
 import tempfile
-from datetime import datetime
 from collections.abc import Iterator, Iterable
 from pathlib import Path
 import struct
@@ -198,9 +197,6 @@ class PlotSessionLog:
     def start(self, port: str, baudrate: int) -> Path:
         self.close()
         self.path = create_log_path(self.log_dir, port, baudrate, "plot.plotty")
-        # Never overwrite a capture if the device reconnects in the same second.
-        if self.path.exists():
-            self.path = self.path.with_stem(self.path.stem + "_" + datetime.now().strftime("%f"))
         self._file = self.path.open("xb")
         try:
             self._writer = BinaryCaptureWriter(self._file)
@@ -213,12 +209,12 @@ class PlotSessionLog:
     def close(self) -> None:
         if self._file is None:
             return
+        file, writer = self._file, self._writer
+        self._file = self._writer = None
         try:
-            self._writer.finish()
+            writer.finish()
         finally:
-            self._file.close()
-            self._file = None
-            self._writer = None
+            file.close()
 
     def flush(self) -> None:
         if self._writer is not None:

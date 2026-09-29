@@ -26,7 +26,6 @@ class SerialSession(QObject):
     sentText = Signal(str)
     valuesCaptured = Signal(list)
     receiveRateChanged = Signal(float)
-    statusChanged = Signal(str)
     statusText = Signal(str)
     errorOccurred = Signal(str)
 
@@ -46,7 +45,7 @@ class SerialSession(QObject):
         self._receive_rate_timer.start()
         self._log_flush_timer = QTimer(self)
         self._log_flush_timer.setInterval(1000)
-        self._log_flush_timer.timeout.connect(self.flush_plot_log)
+        self._log_flush_timer.timeout.connect(self.flush_logs)
         self._log_flush_timer.start()
 
     @property
@@ -77,17 +76,13 @@ class SerialSession(QObject):
             self._line_decoder = LineDecoder(self.settings.encoding)
             transport.open()
             if self.settings.log_to_file:
-                log_path = self._serial_log.start(self.settings.port, self.settings.baudrate)
-                plot_log_path = self._plot_log.start(self.settings.port, self.settings.baudrate)
+                self._serial_log.start(self.settings.port, self.settings.baudrate)
+                self._plot_log.start(self.settings.port, self.settings.baudrate)
                 self._serial_log.write_status(message)
-                status = f"Logging to {log_path} and {plot_log_path}"
-            else:
-                status = "File logging disabled"
         except Exception:
             transport.close()
             transport.deleteLater()
-            self._serial_log.close()
-            self._plot_log.close()
+            self._close_logs()
             raise
 
         self._transport = transport
@@ -95,26 +90,26 @@ class SerialSession(QObject):
         transport.errorReceived.connect(self.on_serial_error)
         self.reset_receive_rate()
         self.connectedChanged.emit(True)
-        self.statusChanged.emit(status)
         self.statusText.emit(f"{message}\n")
 
-    def disconnect_serial(self) -> None:
+    def disconnect_serial(self, recording_error: Exception | None = None) -> None:
         was_connected = self.is_connected
         if self._transport:
             self._transport.blockSignals(True)
             self._transport.close()
             self._transport.deleteLater()
             self._transport = None
-
         self.connectedChanged.emit(False)
         try:
             if was_connected:
-                if self.settings.log_to_file:
+                if self.settings.log_to_file and recording_error is None:
                     self._serial_log.write_status("[disconnected]")
                 self.statusText.emit("[disconnected]\n")
-        finally:
-            self._serial_log.close()
-            self._plot_log.close()
+        except (OSError, ValueError) as exc:
+            recording_error = exc
+        close_error = self._close_logs()
+        if error := recording_error or close_error:
+            self.errorOccurred.emit(f"Recording stopped: {error}")
 
     def send_command(self, command: str) -> None:
         if not self._transport or not self._transport.is_open:
@@ -122,7 +117,10 @@ class SerialSession(QObject):
 
         self._transport.write_text(command)
         if self.settings.log_to_file:
-            self._serial_log.write_sent(command)
+            try:
+                self._serial_log.write_sent(command)
+            except (OSError, ValueError) as exc:
+                self._handle_log_error(exc)
         self.sentText.emit(f"{command}\n")
 
     def reset_receive_rate(self) -> None:
@@ -135,7 +133,11 @@ class SerialSession(QObject):
             return
         self._receive_rate_samples.append((monotonic(), len(data)))
         if self.settings.log_to_file:
-            self._serial_log.write_received(data, self._line_decoder.encoding)
+            try:
+                self._serial_log.write_received(data, self._line_decoder.encoding)
+            except (OSError, ValueError) as exc:
+                self._handle_log_error(exc)
+                return
         self.receivedText.emit(data.decode(self._line_decoder.encoding, errors="replace"))
         if self.settings.raw_capture_mode:
             return
@@ -159,18 +161,24 @@ class SerialSession(QObject):
         self.errorOccurred.emit(message)
 
     @Slot()
-    def flush_plot_log(self) -> None:
+    def flush_logs(self) -> None:
         try:
+            self._serial_log.flush()
             self._plot_log.flush()
         except (OSError, ValueError) as exc:
             self._handle_log_error(exc)
 
+    def _close_logs(self) -> Exception | None:
+        error = None
+        for log in (self._serial_log, self._plot_log):
+            try:
+                log.close()
+            except (OSError, ValueError) as exc:
+                error = error or exc
+        return error
+
     def _handle_log_error(self, error: Exception) -> None:
-        try:
-            self.disconnect_serial()
-        except (OSError, ValueError):
-            pass  # The original write error is the useful diagnostic.
-        self.errorOccurred.emit(f"Recording stopped: {error}")
+        self.disconnect_serial(recording_error=error)
 
     @Slot()
     def update_receive_rate(self) -> None:

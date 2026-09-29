@@ -1,322 +1,111 @@
-"""Rules table behavior for extraction rule editing."""
+"""Plain Qt table for temporary extraction-rule edits."""
+from PySide6.QtCore import QObject, Qt
+from PySide6.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem
 
-from __future__ import annotations
+from ..core.models import ExtractionRule, RULE_MODES
 
-from PySide6.QtCore import Qt, Signal, QObject, Slot
-from PySide6.QtGui import QColor, QPainter
-from PySide6.QtWidgets import QComboBox, QHeaderView, QStyledItemDelegate, QStyleOptionViewItem, QTableWidget, QTableWidgetItem
-
-from ..core.models import ExtractionMode, ExtractionRule
-
-
-MODE_LABELS: dict[str, ExtractionMode] = {
-    "Named values": "auto_key_value",
-    "Delimited values": "delimiter_column",
-    "Regex pattern": "regex",
-    "First number": "first_number",
-}
-MODE_NAMES_BY_VALUE = {value: label for label, value in MODE_LABELS.items()}
-MODE_HELP: dict[ExtractionMode, str] = {
-    "auto_key_value": "Extracts all name/value pairs, such as Voltage: 3.31 or current=0.14.",
-    "delimiter_column": "Splits each line by a delimiter, then extracts the number from one zero-based field index.",
-    "regex": "Uses a regular expression. The first capture group must be the numeric value.",
-    "first_number": "Extracts the first number found in each line.",
-}
 COLUMN_TOOLTIPS = [
-    "Draw this rule as a plotted Y value.",
-    "Use this rule's value as the X axis timestamp/counter for the other plotted rules.",
-    "Name used for the plotted series. Named values can override this with names from the input line.",
-    "How this rule finds a value in each incoming line.",
-    "Delimited values: delimiter to split on, such as comma, semicolon, or \\t. Regex pattern: regular expression.",
-    "Delimited values only: field index after splitting the line. 0 is first, 1 is second.",
+    "Capture this rule as a plotted Y value.",
+    "Use this rule's value as the X reference for other rules.",
+    "Series label; named values use names from the incoming line.",
+    "How to extract a number from each line.",
+    "Regex pattern or delimiter (comma, semicolon, or \\t).",
+    "Zero-based field index: 0 is the first field.",
 ]
-PATTERN_DELIMITER_COLUMN = 4
-COLUMN_NUMBER_COLUMN = 5
-EDITABLE_RULE_CELL_BACKGROUND = QColor("#2b333c")
-EDITABLE_RULE_CELL_FOREGROUND = QColor("#f3f7fb")
-INACTIVE_RULE_CELL_BACKGROUND = QColor("#20262d")
-INACTIVE_RULE_CELL_FOREGROUND = QColor("#7f8994")
-INACTIVE_CELL_TEXT = "N/A"
+EDITABLE = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
 
 
 class RulesTable(QObject):
-    rulesChanged = Signal()
-
-    def __init__(self, table: QTableWidget, parent: QObject | None = None) -> None:
+    def __init__(self, table: QTableWidget, parent=None):
         super().__init__(parent)
         self._table = table
-        self._updating = False
-        self._configure_table()
-        self._table.setItemDelegate(RuleCellDelegate(self._table))
+        table.setColumnCount(6)
+        table.setHorizontalHeaderLabels(["Enable", "X reference", "Label", "Find method", "Pattern / delimiter", "Field index"])
+        for column, tooltip in enumerate(COLUMN_TOOLTIPS):
+            table.horizontalHeaderItem(column).setToolTip(tooltip)
+            table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch
+                                                         if column in (2, 4) else QHeaderView.ResizeMode.ResizeToContents)
+        table.verticalHeader().hide()
+        table.setAlternatingRowColors(True)
+        table.setSelectionMode(table.SelectionMode.ExtendedSelection)
+        table.setSelectionBehavior(table.SelectionBehavior.SelectRows)
         self._update_columns()
-        self._table.itemChanged.connect(self.on_rule_item_changed)
 
-    def add_rule(self, rule: ExtractionRule | None = None) -> None:
-        rule = rule or ExtractionRule(label="value", mode="first_number")
+    def set_rules(self, rules):
+        self._table.setRowCount(0)
+        for rule in rules:
+            self.add_rule(rule)
+        self._update_columns()
+
+    def add_rule(self, rule=None):
+        rule = rule or ExtractionRule("value", "first_number")
         row = self._table.rowCount()
-        self._updating = True
-        try:
-            self._table.insertRow(row)
-            self._set_rule_row(row, rule)
-        finally:
-            self._updating = False
+        self._table.insertRow(row)
+        texts = ["", "", rule.label, "", rule.delimiter.replace("\t", r"\t")
+                 if rule.mode == "delimiter_column" else rule.extra_setting,
+                 rule.extra_setting if rule.mode == "delimiter_column" else ""]
+        for column, text in enumerate(texts):
+            item = QTableWidgetItem(text)
+            item.setToolTip(COLUMN_TOOLTIPS[column])
+            if column < 2:
+                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Checked if (rule.enabled, rule.sample_counter)[column] else Qt.CheckState.Unchecked)
+            self._table.setItem(row, column, item)
+        self._table.item(row, 2).setData(Qt.ItemDataRole.UserRole, rule.unit)
+        combo = QComboBox()
+        for mode, (label, help_text) in RULE_MODES.items():
+            combo.addItem(label, mode)
+            combo.setItemData(combo.count() - 1, help_text, Qt.ItemDataRole.ToolTipRole)
+        combo.setCurrentIndex(combo.findData(rule.mode))
+        self._table.setCellWidget(row, 3, combo)
+        self._update_row(row)
+        combo.currentIndexChanged.connect(lambda: self._mode_changed(combo))
         self._update_columns()
-        self.rulesChanged.emit()
 
-    def remove_selected_rules(self) -> None:
-        rows = sorted({index.row() for index in self._table.selectedIndexes()}, reverse=True)
+    def remove_selected_rules(self):
+        rows = {index.row() for index in self._table.selectedIndexes()}
         if not rows and self._table.currentRow() >= 0:
-            rows = [self._table.currentRow()]
-
-        for row in rows:
+            rows.add(self._table.currentRow())
+        for row in sorted(rows, reverse=True):
             self._table.removeRow(row)
-
-        if rows:
-            self._update_columns()
-            self.rulesChanged.emit()
-
-    def set_rules(self, rules: list[ExtractionRule]) -> None:
-        self._updating = True
-        try:
-            self._table.setRowCount(0)
-            self._table.setRowCount(len(rules))
-            for row, rule in enumerate(rules):
-                self._set_rule_row(row, rule)
-        finally:
-            self._updating = False
         self._update_columns()
-        self.rulesChanged.emit()
 
-    def rules(self) -> list[ExtractionRule]:
+    def rules(self):
         rules = []
         for row in range(self._table.rowCount()):
-            mode = self._rule_mode(row)
-            rules.append(
-                ExtractionRule(
-                    enabled=self._is_checked(row, 0),
-                    sample_counter=self._is_checked(row, 1),
-                    label=self._cell_text(row, 2).strip() or "value",
-                    mode=mode,
-                    extra_setting=self._extra_setting_from_row(row, mode),
-                    delimiter=self._delimiter_from_row(row, mode),
-                    unit=self._table.item(row, 2).data(Qt.ItemDataRole.UserRole) or "",
-                )
-            )
+            mode = self._table.cellWidget(row, 3).currentData()
+            text = [self._table.item(row, column).text().strip() for column in range(6)]
+            rules.append(ExtractionRule(
+                label=text[2] or "value", mode=mode,
+                enabled=self._table.item(row, 0).checkState() == Qt.CheckState.Checked,
+                sample_counter=self._table.item(row, 1).checkState() == Qt.CheckState.Checked,
+                extra_setting=text[5] if mode == "delimiter_column" else text[4] if mode == "regex" else "",
+                delimiter=text[4].replace(r"\t", "\t") if mode == "delimiter_column" else ",",
+                unit=self._table.item(row, 2).data(Qt.ItemDataRole.UserRole) or "",
+            ))
         return rules
 
-    @Slot(object)
-    def on_rule_item_changed(self, _changed: object) -> None:
-        if not self._updating:
-            self.rulesChanged.emit()
-
-    @Slot()
-    def on_rule_mode_changed(self) -> None:
-        combo = self.sender()
-        if isinstance(combo, QComboBox):
-            combo.setToolTip(MODE_HELP.get(combo.currentData(), "Choose how to extract a number from each incoming line."))
-            was_updating = self._updating
-            self._updating = True
-            try:
-                self._update_method_cells(self._row_for_widget(combo))
-                self._update_columns()
-            finally:
-                self._updating = was_updating
-        if not self._updating:
-            self.rulesChanged.emit()
-
-    def _configure_table(self) -> None:
-        self._table.setColumnCount(6)
-        self._table.verticalHeader().setVisible(False)
-        self._table.setAlternatingRowColors(True)
-        self._table.setSelectionMode(self._table.SelectionMode.ExtendedSelection)
-        self._table.setSelectionBehavior(self._table.SelectionBehavior.SelectRows)
-        self._table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self._table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
-
-    def _set_rule_row(self, row: int, rule: ExtractionRule) -> None:
-        self._table.setItem(row, 0, _check_item(rule.enabled, COLUMN_TOOLTIPS[0]))
-        self._table.setItem(row, 1, _check_item(rule.sample_counter, COLUMN_TOOLTIPS[1]))
-        label_item = _editable_text_item(rule.label, COLUMN_TOOLTIPS[2])
-        # Keep the unit with its row even though the table has no unit column.
-        label_item.setData(Qt.ItemDataRole.UserRole, rule.unit)
-        self._table.setItem(row, 2, label_item)
-        self._table.setCellWidget(row, 3, self._rule_mode_combo(rule.mode))
-        self._table.setItem(row, 4, _editable_text_item(self._extra_text_for_rule(rule), COLUMN_TOOLTIPS[4]))
-        self._table.setItem(row, 5, _editable_text_item(self._position_text_for_rule(rule), COLUMN_TOOLTIPS[5]))
-        self._update_method_cells(row)
-
-    def _rule_mode_combo(self, mode: ExtractionMode) -> QComboBox:
-        combo = QComboBox(self._table)
-        for label, value in MODE_LABELS.items():
-            combo.addItem(label, value)
-            combo.setItemData(combo.count() - 1, MODE_HELP[value], Qt.ItemDataRole.ToolTipRole)
-        combo.setCurrentText(MODE_NAMES_BY_VALUE.get(mode, "Named values"))
-        combo.setToolTip(MODE_HELP.get(mode, "Choose how to extract a number from each incoming line."))
-        combo.currentIndexChanged.connect(self.on_rule_mode_changed)
-        return combo
-
-    def _rule_mode(self, row: int) -> ExtractionMode:
-        combo = self._table.cellWidget(row, 3)
-        if isinstance(combo, QComboBox):
-            return combo.currentData()
-        return "auto_key_value"
-
-    def _cell_text(self, row: int, column: int) -> str:
-        item = self._table.item(row, column)
-        if item is None:
-            return ""
-        return item.text()
-
-    def _is_checked(self, row: int, column: int) -> bool:
-        item = self._table.item(row, column)
-        return item is not None and item.checkState() == Qt.CheckState.Checked
-
-    def _extra_setting_from_row(self, row: int, mode: ExtractionMode) -> str:
-        if mode == "delimiter_column":
-            return self._cell_text(row, 5).strip()
-        if mode == "regex":
-            return self._cell_text(row, 4).strip()
-        return ""
-
-    def _delimiter_from_row(self, row: int, mode: ExtractionMode) -> str:
-        if mode != "delimiter_column":
-            return ","
-        return (self._cell_text(row, 4).strip() or ",").replace(r"\t", "\t")
-
-    def _extra_text_for_rule(self, rule: ExtractionRule) -> str:
-        if rule.mode == "delimiter_column":
-            return rule.delimiter.replace("\t", r"\t")
-        if rule.mode == "regex":
-            return rule.extra_setting
-        return ""
-
-    def _position_text_for_rule(self, rule: ExtractionRule) -> str:
-        if rule.mode != "delimiter_column":
-            return ""
-        return rule.extra_setting
-
-    def _row_for_widget(self, widget: QComboBox) -> int:
+    def _mode_changed(self, combo):
         for row in range(self._table.rowCount()):
-            if self._table.cellWidget(row, 3) is widget:
-                return row
-        return -1
+            if self._table.cellWidget(row, 3) is combo:
+                # Settings belong to a mode; start with its defaults when switching.
+                self._table.item(row, 4).setText("," if combo.currentData() == "delimiter_column" else "")
+                self._table.item(row, 5).setText("0" if combo.currentData() == "delimiter_column" else "")
+                self._update_row(row)
+                break
+        self._update_columns()
 
-    def _update_method_cells(self, row: int) -> None:
-        if row < 0:
-            return
+    def _update_row(self, row):
+        combo = self._table.cellWidget(row, 3)
+        mode = combo.currentData()
+        combo.setToolTip(RULE_MODES[mode][1])
+        for column, applicable in ((4, mode in ("regex", "delimiter_column")), (5, mode == "delimiter_column")):
+            item = self._table.item(row, column)
+            item.setFlags(EDITABLE if applicable else Qt.ItemFlag.NoItemFlags)
+            if not applicable:
+                item.setText("")
 
-        mode = self._rule_mode(row)
-        self._prepare_cells(row, mode)
-        self._set_cell_applicable(
-            row,
-            PATTERN_DELIMITER_COLUMN,
-            mode in ("delimiter_column", "regex"),
-            _setting_tooltip_for_mode(mode),
-        )
-        self._set_cell_applicable(
-            row,
-            COLUMN_NUMBER_COLUMN,
-            mode == "delimiter_column",
-            COLUMN_TOOLTIPS[COLUMN_NUMBER_COLUMN],
-        )
-
-    def _prepare_cells(self, row: int, mode: ExtractionMode) -> None:
-        setting_item = self._table.item(row, PATTERN_DELIMITER_COLUMN)
-        column_item = self._table.item(row, COLUMN_NUMBER_COLUMN)
-        if setting_item is None or column_item is None:
-            return
-
-        setting_text = setting_item.text().strip()
-        column_text = column_item.text().strip()
-        if setting_text == INACTIVE_CELL_TEXT:
-            setting_text = ""
-            setting_item.setText("")
-        if column_text == INACTIVE_CELL_TEXT:
-            column_text = ""
-            column_item.setText("")
-        if mode == "delimiter_column":
-            if not setting_text:
-                setting_item.setText(",")
-            if not column_text:
-                column_item.setText("0")
-        elif mode == "regex":
-            if setting_text in (",", ";", r"\t"):
-                setting_item.setText("")
-            column_item.setText("")
-        else:
-            setting_item.setText("")
-            column_item.setText("")
-
-    def _set_cell_applicable(self, row: int, column: int, applicable: bool, tooltip: str) -> None:
-        item = self._table.item(row, column)
-        if item is None:
-            return
-
-        if applicable:
-            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable)
-            item.setBackground(EDITABLE_RULE_CELL_BACKGROUND)
-            item.setForeground(EDITABLE_RULE_CELL_FOREGROUND)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            item.setToolTip(tooltip)
-        else:
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
-            item.setText(INACTIVE_CELL_TEXT)
-            item.setBackground(INACTIVE_RULE_CELL_BACKGROUND)
-            item.setForeground(INACTIVE_RULE_CELL_FOREGROUND)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            item.setToolTip("Not used by the selected find method.")
-
-    def _update_columns(self) -> None:
-        modes = [self._rule_mode(row) for row in range(self._table.rowCount())]
-        uses_pattern_or_delimiter = any(mode in ("delimiter_column", "regex") for mode in modes)
-        uses_column_number = any(mode == "delimiter_column" for mode in modes)
-        self._table.setColumnHidden(PATTERN_DELIMITER_COLUMN, not uses_pattern_or_delimiter)
-        self._table.setColumnHidden(COLUMN_NUMBER_COLUMN, not uses_column_number)
-
-
-def _editable_text_item(text: str, tooltip: str = "") -> QTableWidgetItem:
-    item = QTableWidgetItem(text)
-    item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable)
-    item.setBackground(EDITABLE_RULE_CELL_BACKGROUND)
-    item.setForeground(EDITABLE_RULE_CELL_FOREGROUND)
-    if tooltip:
-        item.setToolTip(tooltip)
-    return item
-
-
-def _check_item(checked: bool, tooltip: str = "") -> QTableWidgetItem:
-    item = QTableWidgetItem()
-    item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
-    item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
-    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    if tooltip:
-        item.setToolTip(tooltip)
-    return item
-
-
-def _setting_tooltip_for_mode(mode: ExtractionMode) -> str:
-    if mode == "delimiter_column":
-        return "Delimiter used to split each incoming line, such as comma, semicolon, or \\t."
-    if mode == "regex":
-        return "Regular expression used to find the value. The first capture group must be numeric."
-    return "Not used by the selected find method."
-
-
-class RuleCellDelegate(QStyledItemDelegate):
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:
-        editable = bool(index.flags() & Qt.ItemFlag.ItemIsEditable)
-        enabled = bool(index.flags() & Qt.ItemFlag.ItemIsEnabled)
-        style_option = QStyleOptionViewItem(option)
-        self.initStyleOption(style_option, index)
-
-        if editable:
-            style_option.backgroundBrush = EDITABLE_RULE_CELL_BACKGROUND
-        elif not enabled:
-            style_option.backgroundBrush = INACTIVE_RULE_CELL_BACKGROUND
-
-        super().paint(painter, style_option, index)
+    def _update_columns(self):
+        modes = {self._table.cellWidget(row, 3).currentData() for row in range(self._table.rowCount())}
+        self._table.setColumnHidden(4, not modes.intersection(("regex", "delimiter_column")))
+        self._table.setColumnHidden(5, "delimiter_column" not in modes)

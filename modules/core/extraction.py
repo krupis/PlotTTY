@@ -109,13 +109,13 @@ def _counter_timestamp(
 def _captured_value(timestamp: float, label: str, value: float, unit: str, raw_text: str) -> CapturedValue:
     return CapturedValue(
         timestamp=timestamp,
-        label=_clean_label(label),
+        label=clean_label(label),
         value=value,
         unit=unit,
         raw_text=raw_text,
     )
 
 
-def _clean_label(label: str) -> str:
+def clean_label(label: str) -> str:
     cleaned_label = " ".join(label.strip(" -_:").split())
     return cleaned_label or "value"

@@ -1,5 +1,8 @@
 # COM15 live latency investigation ? 2026-09-24
 
+> Historical investigation. The current app uses QPainter and standard Fusion
+> controls; see [README.md](README.md) for the maintained diagnostics.
+
 The main problem was GUI-thread plotting work and refresh scheduling, rather
 than serial parsing or insufficient GPU line-rendering speed. With the actual
 device connected, enabling OpenGL alone did not materially improve UI timer
@@ -151,10 +154,10 @@ navigation modes were functionally checked, not comprehensively benchmarked.
 Close/disconnect any other application using COM15. Keep the diagnostic window
 visible and do not interact with it during a measurement:
 
-```powershell
-.venv\Scripts\python.exe benchmarks/live_serial_diagnostics.py --renderer gl --duration 60 --output logs/latency_diagnostics/my_gl_run
-.venv\Scripts\python.exe benchmarks/live_serial_diagnostics.py --renderer raster --duration 60 --output logs/latency_diagnostics/my_cpu_run
-.venv\Scripts\python.exe -m unittest discover -s tests -v
+The original renderer-specific commands are retired. Use the current tool:
+
+```sh
+python benchmarks/live_serial_diagnostics.py --port COM15 --duration 60 --output /tmp/plottty-live
 ```
 
 Use a new output directory for each run. The runner connects automatically with

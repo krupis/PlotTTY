@@ -16,7 +16,6 @@ from ..core.plotter import Plotter
 
 PLOT_REFRESH_INTERVAL_MS = 33
 PLOT_BACKGROUND = QColor("#1f2328")
-PLOT_AXIS = QColor("#5c6370")
 PLOT_GRID = QColor(92, 99, 112, 56)
 PLOT_TEXT = QColor("#dce3ea")
 PLOT_LEFT_MARGIN = 68
@@ -24,7 +23,7 @@ PLOT_RIGHT_MARGIN = 12
 PLOT_TOP_MARGIN = 36
 PLOT_BOTTOM_MARGIN = 16
 AUTO_SCROLL_TOOLTIP = "Keep the plot view following the newest incoming data."
-SHOW_ALL_TOOLTIP = "Zoom the plot out to show all captured data."
+FIT_CAPTURE_TOOLTIP = "Zoom the plot out to show all captured data."
 
 
 @dataclass(slots=True)
@@ -34,10 +33,12 @@ class _CurveData:
     xData: list[float] = field(default_factory=list)
     yData: list[float] = field(default_factory=list)
     path: QPainterPath = field(default_factory=QPainterPath)
+    auto_y_range: tuple[float, float] | None = None
 
     def set_data(self, x_values: list[float], y_values: list[float]) -> None:
         self.xData = x_values
         self.yData = y_values
+        self.auto_y_range = None
         path = QPainterPath()
         if x_values:
             path.reserve(len(x_values))
@@ -97,7 +98,12 @@ class _PlotCanvas(QWidget):
         return labels[row], *self.panel_geometry(row)
 
     def _y_range(self, label: str) -> tuple[float, float]:
-        return self._y_ranges.get(label, _value_range(self._curves[label].yData))
+        if label in self._y_ranges:
+            return self._y_ranges[label]
+        curve = self._curves[label]
+        if curve.auto_y_range is None:
+            curve.auto_y_range = _value_range(curve.yData)
+        return curve.auto_y_range
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -186,31 +192,26 @@ class _PlotCanvas(QWidget):
             event.accept()
             return
 
-        start_time, end_time = self._time_range
-        span = end_time - start_time
-        if span <= 0:
-            return
-        position = min(1.0, max(0.0, (event.position().x() - PLOT_LEFT_MARGIN) / self.plot_width()))
-        anchor = start_time + position * span
-        new_span = max(1e-9, span * (0.8 if event.angleDelta().y() > 0 else 1.25))
-        new_start = anchor - position * new_span
-        self.timeRangeChanged.emit(*_nonnegative_time_range(new_start, new_start + new_span))
+        self.zoom_time(event.position().x(), event.angleDelta().y())
         event.accept()
 
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_position = event.position().toPoint()
-            selected = self._panel_at(event.position())
-            if selected is not None and event.position().x() < selected[2].left():
-                self._drag_label = selected[0]
-                self._drag_y_range = self._y_range(selected[0])
-            else:
-                self._drag_label = None
-                self._drag_range = self._time_range
-            self.setCursor(Qt.CursorShape.ClosedHandCursor)
-            event.accept()
+    def zoom_time(self, x: float, delta: int) -> None:
+        start, end = self._time_range
+        fraction = min(1.0, max(0.0, (x - PLOT_LEFT_MARGIN) / self.plot_width()))
+        span = max(1e-9, (end - start) * (0.8 if delta > 0 else 1.25))
+        left = start + fraction * (end - start) - fraction * span
+        self.timeRangeChanged.emit(*_nonnegative_time_range(left, left + span))
 
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+    def begin_drag(self, position, adjust_y=False) -> None:
+        self._drag_position = position.toPoint()
+        selected = self._panel_at(position) if adjust_y else None
+        self._drag_label = selected[0] if selected and position.x() < selected[2].left() else None
+        if self._drag_label is not None:
+            self._drag_y_range = self._y_range(self._drag_label)
+        else:
+            self._drag_range = self._time_range
+
+    def drag_to(self, position) -> None:
         if self._drag_position is None:
             return
         if self._drag_label is not None:
@@ -218,22 +219,31 @@ class _PlotCanvas(QWidget):
             if selected is None:
                 return
             minimum, maximum = self._drag_y_range
-            delta = (event.position().y() - self._drag_position.y()) * (
-                maximum - minimum
-            ) / max(1.0, selected[2].height())
+            delta = (position.y() - self._drag_position.y()) * (maximum - minimum) / max(1., selected[2].height())
             self._y_ranges[self._drag_label] = (minimum + delta, maximum + delta)
             self.update()
+        else:
+            start, end = self._drag_range
+            delta = -(position.x() - self._drag_position.x()) * (end - start) / self.plot_width()
+            self.timeRangeChanged.emit(*_nonnegative_time_range(start + delta, end + delta))
+
+    def end_drag(self) -> None:
+        self._drag_position = None
+        self._drag_label = None
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.begin_drag(event.position(), adjust_y=True)
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
             event.accept()
-            return
-        start_time, end_time = self._drag_range
-        delta = -(event.position().x() - self._drag_position.x()) * (end_time - start_time) / self.plot_width()
-        self.timeRangeChanged.emit(*_nonnegative_time_range(start_time + delta, end_time + delta))
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        self.drag_to(event.position())
         event.accept()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_position = None
-            self._drag_label = None
+            self.end_drag()
             self.unsetCursor()
             event.accept()
 
@@ -278,26 +288,24 @@ class _TimeAxis(QWidget):
             painter.drawText(box, alignment, _format_time_value(start + fraction * (end - start), end - start) + " s")
 
     def wheelEvent(self, event):
-        # Footer navigation always controls time, including under the Y labels.
-        start, end = self.graph._time_range
-        fraction = min(1., max(0., (event.position().x() - PLOT_LEFT_MARGIN) / self.graph.plot_width()))
-        span = max(1e-9, (end - start) * (.8 if event.angleDelta().y() > 0 else 1.25))
-        left = start + fraction * (end - start) - fraction * span
-        self.graph.timeRangeChanged.emit(*_nonnegative_time_range(left, left + span))
+        self.graph.zoom_time(event.position().x(), event.angleDelta().y())
         event.accept()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.graph._drag_position = event.position().toPoint()
-            self.graph._drag_label = None
-            self.graph._drag_range = self.graph._time_range
+            self.graph.begin_drag(event.position())
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
             event.accept()
 
     def mouseMoveEvent(self, event):
-        self.graph.mouseMoveEvent(event)
+        self.graph.drag_to(event.position())
+        event.accept()
 
     def mouseReleaseEvent(self, event):
-        self.graph.mouseReleaseEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.graph.end_drag()
+            self.unsetCursor()
+            event.accept()
 
 
 class PlotWidget(QWidget):
@@ -335,17 +343,17 @@ class PlotWidget(QWidget):
         self.auto_scroll_button.setChecked(True)
         self.auto_scroll_button.setToolTip(AUTO_SCROLL_TOOLTIP)
         self.auto_scroll_button.clicked.connect(self.on_toggle_auto_scroll)
-        self.show_all_button = QPushButton("Fit capture")
-        self.show_all_button.setObjectName("PlotModeButton")
-        self.show_all_button.setCheckable(True)
-        self.show_all_button.setToolTip(SHOW_ALL_TOOLTIP)
-        self.show_all_button.clicked.connect(self.on_toggle_show_all)
+        self.fit_capture_button = QPushButton("Fit capture")
+        self.fit_capture_button.setObjectName("PlotModeButton")
+        self.fit_capture_button.setCheckable(True)
+        self.fit_capture_button.setToolTip(FIT_CAPTURE_TOOLTIP)
+        self.fit_capture_button.clicked.connect(self.on_toggle_fit_capture)
 
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
         toolbar.addWidget(self.capture_title, 1)
         toolbar.addStretch()
-        for widget in (self.show_all_button, self.auto_scroll_button):
+        for widget in (self.fit_capture_button, self.auto_scroll_button):
             toolbar.addWidget(widget)
         self.visible_points_label.hide()
         self.downsample_ratio_label.hide()
@@ -402,9 +410,9 @@ class PlotWidget(QWidget):
         self._start_time = start_time
         self._visible_labels = set(series)
         self.auto_scroll_button.setChecked(False)
-        self.show_all_button.setChecked(True)
+        self.fit_capture_button.setChecked(True)
         self._rebuild_plots()
-        self.show_all_data()
+        self.fit_capture()
         self.seriesChanged.emit()
         self._has_pending_refresh = False
 
@@ -415,8 +423,8 @@ class PlotWidget(QWidget):
         self._has_pending_refresh = False
         if self.auto_scroll_button.isChecked():
             self.show_recent_data()
-        elif self.show_all_button.isChecked():
-            self.show_all_data()
+        elif self.fit_capture_button.isChecked():
+            self.fit_capture()
         else:
             self._update_visible_curve_data()
 
@@ -424,21 +432,21 @@ class PlotWidget(QWidget):
     def on_toggle_auto_scroll(self, enabled: bool) -> None:
         self.auto_scroll_button.setChecked(enabled)
         if enabled:
-            self.show_all_button.setChecked(False)
+            self.fit_capture_button.setChecked(False)
             self.show_recent_data()
 
     @Slot(bool)
-    def on_toggle_show_all(self, enabled: bool) -> None:
-        self.show_all_button.setChecked(enabled)
+    def on_toggle_fit_capture(self, enabled: bool) -> None:
+        self.fit_capture_button.setChecked(enabled)
         if enabled:
             self.auto_scroll_button.setChecked(False)
-            self.show_all_data()
+            self.fit_capture()
 
     def show_recent_data(self) -> None:
         latest_time = self._latest_sample_time()
         self._set_time_range(max(0.0, latest_time - self._time_window), max(self._time_window, latest_time))
 
-    def show_all_data(self) -> None:
+    def fit_capture(self) -> None:
         self._set_time_range(0.0, max(self._time_window, self._latest_sample_time()))
 
     def _set_time_range(self, start_time: float, end_time: float) -> None:
@@ -451,7 +459,7 @@ class PlotWidget(QWidget):
     @Slot(float, float)
     def on_time_range_changed(self, start_time: float, end_time: float) -> None:
         self.auto_scroll_button.setChecked(False)
-        self.show_all_button.setChecked(False)
+        self.fit_capture_button.setChecked(False)
         self._set_time_range(start_time, end_time)
 
     def series_info(self):
@@ -466,9 +474,6 @@ class PlotWidget(QWidget):
         self._rebuild_plots()
         self._has_pending_refresh = True
         self.seriesChanged.emit()
-
-    # Retain the existing internal navigation entry point for callers.
-    _set_series_visibility = set_series_visible
 
     def _rebuild_plots(self) -> None:
         self._curves = {
@@ -501,6 +506,8 @@ class PlotWidget(QWidget):
             x_values, y_values = _prepare_plot_arrays(x_values, y_values)
             visible_counts.append(visible_samples)
             curve.set_data(x_values, y_values)
+            if label not in self.graph._y_ranges:
+                curve.auto_y_range = _value_range(y_values)
             downsample_ratios.append(_downsample_ratio(visible_samples, len(x_values)))
         self.visible_points_label.setText(f"Points: {max(visible_counts, default=0):,}")
         self.downsample_ratio_label.setText(

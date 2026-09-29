@@ -60,6 +60,7 @@ class Ui_MainWindow(object):
 
         self.PortCombo = QComboBox(self.centralwidget)
         self.PortCombo.setObjectName(u"PortCombo")
+        self.PortCombo.setMinimumSize(QSize(150, 0))
 
         self.ConnectionLayout.addWidget(self.PortCombo)
 
@@ -174,6 +175,13 @@ class Ui_MainWindow(object):
 
         self.ConsoleToggle = QToolButton(self.Workspace)
         self.ConsoleToggle.setObjectName(u"ConsoleToggle")
+        self.ConsoleToggle.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.ConsoleToggle.setArrowType(Qt.RightArrow)
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.ConsoleToggle.sizePolicy().hasHeightForWidth())
+        self.ConsoleToggle.setSizePolicy(sizePolicy)
 
         self.WorkspaceLayout.addWidget(self.ConsoleToggle)
 
@@ -224,6 +232,7 @@ class Ui_MainWindow(object):
         self.SettingsButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
         self.SeriesHeading.setText(QCoreApplication.translate("MainWindow", u"Series", None))
         self.EditRulesButton.setText(QCoreApplication.translate("MainWindow", u"Edit rules\u2026", None))
+        self.CommandEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type command and press Enter", None))
         self.SendButton.setText(QCoreApplication.translate("MainWindow", u"Send", None))
         self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear console", None))
         self.ConsoleToggle.setText(QCoreApplication.translate("MainWindow", u"Console", None))

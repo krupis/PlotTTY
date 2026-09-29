@@ -1,141 +1,55 @@
-# Plot rendering comparison
+# PlotTTY performance checks
 
-This is an isolated experiment; it does not change the application's plot widget
-or its requirements. See [RESULTS.md](RESULTS.md) for measured results and the
-replacement assessment.
+These tools use the application's PySide6 dependency and the Python standard
+library. No NumPy, plotting libraries, OpenGL packages, or extra installation is
+needed. Run from the repository root with the application Python environment.
 
-Live-device diagnostics are separate: see [LIVE_LATENCY.md](LIVE_LATENCY.md) for
-the COM15 investigation, before/after measurements, and rerun instructions.
+## Plot and storage benchmark
 
-## Run on Windows
-
-From the repository root, using the existing application virtual environment:
-
-```powershell
-.venv\Scripts\python.exe -m pip install --target benchmarks/_deps -r benchmarks/requirements.txt
-.venv\Scripts\python.exe benchmarks/plot_backends.py --output benchmarks/results/full
+```sh
+python benchmarks/plot_benchmark.py --output /tmp/plottty-benchmark
 ```
 
-The benchmark opens real windows sequentially. Leave them visible and avoid
-interacting with them. A desktop session and working graphics driver are needed;
-headless/offscreen numbers are not equivalent. Optional dependencies are confined
-to `_deps`, which only the benchmark adds to its Python import path.
+Quick smoke check:
 
-For a quick check:
-
-```powershell
-.venv\Scripts\python.exe benchmarks/plot_backends.py --frames 5 --repeats 1 --points 1000 --raw-samples 10000 --output benchmarks/results/smoke
+```sh
+python benchmarks/plot_benchmark.py --frames 5 --repeats 1 --raw-samples 10000 --output /tmp/plottty-smoke
 ```
 
-Use `--backends pyqtgraph pyqtgraph-gl`, for example, to select implementations.
-JSON includes individual timing samples, median, p95, maximum, package versions,
-and platform information. PNG screenshots and process logs accompany the data.
-Each implementation runs in its own process; failures are reported explicitly.
+The benchmark uses five deterministic series in a 1000×900 logical-pixel window.
+It measures fixed-range refresh and changing-range navigation with the production
+QPainter canvas, Plotter storage, and bucket reduction. Each repeat includes ten
+warmups followed by the requested measured frames. Default settings are 40 frames,
+three repeats, and one million raw samples per series.
 
-To print tables and regenerate the chart:
+`current-widget.json` contains raw timing samples, median/p95/maximum service times,
+point counts, storage-read timings, and environment information. A PNG accompanies
+it. Keep data, dimensions, scaling, and machine load identical when comparing runs.
+These are synchronous update/render timings, not displayed FPS or input latency.
 
-```powershell
-.venv\Scripts\python.exe benchmarks/summarize.py benchmarks/results/full --chart benchmarks/comparison.svg
+## Live serial diagnostics
+
+```sh
+python benchmarks/live_serial_diagnostics.py --port COM15 --duration 25 --warmup 10 --output /tmp/plottty-live
 ```
 
-## What is measured
+This opens the real app at 115200 baud with six comma-delimited extraction rules
+(fields 0–5), Fit capture, and the console visible. It sends no commands. It records
+receive counts, stage timings, timer lateness, sample counts, errors, and a screenshot.
+Recordings and isolated layout preferences go into the output directory; use
+`--no-logging` to measure without recording. Choose a fresh output directory for
+each run. Stage times can overlap and should not be added as exclusive CPU costs.
 
-- Five stacked series in a 1000 x 900 logical-pixel window.
-- 1,000, 10,000, and 100,000 submitted points **per series**. No backend may
-  automatically downsample. Matplotlib path simplification is disabled.
-- Identical deterministic signals: a sine wave plus a smaller, higher-frequency
-  component. Arrays are generated before timing; backend conversions and GPU
-  uploads are timed. The waveform's frequency does not grow with point count.
-- `refresh`: changing all five Y arrays while the axes stay fixed.
-- `pan_zoom`: changing all five arrays and programmatically changing the X range.
-  This includes tick/label updates in the full plotting libraries.
-- Forty timed iterations after ten warmups, repeated three times per case.
-  Median and p95 pool the 120 timed iterations.
-- Synchronous Qt repaint/event processing; OpenGL cases additionally call
-  `glFinish` so GPU submission alone is not mistaken for completed rendering.
-  Vsync is requested off. These are update-and-render service times, **not**
-  measured display FPS, input latency, or an assertion about scanout timing.
-- The `current-widget` case uses the actual QPainter-based `PlotWidget`,
-  `Plotter`, and `Buckets`, with 1,000,000 raw samples per series.
-  They time 40 refreshes and 40 range changes after ten warmups. Their timer is
-  stopped and stored history is fixed; ingestion, serial parsing, and logging
-  are not part of those timings. Storage reads/conversion are also timed alone.
+The latency monitor lives only in this developer tool. The app's View → Diagnostics
+shows point counts and downsampling, without a background latency-sampling timer.
 
-The normal application asks for `view_width // 4` buckets, each emitting up to
-four points. Thus the 1,000-point rendering case is the closest to its current
-display workload. The other counts explore what happens if reduction is relaxed
-or bypassed; millions of stored samples do not imply millions of drawn vertices.
+Use a real desktop session for display performance work. For automated smoke checks,
+`QT_QPA_PLATFORM=offscreen` is useful, but its timings are not equivalent to a native
+window. Physical serial hardware is required for meaningful live measurements.
 
-## Fairness and limitations
+## Historical experiments
 
-Full library plots have axes, tick labels, titles, and grids. Their tick layout,
-plot area, and typography differ. The custom QPainter and QGraphicsView versions
-have only fixed horizontal grid lines, titles, clipping, and traces. Raw OpenGL
-has only clipped traces. They are useful lower bounds for a custom renderer,
-**not feature-equivalent replacements**. Text, automatic ticks, interaction,
-resizing, accessibility, and exporting would add implementation work and cost.
-
-QPainter and QGraphicsView share the same path conversion and drawing routine.
-They use pyqtgraph's `arrayToQPath` utility for efficient NumPy-to-Qt conversion;
-they do not use its plot/axis/scene machinery. A fully independent replacement
-would also need a suitable bulk path conversion implementation.
-
-The raw OpenGL prototype uploads float32 vertices to a VBO and draws five
-`GL_LINE_STRIP`s with a minimal shader. Coordinate conversion, allocation, and
-upload are included. It requests the machine's default desktop context and uses
-GLSL 1.20; this is a Windows prototype, not a tested portable GPU abstraction.
-VisPy uses its `gl` line method and a Qt-native canvas with axes and grid visuals.
-
-Matplotlib is measured with full redraws and with blitting. The blit adapter
-invalidates its cached background when limits change; keeping old axis labels
-would yield a fast but incorrect zoom benchmark.
-
-These are local exploratory measurements, not a universal library ranking.
-GPU/driver, window size, DPI, antialiasing, curve width, waveform density, and
-concurrent desktop activity affect results. Dense random noise may rasterize
-very differently from this smooth signal. There are no confidence intervals,
-randomized backend ordering, memory measurements, or sustained acquisition/load
-tests. Small differences should not drive a migration decision.
-
-## Replacement boundary
-
-`mainwindow.py` gets the widget from `ui_form.py` and uses `append_values`,
-`clear_values`, and `show_all_data`. `form.ui` promotes a QWidget to `PlotWidget`.
-Keeping that class and those methods preserves the external application API.
-
-`PlotWidget` now draws with QPainter while retaining the existing storage,
-extraction, serial transport, series controls, and time-range behavior.
-
-The drawing boundary is:
-
-```text
-canvas.widget                            QWidget to add to the existing layout
-canvas.set_series(labels)                rebuild visible panels
-canvas.set_x_range(start, end)            synchronize panels
-canvas.set_data(label, x, y)              submit already reduced arrays
-canvas.plot_width(label)                 preserve the current reduction budget
-canvas.x_range_changed(start, end)       signal for user navigation
-canvas.clear() / close()                 resource cleanup
-```
-
-Keep the toolbar, capture storage, refresh scheduling, and series visibility
-in `PlotWidget`. Preserve Y auto-range/manual Y zoom, panel synchronization,
-range restoration after hiding a series, time units, and clear/close behavior.
-A fast custom renderer without those behaviors is not a completed migration.
-
-For pyqtgraph OpenGL, the smaller experiment is simply to request its OpenGL
-viewport before creating `GraphicsLayoutWidget` (or use `useOpenGL(True)` on
-that view). This avoids replacing the plotting API. The benchmark does this
-only inside its worker processes; production settings remain unchanged.
-
-## Reference documentation
-
-- [pyqtgraph 0.14 configuration](https://pyqtgraph.readthedocs.io/en/pyqtgraph-0.14.0/config_options.html)
-- [Qt QGraphicsView](https://doc.qt.io/qt-6/qgraphicsview.html)
-- [Matplotlib blitting](https://matplotlib.org/stable/users/explain/animations/blitting.html)
-- [VisPy line rendering modes](https://vispy.org/api/vispy.visuals.line.line.html)
-
-The installed pyqtgraph 0.14 source was also checked: `GraphicsLayoutWidget`
-inherits from its `GraphicsView`, which inherits Qt's `QGraphicsView`.
-`PlotCurveItem` selects its native GL drawing path for a supported OpenGL
-viewport; an old `enableExperimental` flag is not required for these curves.
+[Renderer comparison](RESULTS.md) and [live-latency investigation](LIVE_LATENCY.md)
+retain earlier measurements. Their alternative-renderer implementations, conversion
+script, and chart generator have been retired; the historical code is available in
+Git history. Those results describe the implementation measured at that time.

@@ -2,6 +2,8 @@
 import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import tempfile
+import json
+from threading import Event
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -9,12 +11,15 @@ from unittest.mock import patch
 from PySide6.QtCore import QObject, QPoint, QPointF, QSettings, Qt, Signal
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtTest import QSignalSpy, QTest
-from PySide6.QtWidgets import QApplication, QDialogButtonBox
+from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
 
 from mainwindow import MainWindow
 from modules.controllers.capture_job import CaptureJob
 from modules.core.binary_logging import BinaryCaptureWriter
 from modules.core.models import CapturedValue, ExtractionRule
+from modules.core.extraction import ExtractionEngine
+from modules.core.rule_suggestions import suggest_rules
+from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.widgets.plot_widget import PlotWidget
 from modules.widgets.rules_dialog import RulesDialog
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
@@ -68,8 +73,8 @@ class WorkspaceTest(unittest.TestCase):
         dialog = self.dialog()
         dialog.table.item(0, 2).setText("draft")
         path = Path(self.temp.name) / "profile.json"
-        self.window.profile.save(path, self.window.applied_rules)
-        self.assertEqual(self.window.profile.load(path).rules[0].label, "original")
+        save_profile(AppProfile("test", self.window.applied_rules), path)
+        self.assertEqual(load_profile(path).rules[0].label, "original")
         with patch.object(self.window.session, "set_rules", wraps=self.window.session.set_rules) as commit:
             self.assertTrue(dialog.apply_rules())
             commit.assert_called_once()
@@ -77,8 +82,8 @@ class WorkspaceTest(unittest.TestCase):
         dialog.reject()
         self.assertEqual(self.window.applied_rules[0].label, "draft")
         self.assertEqual(self.window.session._engine.extract("1")[0].label, "draft")
-        self.window.profile.save(path, self.window.applied_rules)
-        self.window.apply_rules(self.window.profile.load(path).rules)
+        save_profile(AppProfile("test", self.window.applied_rules), path)
+        self.window.apply_rules(load_profile(path).rules)
         self.assertEqual(self.window.applied_rules[0].unit, "V")
 
     def test_ok_cancel_and_generate(self):
@@ -255,7 +260,7 @@ class WorkspaceTest(unittest.TestCase):
             self.assertEqual(w.plot.series_info(), [])
             with patch.object(session._plot_log, "flush", side_effect=OSError("disk full")), \
                     patch("mainwindow.QMessageBox.warning") as warning:
-                session.flush_plot_log()
+                session.flush_logs()
                 self.assertIn("Recording stopped", warning.call_args.args[2])
             self.assertFalse(session.is_connected)
             self.assertEqual(w._recording_label.text(), "Not recording")
@@ -302,6 +307,134 @@ class WorkspaceTest(unittest.TestCase):
         self.window.ui.CommandEdit.setFocus()
         QTest.keyClick(self.window.ui.CommandEdit, Qt.Key.Key_Tab)
         self.assertIs(APP.focusWidget(), self.window.ui.SendButton)
+
+    def test_profile_file_actions_use_applied_rules_and_current_path(self):
+        source = Path(self.temp.name) / "source.json"
+        target = Path(self.temp.name) / "saved.json"
+        save_profile(AppProfile("source", [ExtractionRule("value", "first_number", unit="V")]), source)
+        with patch("mainwindow.QFileDialog.getOpenFileName", return_value=(str(source), "")):
+            self.window.on_open_profile()
+        self.assertEqual(self.window.profile_path, source)
+        draft = self.dialog()
+        draft.table.item(0, 2).setText("not applied")
+        with patch("mainwindow.QFileDialog.getSaveFileName", return_value=(str(target), "")):
+            self.window.on_save_profile_as()
+        self.assertEqual(self.window.profile_path, target)
+        self.assertEqual(load_profile(target).rules[0].label, "value")
+
+    def test_profile_validation_matches_dialog_and_rejects_legacy_fields(self):
+        path = Path(self.temp.name) / "bad.json"
+        for rule in (ExtractionRule("bad", "regex", extra_setting="["),
+                     ExtractionRule("bad", "regex", extra_setting="no group"),
+                     ExtractionRule("bad", "delimiter_column", extra_setting="-1")):
+            save_profile(AppProfile("invalid", [rule]), path)
+            dialog = self.dialog([rule])
+            self.assertFalse(dialog.apply_rules())
+            with self.assertRaises(ValueError) as error:
+                load_profile(path)
+            self.assertEqual(str(error.exception), dialog.error.text())
+        previous = self.window.applied_rules
+        with patch("mainwindow.QFileDialog.getOpenFileName", return_value=(str(path), "")), \
+                patch("mainwindow.QMessageBox.warning"):
+            self.window.on_open_profile()
+        self.assertIs(self.window.applied_rules, previous)
+        path.write_text(json.dumps({"rules": [{"label": "old", "pattern": "(.*)"}]}))
+        with self.assertRaises(TypeError):
+            load_profile(path)
+
+    def test_generated_units_and_mode_changes(self):
+        rules = suggest_rules("Voltage: 3.31 V  Current: 0.14 A")
+        captured = ExtractionEngine(rules).extract("Voltage: 3.32 V  Current: 0.15 A")
+        self.assertEqual([v.unit for v in captured], ["V", "A"])
+        dialog = self.dialog(rules)
+        combo = dialog.table.cellWidget(0, 3)
+        combo.setCurrentIndex(combo.findData("first_number"))
+        self.assertEqual(dialog.table.item(0, 4).text(), "")
+        self.assertFalse(dialog.table.item(0, 4).flags() & Qt.ItemFlag.ItemIsEditable)
+        combo.setCurrentIndex(combo.findData("delimiter_column"))
+        self.assertEqual(dialog.table.item(0, 4).text(), ",")
+        self.assertEqual(dialog.table.item(0, 5).text(), "0")
+        self.assertTrue(dialog.apply_rules())
+
+    def test_console_fixed_limit_and_no_latency_monitor(self):
+        self.window.console.append_received("\n".join(str(i) for i in range(50_100)))
+        self.window.console.flush()
+        editor = self.window.ui.ConsoleTextEdit
+        self.assertEqual(editor.document().blockCount(), 50_000)
+        self.assertEqual(editor.document().firstBlock().text(), "100")
+        self.assertFalse(hasattr(self.window, "_latency_monitor"))
+        self.assertFalse(hasattr(self.window.session.settings, "console_line_limit"))
+
+    def test_shared_drag_and_cached_y_range(self):
+        plot = self.window.plot
+        plot.append_values([CapturedValue(i, "a", i) for i in range(20)])
+        plot.on_refresh_pending_data()
+        graph = plot.graph
+        automatic = graph._y_range("a")
+        with patch("modules.widgets.plot_widget._value_range", side_effect=AssertionError("unnecessary rescan")):
+            self.assertEqual(graph._y_range("a"), automatic)
+            graph._y_ranges["a"] = (-10, 10)
+            self.assertEqual(graph._y_range("a"), (-10, 10))
+        plot._set_time_range(5, 15)
+        graph.begin_drag(QPointF(300, 10))
+        graph.drag_to(QPointF(200, 10))
+        graph.end_drag()
+        expected = plot._time_range()
+        plot._set_time_range(5, 15)
+        footer = plot.time_axis_label
+        QTest.mousePress(footer, Qt.MouseButton.LeftButton, pos=QPoint(300, 10))
+        QTest.mouseMove(footer, QPoint(200, 10))
+        QTest.mouseRelease(footer, Qt.MouseButton.LeftButton, pos=QPoint(200, 10))
+        self.assertEqual(plot._time_range(), expected)
+        plot.append_values([CapturedValue(20, "a", 50)])
+        plot.on_refresh_pending_data()
+        self.assertEqual(graph._y_range("a"), (-10, 10))
+        graph._y_ranges.clear()
+        plot.fit_capture()
+        self.assertGreater(graph._y_range("a")[1], 50)
+
+    def test_progress_cancel_and_close_keep_worker_alive_until_finished(self):
+        for operation in ("cancel_load", "cancel_export", "close_load"):
+            with self.subTest(operation=operation):
+                entered, release = Event(), Event()
+                source = Path(self.temp.name) / "source.plotty"
+                destination = Path(self.temp.name) / "existing.csv"
+                destination.write_text("existing")
+                def wait_for_release(job):
+                    entered.set()
+                    release.wait(5)
+                    job._check_cancelled()
+                self.window.plot.clear_values()
+                self.window.plot.append_values([CapturedValue(0, "keep", 42)])
+                with patch.object(CaptureJob, "_load", wait_for_release), \
+                        patch("modules.controllers.capture_job.export_capture_csv", side_effect=lambda *args: wait_for_release(self.window._capture_job)):
+                    self.window._start_capture_job(str(source), str(destination) if operation == "cancel_export" else None)
+                    job = self.window._capture_job
+                    self.assertTrue(entered.wait(2))
+                    try:
+                        if operation == "close_load":
+                            self.window.close()
+                            self.assertTrue(self.window.isVisible())
+                        else:
+                            button = self.window._loading_dialog.findChild(QPushButton)
+                            QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+                        self.assertTrue(job.isInterruptionRequested())
+                        self.assertTrue(job.isRunning())
+                        self.assertIs(self.window._capture_job, job)
+                    finally:
+                        release.set()
+                        self.assertTrue(job.wait(2000))
+                    for _ in range(100):
+                        APP.processEvents()
+                        if self.window._capture_job is None:
+                            break
+                        QTest.qWait(10)
+                self.assertIsNone(self.window._capture_job)
+                self.assertEqual(destination.read_text(), "existing")
+                if operation == "close_load":
+                    self.assertFalse(self.window.isVisible())
+                else:
+                    self.assertEqual(self.window.plot.series_info()[0]["label"], "keep")
 
     def test_connection_controls_settings_and_layout_roundtrip(self):
         w = self.window

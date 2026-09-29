@@ -11,9 +11,9 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
     QListWidgetItem,
-    QSizePolicy,
     QMessageBox,
     QMainWindow,
+    QProgressDialog,
 )
 
 # Important:
@@ -22,14 +22,12 @@ from PySide6.QtWidgets import (
 #     pyside2-uic form.ui -o ui_form.py
 from ui_form import Ui_MainWindow
 
-from modules.controllers.profile_controller import ProfileController
+from modules.core.profiles import AppProfile, load_profile, save_profile
+from modules.core.models import validate_rules
 from modules.controllers.serial_session import SerialSession
 from modules.core.extraction import default_rules
 from modules.controllers.capture_job import CaptureJob
-from modules.core.ui_latency import EventLoopLatencyMonitor
 from modules.widgets.console_widget import ConsoleWidget
-from modules.widgets.loading_dialog import LoadingDialog
-from modules.widgets.application_style import ApplicationStyle
 from modules.widgets.rules_dialog import RulesDialog
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog, SUPPORTED_BAUD_RATES
 import rc_resources  # noqa: F401
@@ -45,7 +43,7 @@ APP_ICON_RESOURCE = ":/icons/Plottty.png"
 def apply_application_style(app: QApplication) -> None:
     # Give Qt-drawn controls a palette that matches the dark stylesheet.
     # Fusion keeps their indicators consistent across Windows themes.
-    app.setStyle(ApplicationStyle())
+    app.setStyle("Fusion")
     palette = app.palette()
     for role, color in {
         QPalette.ColorRole.Window: "#252b32",
@@ -84,10 +82,10 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(APP_ICON_RESOURCE))
 
         self._capture_job: CaptureJob | None = None
-        self._loading_dialog: LoadingDialog | None = None
+        self._loading_dialog: QProgressDialog | None = None
         self._close_after_capture = False
         self.session = SerialSession(self)
-        self.profile = ProfileController(self)
+        self.profile_path = Path("profile.json")
 
         self.plot = self.ui.Plot
         self.console = ConsoleWidget(self.ui.ConsoleTextEdit, self)
@@ -99,25 +97,22 @@ class MainWindow(QMainWindow):
         self._export_csv_action.triggered.connect(self.on_export_csv)
         self._connect_signals()
         self.apply_rules(default_rules())
-        self._start_latency_monitor()
+        self.statusBar().addPermanentWidget(self.plot.visible_points_label)
+        self.statusBar().addPermanentWidget(self.plot.downsample_ratio_label)
+        self.set_diagnostics_visible(False)
         self.on_connected_changed(False)
         QTimer.singleShot(0, self.restore_layout)
 
     def _configure_workspace(self):
-        self.ui.CommandEdit.setPlaceholderText("Type command and press Enter")
         self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
         self.ui.SendButton.clicked.connect(self.on_send_command)
         self.ui.ConsoleToggle.setDefaultAction(self.ui.actionConsole)
-        self.ui.ConsoleToggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.ui.ConsoleToggle.setArrowType(Qt.ArrowType.RightArrow)
-        self.ui.ConsoleToggle.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.ui.actionConsole.toggled.connect(self.set_console_visible)
         self.ui.actionSidebar.toggled.connect(self.ui.SeriesSidebar.setVisible)
         self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
         self.ui.actionClearCapturedData.triggered.connect(self.on_clear_console_and_plot)
         self.ui.SeriesList.itemChanged.connect(self._series_visibility_changed)
         self.ui.RefreshPortsButton.clicked.connect(self.refresh_ports)
-        self.ui.PortCombo.setMinimumWidth(150)
         self.ui.BaudCombo.addItems([str(value) for value in SUPPORTED_BAUD_RATES])
         self.refresh_ports()
         self.apply_settings(self.session.settings)
@@ -166,7 +161,6 @@ class MainWindow(QMainWindow):
                 combo.addItem(value)
             combo.setCurrentText(value)
             combo.blockSignals(False)
-        self.console.set_line_limit_enabled(settings.console_line_limit)
 
     def rebuild_sidebar(self):
         self.ui.SeriesList.blockSignals(True)
@@ -207,7 +201,6 @@ class MainWindow(QMainWindow):
             self.ui.WorkspaceSplitter.setSizes([max(220, height - self._console_height), self._console_height])
 
     def set_diagnostics_visible(self, visible):
-        self._latency_label.setVisible(visible)
         self.plot.visible_points_label.setVisible(visible)
         self.plot.downsample_ratio_label.setVisible(visible)
 
@@ -244,21 +237,11 @@ class MainWindow(QMainWindow):
         self.session.statusText.connect(self.console.append_status)
         self.session.valuesCaptured.connect(self.plot.append_values)
         self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
-        self.session.statusChanged.connect(self.update_recording_status)
         self.plot.seriesChanged.connect(self.rebuild_sidebar)
         self.session.errorOccurred.connect(self.on_serial_error)
 
-    def _start_latency_monitor(self) -> None:
-        self._latency_label = QLabel("UI p95: -- ms  p99: -- ms")
-        self.statusBar().addPermanentWidget(self._latency_label)
-        self._latency_monitor = EventLoopLatencyMonitor(self)
-        self._latency_monitor.summaryChanged.connect(self._latency_label.setText)
-        self._latency_monitor.start()
-        self.set_diagnostics_visible(False)
-        self.statusBar().addPermanentWidget(self.plot.visible_points_label)
-        self.statusBar().addPermanentWidget(self.plot.downsample_ratio_label)
-
     def apply_rules(self, rules):
+        validate_rules(rules)
         self.applied_rules = [replace(rule) for rule in rules]
         self.session.set_rules([replace(rule) for rule in self.applied_rules])
 
@@ -275,17 +258,18 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            profile = self.profile.load(path)
+            profile = load_profile(path)
         except Exception as exc:
             QMessageBox.warning(self, "Open Profile Failed", str(exc))
             return
 
         self.apply_rules(profile.rules)
-        self.statusBar().showMessage(f"Loaded {self.profile.profile_name}")
+        self.profile_path = Path(path)
+        self.statusBar().showMessage(f"Loaded {self.profile_path.name}")
 
     @Slot()
     def on_save_profile_as(self) -> None:
-        default_path = str(self.profile.default_save_path)
+        default_path = str(self.profile_path)
         path, _selected_filter = QFileDialog.getSaveFileName(
             self,
             "Save Profile",
@@ -296,12 +280,13 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.profile.save(path, self.applied_rules)
+            save_profile(AppProfile(Path(path).stem, self.applied_rules), path)
         except Exception as exc:
             QMessageBox.warning(self, "Save Profile Failed", str(exc))
             return
 
-        self.statusBar().showMessage(f"Saved {self.profile.profile_name}")
+        self.profile_path = Path(path)
+        self.statusBar().showMessage(f"Saved {self.profile_path.name}")
 
     @Slot()
     def on_load_log(self) -> None:
@@ -331,14 +316,17 @@ class MainWindow(QMainWindow):
             self.session.disconnect_serial()  # Do not mix live samples into an imported time base.
         job = self._capture_job = CaptureJob(path, destination, parent=self)
         message = f"{'Exporting' if destination else 'Loading'} {Path(path).name}..."
-        dialog = self._loading_dialog = LoadingDialog(message, self)
+        dialog = self._loading_dialog = QProgressDialog(message, "Cancel", 0, 0, self)
+        dialog.setWindowTitle("Export capture" if destination else "Load capture")
+        dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        dialog.setMinimumDuration(0)
         self.ui.actionLoad_log.setEnabled(False)
         self._export_csv_action.setEnabled(False)
         job.progress.connect(self._on_capture_progress)
         job.finished.connect(self._finish_capture_job)
-        dialog.cancel_requested.connect(job.requestInterruption)
+        dialog.canceled.connect(job.requestInterruption)
         self.statusBar().showMessage(message)
-        dialog.start()
+        dialog.show()
         job.start()
 
     @Slot(int)
@@ -347,7 +335,7 @@ class MainWindow(QMainWindow):
         if job is not None and not job.isInterruptionRequested():
             verb = "Exported" if job.destination is not None else "Prepared"
             message = f"{verb} {count:,} values"
-            self._loading_dialog.set_message(message)
+            self._loading_dialog.setLabelText(message)
             self.statusBar().showMessage(message)
 
     @Slot()
@@ -355,7 +343,7 @@ class MainWindow(QMainWindow):
         job = self._capture_job
         if job is None:
             return
-        self._loading_dialog.accept()
+        self._loading_dialog.reset()
         operation = "CSV export" if job.destination is not None else "Log import"
         try:
             if job.error:
@@ -390,11 +378,9 @@ class MainWindow(QMainWindow):
     @Slot()
     def on_open_serial_settings(self) -> None:
         dialog = SerialSettingsDialog(self.session.settings, self)
-        if dialog.exec() != dialog.DialogCode.Accepted:
-            return
-
-        settings = dialog.selected_settings()
-        self.apply_settings(settings)
+        if dialog.exec() == dialog.DialogCode.Accepted:
+            self.apply_settings(dialog.selected_settings())
+        dialog.deleteLater()
 
     @Slot()
     def on_toggle_connection(self) -> None:
@@ -448,7 +434,7 @@ class MainWindow(QMainWindow):
         self.ui.PortStatusLabel.style().polish(self.ui.PortStatusLabel)
         self.update_recording_status()
 
-    def update_recording_status(self, _message=None):
+    def update_recording_status(self):
         self.statusBar().clearMessage()
         paths = self.session.recording_paths
         recording = self.session.is_connected and self.session.settings.log_to_file

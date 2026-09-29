@@ -37,6 +37,14 @@ class PlotterRangesTest(unittest.TestCase):
     def test_empty_capture(self):
         self.assertEqual(self.plotter.read_visible_samples(0, 1, 100), (0, [], []))
 
+    def test_disposal_discards_pending_samples_and_is_repeatable(self):
+        self.plotter.add_sample(1, 42)
+        with patch.object(self.plotter, "_write_pending_samples_to_file", side_effect=AssertionError("discarded data")):
+            self.plotter.close()
+            self.plotter.close()
+        self.assertTrue(self.plotter._file.closed)
+        self.assertEqual(self.plotter._pending_sample_bytes, b"")
+
 
 if __name__ == '__main__':
     unittest.main()

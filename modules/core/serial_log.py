@@ -5,13 +5,15 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from typing import TextIO
+from uuid import uuid4
+
 
 def create_log_path(log_dir: Path, port: str, baudrate: int, suffix: str) -> Path:
     """Create the log directory and build a filename safe for the port name."""
     log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     safe_port = "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in port)
-    return log_dir / f"serial_{safe_port}_{baudrate}_{timestamp}_{suffix}"
+    return log_dir / f"serial_{safe_port}_{baudrate}_{timestamp}_{uuid4().hex[:8]}_{suffix}"
 
 
 class SerialSessionLog:
@@ -23,15 +25,19 @@ class SerialSessionLog:
     def start(self, port: str, baudrate: int) -> Path:
         self.close()
         self.path = create_log_path(self.log_dir, port, baudrate, "console.log")
-        self._file = self.path.open("w", encoding="utf-8", newline="\n")
+        self._file = self.path.open("x", encoding="utf-8", newline="\n")
         return self.path
 
     def close(self) -> None:
         if self._file is None:
             return
 
-        self._file.close()
-        self._file = None
+        file, self._file = self._file, None
+        file.close()
+
+    def flush(self) -> None:
+        if self._file is not None:
+            self._file.flush()
 
     def write_status(self, message: str) -> None:
         self._write_event("STATUS", message)
@@ -54,4 +60,3 @@ class SerialSessionLog:
         timestamp = datetime.now().isoformat(timespec="milliseconds")
         for line in normalized_text.splitlines() or [""]:
             self._file.write(f"[{timestamp}] {event_type} {line}\n")
-        self._file.flush()

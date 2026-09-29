@@ -1,5 +1,8 @@
 # Plot backend benchmark ? 2026-09-23
 
+> Historical measurements: alternative-renderer scripts have been retired.
+> The maintained current-app tools are documented in [README.md](README.md).
+
 The best first change supported by this experiment is **trying pyqtgraph's
 OpenGL viewport**, while retaining the existing widget and data pipeline.
 It roughly halved renderer-only refresh cost at the normal display size and
@@ -142,8 +145,8 @@ This report recommends that sequence; it does not silently enable it.
 
 ## Artifacts and validation
 
-- [Rerunnable benchmark](plot_backends.py), [instructions](README.md), and
-  [pinned optional dependencies](requirements.txt).
+- The historical benchmark scripts are available in Git history. See the
+  [current benchmark instructions](README.md) for maintained tools.
 - [Machine-readable measured summary](measurements.json) and
   [chart](comparison.svg).
 - Full timing samples, screenshots, and logs are in `results/full/` locally

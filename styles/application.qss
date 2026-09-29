@@ -20,6 +20,7 @@ QLineEdit, QComboBox, QPlainTextEdit, QTableWidget, QListWidget {
     background: #1f252b; border: 1px solid #414b55; border-radius: 4px; }
 QLineEdit, QComboBox { min-height: 24px; padding: 3px 8px; }
 QComboBox { padding-right: 24px; }
+QCheckBox:disabled { color: #88929c; }
 QLineEdit:disabled, QComboBox:disabled { color: #88929c; background: #272e35; }
 QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTableWidget:focus, QListWidget:focus { border-color: #89b4fa; }
 QComboBox QAbstractItemView { background: #242c34; selection-background-color: #365c70; }

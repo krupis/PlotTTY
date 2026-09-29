@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .models import ExtractionRule
+from .models import ExtractionRule, validate_rules
 
 
 @dataclass
@@ -26,16 +26,6 @@ def save_profile(profile: AppProfile, path: str | Path) -> None:
 
 
 def profile_from_dict(data: dict[str, Any]) -> AppProfile:
-    rules = [_rule_from_dict(item) for item in data.get("rules", [])]
-    return AppProfile(
-        name=data.get("name", "Untitled Profile"),
-        rules=rules,
-    )
-
-
-def _rule_from_dict(data: dict[str, Any]) -> ExtractionRule:
-    rule = dict(data)
-    if "pattern" in rule:
-        pattern = rule.pop("pattern")
-        rule.setdefault("extra_setting", pattern)
-    return ExtractionRule(**rule)
+    rules = [ExtractionRule(**item) for item in data.get("rules", [])]
+    validate_rules(rules)
+    return AppProfile(name=data.get("name", "Untitled Profile"), rules=rules)

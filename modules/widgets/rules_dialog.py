@@ -1,13 +1,12 @@
 """Isolated extraction-rule drafts with explicit commit semantics."""
-from dataclasses import replace
-import re
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout, QLabel,
                              QPlainTextEdit, QPushButton, QTableWidget, QVBoxLayout)
 
 from ..core.rule_suggestions import suggest_rules
-from .rules_table import COLUMN_TOOLTIPS, RulesTable
+from .rules_table import RulesTable
+from ..core.models import validate_rules
 
 
 class RulesDialog(QDialog):
@@ -31,10 +30,7 @@ class RulesDialog(QDialog):
         layout.addLayout(row)
         self.table = QTableWidget()
         self.rules_table = RulesTable(self.table, self)
-        self.table.setHorizontalHeaderLabels(["Enable", "X reference", "Label", "Find method", "Pattern / delimiter", "Field index"])
-        for column, tooltip in enumerate(COLUMN_TOOLTIPS):
-            self.table.horizontalHeaderItem(column).setToolTip(tooltip)
-        self.rules_table.set_rules([replace(rule) for rule in rules])
+        self.rules_table.set_rules(rules)
         layout.addWidget(self.table, 1)
         row = QHBoxLayout()
         add = QPushButton("Add rule")
@@ -66,19 +62,13 @@ class RulesDialog(QDialog):
 
     def apply_rules(self):
         rules = self.rules_table.rules()
-        errors = []
-        for row, rule in enumerate(rules, 1):
-            try:
-                if rule.mode == "regex" and re.compile(rule.extra_setting).groups < 1:
-                    raise ValueError("Regex must contain a capture group for the numeric value.")
-                if rule.mode == "delimiter_column" and (not rule.extra_setting.isdecimal()):
-                    raise ValueError("Field index must be a nonnegative integer.")
-            except (ValueError, re.error) as exc:
-                errors.append(f"Row {row}: {exc}")
-        self.error.setText("\n".join(errors))
-        if errors:
+        try:
+            validate_rules(rules)
+        except ValueError as exc:
+            self.error.setText(str(exc))
             return False
-        self.rulesApplied.emit([replace(rule) for rule in rules])
+        self.error.clear()
+        self.rulesApplied.emit(rules)
         return True
 
     def accept(self):

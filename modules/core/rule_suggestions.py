@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .extraction import AUTO_KEY_VALUE_RE, FIRST_NUMBER_RE, NUMBER_PATTERN
+from .extraction import AUTO_KEY_VALUE_RE, FIRST_NUMBER_RE, NUMBER_PATTERN, clean_label
 from .models import ExtractionRule
 
 
@@ -33,13 +33,14 @@ def _key_value_suggestions(lines: list[str]) -> list[ExtractionRule]:
 
     for line in lines:
         for match in AUTO_KEY_VALUE_RE.finditer(line):
-            label = _clean_label(match.group(1))
+            label = clean_label(match.group(1))
             if label in seen_labels:
                 continue
             seen_labels.add(label)
             regex_pattern = rf"{re.escape(label)}\s*(?:=|:)\s*({NUMBER_PATTERN})"
             suggestions.append(
-                ExtractionRule(label=label, mode="regex", extra_setting=regex_pattern)
+                ExtractionRule(label=label, mode="regex", extra_setting=regex_pattern,
+                               unit=(match.group(3) or "").strip())
             )
 
     return suggestions
@@ -81,11 +82,6 @@ def _first_number_suggestion(lines: list[str]) -> list[ExtractionRule]:
         if FIRST_NUMBER_RE.search(line):
             return [ExtractionRule(label="Value", mode="first_number")]
     return []
-
-
-def _clean_label(label: str) -> str:
-    cleaned_label = " ".join(label.strip(" -_:").split())
-    return cleaned_label or "Value"
 
 
 def _detect_delimiter(line: str) -> str:

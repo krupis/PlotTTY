@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QPlainTextEdit
 RECEIVED_TEXT_COLOR = QColor("#c6d1da")
 SENT_TEXT_COLOR = QColor("#f9c74f")
 STATUS_TEXT_COLOR = QColor("#89b4fa")
-MAX_CONSOLE_BLOCKS = 1000000
+MAX_CONSOLE_BLOCKS = 50_000
 CONSOLE_FLUSH_INTERVAL_MS = 50
 
 
@@ -22,7 +22,7 @@ class ConsoleWidget(QObject):
 
         self._editor.setReadOnly(True)
         self._editor.setLineWrapMode(self._editor.LineWrapMode.NoWrap)
-        self.set_line_limit_enabled(True)
+        self._editor.document().setMaximumBlockCount(MAX_CONSOLE_BLOCKS)
 
         self._flush_timer = QTimer(self)
         self._flush_timer.setInterval(CONSOLE_FLUSH_INTERVAL_MS)
@@ -32,10 +32,6 @@ class ConsoleWidget(QObject):
     def clear(self) -> None:
         self._pending_text.clear()
         self._editor.clear()
-
-    def set_line_limit_enabled(self, enabled: bool) -> None:
-        maximum_blocks = MAX_CONSOLE_BLOCKS if enabled else 0
-        self._editor.document().setMaximumBlockCount(maximum_blocks)
 
     @Slot(str)
     def append_received(self, text: str) -> None:

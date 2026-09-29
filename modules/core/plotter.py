@@ -65,7 +65,7 @@ class Plotter:
         return self._sample_count
 
     def close(self) -> None:
-        self._write_pending_samples_to_file()
+        self._pending_sample_bytes.clear()
         self._file.close()
 
     def _write_pending_samples_to_file(self) -> None:
