@@ -5,7 +5,6 @@ from pathlib import Path
 
 from PySide6.QtGui import QAction, QColor, QIcon, QPalette, QPixmap
 from PySide6.QtCore import QSettings, QTimer, Qt, Slot
-from PySide6.QtSerialPort import QSerialPortInfo
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -28,7 +27,7 @@ from modules.core.extraction import default_rules, validate_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.rules_dialog import RulesDialog
-from modules.widgets.serial_settings_dialog import SerialSettingsDialog, SUPPORTED_BAUD_RATES
+from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 import rc_resources  # noqa: F401
 
 
@@ -84,6 +83,8 @@ class MainWindow(QMainWindow):
         self._loading_dialog: QProgressDialog | None = None
         self._close_after_capture = False
         self.session = SerialSession(self)
+        self._serial_settings = SerialSettingsDialog(self.session.settings, self)
+        self._serial_settings.accepted.connect(self._save_serial_settings)
         self.profile_path = Path("profile.json")
 
         self.plot = self.ui.Plot
@@ -111,12 +112,7 @@ class MainWindow(QMainWindow):
         self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
         self.ui.actionClearCapturedData.triggered.connect(self.on_clear_console_and_plot)
         self.ui.SeriesList.itemChanged.connect(self._series_visibility_changed)
-        self.ui.RefreshPortsButton.clicked.connect(self.refresh_ports)
-        self.ui.BaudCombo.addItems([str(value) for value in SUPPORTED_BAUD_RATES])
-        self.refresh_ports()
         self.apply_settings(self.session.settings)
-        self.ui.PortCombo.currentTextChanged.connect(self._connection_settings_changed)
-        self.ui.BaudCombo.currentTextChanged.connect(self._connection_settings_changed)
         self._recording_label = QLabel("Not recording")
         self._rate_label = QLabel("0 B/s")
         self.statusBar().addWidget(self._recording_label, 1)
@@ -134,32 +130,9 @@ class MainWindow(QMainWindow):
         self._sidebar_structure = None
         self.rebuild_sidebar()
 
-    def refresh_ports(self):
-        selected = self.session.settings.port
-        self.ui.PortCombo.blockSignals(True)
-        self.ui.PortCombo.clear()
-        self.ui.PortCombo.addItem("")
-        for port in QSerialPortInfo.availablePorts():
-            self.ui.PortCombo.addItem(port.portName())
-            self.ui.PortCombo.setItemData(self.ui.PortCombo.count() - 1, port.description(), Qt.ItemDataRole.ToolTipRole)
-        if selected and self.ui.PortCombo.findText(selected) < 0:
-            self.ui.PortCombo.addItem(selected)
-        self.ui.PortCombo.setCurrentText(selected)
-        self.ui.PortCombo.blockSignals(False)
-
-    def _connection_settings_changed(self):
-        if not self.session.is_connected:
-            self.apply_settings(replace(self.session.settings, port=self.ui.PortCombo.currentText(),
-                                        baudrate=int(self.ui.BaudCombo.currentText())))
-
     def apply_settings(self, settings):
         self.session.settings = settings
-        for combo, value in ((self.ui.PortCombo, settings.port), (self.ui.BaudCombo, str(settings.baudrate))):
-            combo.blockSignals(True)
-            if combo.findText(value) < 0:
-                combo.addItem(value)
-            combo.setCurrentText(value)
-            combo.blockSignals(False)
+        self.ui.ConnectionSettingsButton.setText(f"{settings.port or 'Select port'} · {settings.baudrate}")
 
     def rebuild_sidebar(self):
         self.ui.SeriesList.blockSignals(True)
@@ -224,7 +197,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
-        self.ui.SettingsButton.clicked.connect(self.on_open_serial_settings)
+        self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_serial_settings)
         self.ui.ClearConsoleButton.clicked.connect(self.console.clear)
         self.ui.EditRulesButton.clicked.connect(self.open_rules_dialog)
         self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
@@ -376,10 +349,13 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_open_serial_settings(self) -> None:
-        dialog = SerialSettingsDialog(self.session.settings, self)
-        if dialog.exec() == dialog.DialogCode.Accepted:
-            self.apply_settings(dialog.selected_settings())
-        dialog.deleteLater()
+        if not self.session.is_connected:
+            self._serial_settings.set_settings(self.session.settings)
+            self._serial_settings.show_below(self.ui.ConnectionSettingsButton)
+
+    def _save_serial_settings(self) -> None:
+        if not self.session.is_connected:
+            self.apply_settings(self._serial_settings.selected_settings())
 
     @Slot()
     def on_toggle_connection(self) -> None:
@@ -423,8 +399,9 @@ class MainWindow(QMainWindow):
     @Slot(bool)
     def on_connected_changed(self, connected: bool) -> None:
         self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
-        for widget in (self.ui.SettingsButton, self.ui.PortCombo, self.ui.BaudCombo, self.ui.RefreshPortsButton):
-            widget.setEnabled(not connected)
+        self.ui.ConnectionSettingsButton.setEnabled(not connected)
+        if connected:
+            self._serial_settings.reject()
         self.ui.CommandEdit.setEnabled(connected)
         self.ui.SendButton.setEnabled(connected)
         self.ui.PortStatusLabel.setText("● Connected" if connected else "● Disconnected")

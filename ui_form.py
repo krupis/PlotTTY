@@ -16,11 +16,11 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
-    QLineEdit, QListWidget, QListWidgetItem, QMainWindow,
-    QMenu, QMenuBar, QPlainTextEdit, QPushButton,
-    QSizePolicy, QSpacerItem, QSplitter, QStatusBar,
-    QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit,
+    QListWidget, QListWidgetItem, QMainWindow, QMenu,
+    QMenuBar, QPlainTextEdit, QPushButton, QSizePolicy,
+    QSpacerItem, QSplitter, QStatusBar, QToolButton,
+    QVBoxLayout, QWidget)
 
 from modules.widgets.plot_widget import PlotWidget
 
@@ -53,31 +53,10 @@ class Ui_MainWindow(object):
         self.MainLayout.setObjectName(u"MainLayout")
         self.ConnectionLayout = QHBoxLayout()
         self.ConnectionLayout.setObjectName(u"ConnectionLayout")
-        self.PortLabel = QLabel(self.centralwidget)
-        self.PortLabel.setObjectName(u"PortLabel")
+        self.ConnectionSettingsButton = QPushButton(self.centralwidget)
+        self.ConnectionSettingsButton.setObjectName(u"ConnectionSettingsButton")
 
-        self.ConnectionLayout.addWidget(self.PortLabel)
-
-        self.PortCombo = QComboBox(self.centralwidget)
-        self.PortCombo.setObjectName(u"PortCombo")
-        self.PortCombo.setMinimumSize(QSize(150, 0))
-
-        self.ConnectionLayout.addWidget(self.PortCombo)
-
-        self.RefreshPortsButton = QPushButton(self.centralwidget)
-        self.RefreshPortsButton.setObjectName(u"RefreshPortsButton")
-
-        self.ConnectionLayout.addWidget(self.RefreshPortsButton)
-
-        self.BaudLabel = QLabel(self.centralwidget)
-        self.BaudLabel.setObjectName(u"BaudLabel")
-
-        self.ConnectionLayout.addWidget(self.BaudLabel)
-
-        self.BaudCombo = QComboBox(self.centralwidget)
-        self.BaudCombo.setObjectName(u"BaudCombo")
-
-        self.ConnectionLayout.addWidget(self.BaudCombo)
+        self.ConnectionLayout.addWidget(self.ConnectionSettingsButton)
 
         self.PortStatusLabel = QLabel(self.centralwidget)
         self.PortStatusLabel.setObjectName(u"PortStatusLabel")
@@ -92,11 +71,6 @@ class Ui_MainWindow(object):
         self.Spacer8 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.ConnectionLayout.addItem(self.Spacer8)
-
-        self.SettingsButton = QPushButton(self.centralwidget)
-        self.SettingsButton.setObjectName(u"SettingsButton")
-
-        self.ConnectionLayout.addWidget(self.SettingsButton)
 
 
         self.MainLayout.addLayout(self.ConnectionLayout)
@@ -224,12 +198,12 @@ class Ui_MainWindow(object):
         self.actionConsole.setText(QCoreApplication.translate("MainWindow", u"Console", None))
         self.actionSidebar.setText(QCoreApplication.translate("MainWindow", u"Series sidebar", None))
         self.actionDiagnostics.setText(QCoreApplication.translate("MainWindow", u"Diagnostics", None))
-        self.PortLabel.setText(QCoreApplication.translate("MainWindow", u"Port", None))
-        self.RefreshPortsButton.setText(QCoreApplication.translate("MainWindow", u"Refresh", None))
-        self.BaudLabel.setText(QCoreApplication.translate("MainWindow", u"Baud rate", None))
+        self.ConnectionSettingsButton.setText(QCoreApplication.translate("MainWindow", u"Select port \u00b7 115200", None))
+#if QT_CONFIG(tooltip)
+        self.ConnectionSettingsButton.setToolTip(QCoreApplication.translate("MainWindow", u"Connection settings", None))
+#endif // QT_CONFIG(tooltip)
         self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"\u25cf Disconnected", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
-        self.SettingsButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
         self.SeriesHeading.setText(QCoreApplication.translate("MainWindow", u"Series", None))
         self.EditRulesButton.setText(QCoreApplication.translate("MainWindow", u"Edit rules\u2026", None))
         self.CommandEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type command and press Enter", None))

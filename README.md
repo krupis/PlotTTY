@@ -22,8 +22,10 @@ For rendering benchmarks and live-device diagnostics, see
 
 ## Plot workspace
 
-Choose a port and baud rate in the top bar, then connect. **Settings** contains
-advanced serial options and recording preferences. Use the series sidebar to
+Click the connection summary in the top bar to choose a port and baud rate.
+The same popover shows all serial settings, with expandable capture options.
+Choose **Save settings**, then **Connect**. Escape or clicking outside discards
+unsaved edits; connection settings are locked while connected. Use the series sidebar to
 show or hide traces; hidden series continue recording and retain their colors.
 
 **Edit rules…** opens a draft editor. Generate rules from sample output or edit

@@ -18,38 +18,14 @@
         <item>
           <layout class="QHBoxLayout" name="ConnectionLayout">
             <item>
-              <widget class="QLabel" name="PortLabel">
+              <widget class="QPushButton" name="ConnectionSettingsButton">
                 <property name="text">
-                  <string>Port</string>
+                  <string>Select port · 115200</string>
+                </property>
+                <property name="toolTip">
+                  <string>Connection settings</string>
                 </property>
               </widget>
-            </item>
-            <item>
-              <widget class="QComboBox" name="PortCombo">
-                <property name="minimumSize">
-                  <size>
-                    <width>150</width>
-                    <height>0</height>
-                  </size>
-                </property>
-              </widget>
-            </item>
-            <item>
-              <widget class="QPushButton" name="RefreshPortsButton">
-                <property name="text">
-                  <string>Refresh</string>
-                </property>
-              </widget>
-            </item>
-            <item>
-              <widget class="QLabel" name="BaudLabel">
-                <property name="text">
-                  <string>Baud rate</string>
-                </property>
-              </widget>
-            </item>
-            <item>
-              <widget class="QComboBox" name="BaudCombo" />
             </item>
             <item>
               <widget class="QLabel" name="PortStatusLabel">
@@ -77,13 +53,6 @@
                   </size>
                 </property>
               </spacer>
-            </item>
-            <item>
-              <widget class="QPushButton" name="SettingsButton">
-                <property name="text">
-                  <string>Settings</string>
-                </property>
-              </widget>
             </item>
           </layout>
         </item>

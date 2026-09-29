@@ -13,7 +13,7 @@ from PySide6.QtGui import QWheelEvent
 from PySide6.QtTest import QSignalSpy, QTest
 from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
 
-from mainwindow import MainWindow
+from mainwindow import MainWindow, apply_application_style
 from modules.controllers.capture_job import CaptureJob
 from modules.core.binary_logging import BinaryCaptureWriter
 from modules.core.extraction import CapturedValue, ExtractionEngine, ExtractionRule
@@ -21,7 +21,6 @@ from modules.core.rule_suggestions import suggest_rules
 from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.widgets.plot_widget import PlotWidget
 from modules.widgets.rules_dialog import RulesDialog
-from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 
 APP = QApplication.instance() or QApplication([])
 
@@ -432,17 +431,20 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_connection_controls_settings_and_layout_roundtrip(self):
         w = self.window
-        w.ui.PortCombo.addItem("test-port")
-        w.ui.PortCombo.setCurrentText("test-port")
-        w.ui.BaudCombo.setCurrentText("230400")
-        w.refresh_ports()
+        w.on_open_serial_settings()
+        dialog = w._serial_settings
+        dialog.port_combo.addItem("test-port")
+        dialog.port_combo.setCurrentText("test-port")
+        dialog.baud_combo.setCurrentText("230400")
+        dialog.refresh_ports()
+        self.assertEqual(dialog.port_combo.currentText(), "test-port")
+        self.assertEqual(w.session.settings.port, "")
+        dialog.buttons.button(QDialogButtonBox.StandardButton.Save).click()
         self.assertEqual(w.session.settings.port, "test-port")
-        dialog = SerialSettingsDialog(w.session.settings)
-        self.assertFalse(hasattr(dialog, "port_combo"))
-        self.assertEqual(dialog.selected_settings().baudrate, 230400)
-        dialog.close()
+        self.assertEqual(w.session.settings.baudrate, 230400)
+        self.assertIn("test-port · 230400", w.ui.ConnectionSettingsButton.text())
         w.on_connected_changed(True)
-        self.assertFalse(w.ui.PortCombo.isEnabled())
+        self.assertFalse(w.ui.ConnectionSettingsButton.isEnabled())
         w.ui.actionConsole.setChecked(True)
         w.ui.actionDiagnostics.setChecked(True)
         w.ui.actionSidebar.setChecked(False)
@@ -456,6 +458,41 @@ class WorkspaceTest(unittest.TestCase):
         self.assertFalse(next_window.session.is_connected)
         self.assertEqual(next_window.plot.series_info(), [])
         next_window.close()
+
+    def test_connection_popover_drafts_and_styled_dropdown(self):
+        apply_application_style(APP)
+        self.addCleanup(lambda: APP.setStyleSheet(""))
+        w = self.window
+        with patch("modules.widgets.serial_settings_dialog.QSerialPortInfo.availablePorts", return_value=[]):
+            w.on_open_serial_settings()
+        dialog = w._serial_settings
+        self.assertEqual(dialog.port_combo.count(), 0)
+        self.assertEqual(dialog.port_combo.currentIndex(), -1)
+        self.assertEqual(dialog.port_combo.placeholderText(), "Select port")
+        self.assertTrue(dialog.parity_combo.isVisible())
+        dialog.capture_toggle.click()
+        dialog.baud_combo.setCurrentText("230400")
+        dialog.parity_combo.setCurrentIndex(dialog.parity_combo.findData("E"))
+        dialog.log_to_file_checkbox.setChecked(False)
+        QTest.keyClick(dialog, Qt.Key.Key_Escape)
+        self.assertFalse(dialog.isVisible())
+        self.assertEqual(w.session.settings.baudrate, 115200)
+        self.assertEqual(w.session.settings.parity, "N")
+        self.assertTrue(w.session.settings.log_to_file)
+        w.on_open_serial_settings()
+        self.assertEqual(dialog.baud_combo.currentText(), "115200")
+        dialog.baud_combo.showPopup()
+        APP.processEvents()
+        view = dialog.baud_combo.view()
+        row_height = view.sizeHintForRow(0)
+        self.assertGreaterEqual(view.viewport().height(), row_height * dialog.baud_combo.count())
+        dialog.baud_combo.hidePopup()
+        self.assertTrue(dialog.isVisible())
+        dialog.parity_combo.setCurrentIndex(dialog.parity_combo.findData("E"))
+        dialog.log_to_file_checkbox.setChecked(False)
+        dialog.buttons.button(QDialogButtonBox.StandardButton.Save).click()
+        self.assertEqual(w.session.settings.parity, "E")
+        self.assertFalse(w.session.settings.log_to_file)
 
 
 if __name__ == "__main__":
