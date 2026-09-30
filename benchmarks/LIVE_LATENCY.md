@@ -38,7 +38,7 @@ results is not evidence that one is universally better.
 - COM15, 115200 baud, 8 data bits, no parity, one stop bit; UTF-8.
 - Receive-only testing: the diagnostic never calls `send_command` or transmits
   application commands. It uses the normal serial connection open/close path.
-- Six enabled comma-delimited Y rules: fields 0 through 5, labels Value 0..5.
+- Six comma-delimited Plot rules: fields 0 through 5, labels Value 0..5.
   None is marked as the X counter, matching the screenshot. The saved uCurrent
   profile marks field 0 as a counter, so it was deliberately not used for this test.
 - Receive timestamps on X; **See all plot** active; rules tab visible, console

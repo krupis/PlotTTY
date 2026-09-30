@@ -25,8 +25,8 @@ For rendering benchmarks and live-device diagnostics, see
 Click the connection summary in the top bar to choose a port and baud rate.
 The same popover shows all serial settings, with expandable capture options.
 Choose **Save settings**, then **Connect**. Escape or clicking outside discards
-unsaved edits; connection settings are locked while connected. Use the series sidebar to
-show or hide traces; hidden series continue recording and retain their colors.
+unsaved edits; connection settings are locked while connected. Use the series strip above
+the plots to show or hide traces; hidden series continue recording and retain their colors.
 
 **Edit rules…** opens a draft editor. Generate rules from sample output or edit
 the table, then use **Apply** or **OK** to update parsing for future samples.

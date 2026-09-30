@@ -4,7 +4,6 @@
     {
       "label": "Value 0",
       "mode": "delimiter_column",
-      "enabled": true,
       "sample_counter": true,
       "extra_setting": "0",
       "delimiter": ",",
@@ -13,7 +12,6 @@
     {
       "label": "Value 1",
       "mode": "delimiter_column",
-      "enabled": true,
       "sample_counter": false,
       "extra_setting": "1",
       "delimiter": ",",
@@ -22,7 +20,6 @@
     {
       "label": "Value 2",
       "mode": "delimiter_column",
-      "enabled": true,
       "sample_counter": false,
       "extra_setting": "2",
       "delimiter": ",",
@@ -31,7 +28,6 @@
     {
       "label": "Value 3",
       "mode": "delimiter_column",
-      "enabled": true,
       "sample_counter": false,
       "extra_setting": "3",
       "delimiter": ",",
@@ -40,7 +36,6 @@
     {
       "label": "Value 4",
       "mode": "delimiter_column",
-      "enabled": true,
       "sample_counter": false,
       "extra_setting": "4",
       "delimiter": ",",
@@ -49,7 +44,6 @@
     {
       "label": "Value 5",
       "mode": "delimiter_column",
-      "enabled": true,
       "sample_counter": false,
       "extra_setting": "5",
       "delimiter": ",",

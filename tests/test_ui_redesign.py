@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from PySide6.QtCore import QObject, QPoint, QPointF, QSettings, Qt, Signal
 from PySide6.QtGui import QWheelEvent
-from PySide6.QtTest import QSignalSpy, QTest
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
 
 from mainwindow import MainWindow, apply_application_style
@@ -19,8 +19,7 @@ from modules.core.binary_logging import BinaryCaptureWriter
 from modules.core.extraction import CapturedValue, ExtractionEngine, ExtractionRule
 from modules.core.rule_suggestions import suggest_rules
 from modules.core.profiles import AppProfile, load_profile, save_profile
-from modules.widgets.plot_widget import PlotWidget
-from modules.widgets.rules_dialog import RulesDialog
+from modules.widgets.rules_editor import RulesEditor
 
 APP = QApplication.instance() or QApplication([])
 
@@ -58,45 +57,25 @@ class WorkspaceTest(unittest.TestCase):
         APP.processEvents()
         self.addCleanup(self.window.close)
 
-    def dialog(self, rules=None):
-        dialog = RulesDialog(rules if rules is not None else self.window.applied_rules, self.window)
-        dialog.rulesApplied.connect(self.window.apply_rules)
-        self.addCleanup(dialog.close)
-        return dialog
+    def editor(self, rules=None):
+        editor = RulesEditor(rules if rules is not None else self.window.applied_rules, self.window)
+        editor.rulesApplied.connect(self.window.apply_rules)
+        self.addCleanup(editor.close)
+        return editor
 
-    def test_apply_cancel_and_profile_draft_isolation(self):
+    def test_applied_rules_are_copied_for_profiles(self):
         rules = [ExtractionRule("original", "first_number", unit="V")]
         self.window.apply_rules(rules)
         rules[0].label = "caller mutation"
-        dialog = self.dialog()
-        dialog.table.item(0, 1).setText("draft")
         path = Path(self.temp.name) / "profile.json"
         save_profile(AppProfile("test", self.window.applied_rules), path)
         self.assertEqual(load_profile(path).rules[0].label, "original")
-        with patch.object(self.window.session, "set_rules", wraps=self.window.session.set_rules) as commit:
-            self.assertTrue(dialog.apply_rules())
-            commit.assert_called_once()
-        dialog.table.item(0, 1).setText("unapplied")
-        dialog.reject()
-        self.assertEqual(self.window.applied_rules[0].label, "draft")
-        self.assertEqual(self.window.session._engine.extract("1")[0].label, "draft")
-        save_profile(AppProfile("test", self.window.applied_rules), path)
-        self.window.apply_rules(load_profile(path).rules)
-        self.assertEqual(self.window.applied_rules[0].unit, "V")
 
-    def test_ok_cancel_and_generate(self):
-        dialog = self.dialog()
-        spy = QSignalSpy(dialog.rulesApplied)
-        dialog.sample.setPlainText("Voltage: 3.31 V Current: 0.14 A")
-        dialog.generate_rules()
-        self.assertEqual(spy.count(), 0)
-        dialog.accept()
-        self.assertEqual(spy.count(), 1)
-        self.assertEqual(dialog.result(), dialog.DialogCode.Accepted)
-        dialog = self.dialog()
-        dialog.table.item(0, 1).setText("discarded")
-        dialog.close()
-        self.assertNotEqual(self.window.applied_rules[0].label, "discarded")
+    def test_generate_rules_applies_immediately(self):
+        editor = self.window.rules_editor
+        editor.sample.setPlainText("Voltage: 3.31 V Current: 0.14 A")
+        editor.generate_rules()
+        self.assertEqual([rule.label for rule in self.window.applied_rules], ["Voltage", "Current"])
 
     def test_rules_editor_is_persistent_in_extraction_sidebar(self):
         editor = self.window.rules_editor
@@ -119,8 +98,8 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(self.window.plot._series["Voltage"].sample_count(), 2)
 
     def test_rule_function_replaces_enable_and_x_reference_columns(self):
-        dialog = self.dialog([
-            ExtractionRule("ignored-disabled-state", "first_number", enabled=False),
+        dialog = self.editor([
+            ExtractionRule("plot", "first_number"),
             ExtractionRule("time", "delimiter_column", sample_counter=True, extra_setting="0"),
         ])
         self.assertEqual(dialog.table.horizontalHeaderItem(0).text(), "Function")
@@ -128,22 +107,18 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(dialog.table.cellWidget(0, 0).currentData(), "plot")
         self.assertEqual(dialog.table.cellWidget(1, 0).currentData(), "time")
         rules = dialog.rules_table.rules()
-        self.assertTrue(rules[0].enabled)
         self.assertTrue(rules[1].sample_counter)
 
-    def test_validation_keeps_dialog_open_and_does_not_commit(self):
-        dialog = self.dialog([ExtractionRule("bad", "regex", extra_setting="[")])
-        dialog.show()
-        spy = QSignalSpy(dialog.rulesApplied)
+    def test_invalid_rule_edit_does_not_commit(self):
+        dialog = self.editor([ExtractionRule("bad", "regex", extra_setting="[")])
+        previous = self.window.applied_rules
         for pattern in ("[", "no group"):
             dialog.table.item(0, 3).setText(pattern)
-            dialog.accept()
-            self.assertIn("Row 1", dialog.error.text())
-            self.assertTrue(dialog.isVisible())
-        self.assertEqual(spy.count(), 0)
+            self.assertFalse(dialog.apply_rules())
+        self.assertIs(self.window.applied_rules, previous)
         dialog.table.item(0, 3).setText(r"(\d+)")
         self.assertTrue(dialog.apply_rules())
-        dialog.rules_table.set_rules([ExtractionRule("x", "delimiter_column", extra_setting="-1")])
+        dialog.set_rules([ExtractionRule("x", "delimiter_column", extra_setting="-1")])
         self.assertFalse(dialog.apply_rules())
         dialog.table.item(0, 4).setText("1.5")
         self.assertFalse(dialog.apply_rules())
@@ -151,7 +126,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertTrue(dialog.apply_rules())
 
     def test_rule_selection_remove_and_x_reference(self):
-        dialog = self.dialog([ExtractionRule("time", "delimiter_column", sample_counter=True, extra_setting="0"),
+        dialog = self.editor([ExtractionRule("time", "delimiter_column", sample_counter=True, extra_setting="0"),
                               ExtractionRule("voltage", "delimiter_column", extra_setting="1")])
         self.assertTrue(dialog.apply_rules())
         captured = self.window.session._engine.extract("12,3.3")
@@ -344,24 +319,21 @@ class WorkspaceTest(unittest.TestCase):
         with patch("mainwindow.QFileDialog.getOpenFileName", return_value=(str(source), "")):
             self.window.on_open_profile()
         self.assertEqual(self.window.profile_path, source)
-        draft = self.dialog()
-        draft.table.item(0, 1).setText("not applied")
         with patch("mainwindow.QFileDialog.getSaveFileName", return_value=(str(target), "")):
             self.window.on_save_profile_as()
         self.assertEqual(self.window.profile_path, target)
         self.assertEqual(load_profile(target).rules[0].label, "value")
 
-    def test_profile_validation_matches_dialog_and_rejects_legacy_fields(self):
+    def test_profile_validation_rejects_invalid_rules_and_unknown_fields(self):
         path = Path(self.temp.name) / "bad.json"
         for rule in (ExtractionRule("bad", "regex", extra_setting="["),
                      ExtractionRule("bad", "regex", extra_setting="no group"),
                      ExtractionRule("bad", "delimiter_column", extra_setting="-1")):
             save_profile(AppProfile("invalid", [rule]), path)
-            dialog = self.dialog([rule])
+            dialog = self.editor([rule])
             self.assertFalse(dialog.apply_rules())
-            with self.assertRaises(ValueError) as error:
+            with self.assertRaises(ValueError):
                 load_profile(path)
-            self.assertEqual(str(error.exception), dialog.error.text())
         previous = self.window.applied_rules
         with patch("mainwindow.QFileDialog.getOpenFileName", return_value=(str(path), "")), \
                 patch("mainwindow.QMessageBox.warning"):
@@ -375,7 +347,7 @@ class WorkspaceTest(unittest.TestCase):
         rules = suggest_rules("Voltage: 3.31 V  Current: 0.14 A")
         captured = ExtractionEngine(rules).extract("Voltage: 3.32 V  Current: 0.15 A")
         self.assertEqual([v.unit for v in captured], ["V", "A"])
-        dialog = self.dialog(rules)
+        dialog = self.editor(rules)
         combo = dialog.table.cellWidget(0, 2)
         combo.setCurrentIndex(combo.findData("first_number"))
         self.assertEqual(dialog.table.item(0, 3).text(), "")

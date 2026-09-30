@@ -23,7 +23,6 @@ files = [
     "modules/core/binary_logging.py",
     "modules/core/extraction.py",
     "modules/core/line_decoder.py",
-    "modules/core/models.py",
     "modules/core/plotter.py",
     "modules/core/profiles.py",
     "modules/core/rule_suggestions.py",
@@ -33,7 +32,7 @@ files = [
     "modules/widgets/console_widget.py",
     "modules/widgets/plot_widget.py",
     "modules/widgets/rules_table.py",
-    "modules/widgets/rules_dialog.py",
+    "modules/widgets/rules_editor.py",
     "modules/widgets/serial_settings_dialog.py",
     "styles/application.qss",
 ]

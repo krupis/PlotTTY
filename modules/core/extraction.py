@@ -32,7 +32,6 @@ class CapturedValue:
 class ExtractionRule:
     label: str
     mode: ExtractionMode = "auto_key_value"
-    enabled: bool = True
     sample_counter: bool = False
     extra_setting: str = ""
     delimiter: str = ","
@@ -63,7 +62,7 @@ def validate_rules(rules: Iterable[ExtractionRule]) -> None:
 
 
 class ExtractionEngine:
-    """Apply enabled extraction rules to one text line."""
+    """Apply extraction rules to one text line."""
 
     def __init__(self, rules: Iterable[ExtractionRule] | None = None):
         self.rules = default_rules() if rules is None else list(rules)
@@ -77,7 +76,7 @@ class ExtractionEngine:
         captured_values = []
 
         for rule in self.rules:
-            if not rule.enabled or rule.sample_counter:
+            if rule.sample_counter:
                 continue
 
             captured_values.extend(_extract_rule(rule, text, timestamp, fields))

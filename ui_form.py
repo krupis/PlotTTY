@@ -68,9 +68,9 @@ class Ui_MainWindow(object):
 
         self.ConnectionLayout.addWidget(self.ConnectButton)
 
-        self.Spacer8 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.ConnectionSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.ConnectionLayout.addItem(self.Spacer8)
+        self.ConnectionLayout.addItem(self.ConnectionSpacer)
 
 
         self.MainLayout.addLayout(self.ConnectionLayout)
@@ -95,12 +95,6 @@ class Ui_MainWindow(object):
         self.SeriesList.setTextElideMode(Qt.ElideRight)
 
         self.SeriesLayout.addWidget(self.SeriesList)
-
-        self.EditRulesButton = QPushButton(self.SeriesSidebar)
-        self.EditRulesButton.setObjectName(u"EditRulesButton")
-        self.EditRulesButton.setVisible(False)
-
-        self.SeriesLayout.addWidget(self.EditRulesButton)
 
         self.MainSplitter.addWidget(self.SeriesSidebar)
         self.Workspace = QWidget(self.MainSplitter)
@@ -192,9 +186,9 @@ class Ui_MainWindow(object):
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        self.actionSave_profile.setText(QCoreApplication.translate("MainWindow", u"Save profile\u2026", None))
-        self.actionOpen_profile.setText(QCoreApplication.translate("MainWindow", u"Open profile\u2026", None))
-        self.actionLoad_log.setText(QCoreApplication.translate("MainWindow", u"Load capture\u2026", None))
+        self.actionSave_profile.setText(QCoreApplication.translate("MainWindow", u"Save profile...", None))
+        self.actionOpen_profile.setText(QCoreApplication.translate("MainWindow", u"Open profile...", None))
+        self.actionLoad_log.setText(QCoreApplication.translate("MainWindow", u"Load capture...", None))
         self.actionClearCapturedData.setText(QCoreApplication.translate("MainWindow", u"Clear captured data", None))
         self.actionConsole.setText(QCoreApplication.translate("MainWindow", u"Console", None))
         self.actionSidebar.setText(QCoreApplication.translate("MainWindow", u"Extraction sidebar", None))
@@ -203,10 +197,9 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(tooltip)
         self.ConnectionSettingsButton.setToolTip(QCoreApplication.translate("MainWindow", u"Connection settings", None))
 #endif // QT_CONFIG(tooltip)
-        self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"\u25cf Disconnected", None))
+        self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"Disconnected", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.SeriesHeading.setText(QCoreApplication.translate("MainWindow", u"Series", None))
-        self.EditRulesButton.setText(QCoreApplication.translate("MainWindow", u"Edit rules\u2026", None))
         self.CommandEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type command and press Enter", None))
         self.SendButton.setText(QCoreApplication.translate("MainWindow", u"Send", None))
         self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear console", None))

@@ -1,5 +1,5 @@
 """Plain Qt table for temporary extraction-rule edits."""
-from PySide6.QtCore import QObject, Qt
+from PySide6.QtCore import QObject, QSignalBlocker, Qt, Signal
 from PySide6.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem
 
 from ..core.extraction import ExtractionRule
@@ -27,9 +27,12 @@ EDITABLE = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFla
 
 
 class RulesTable(QObject):
+    rulesChanged = Signal()
+
     def __init__(self, table: QTableWidget, parent=None):
         super().__init__(parent)
         self._table = table
+        self._setting_rules = False
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels(["Function", "Label", "Find method", "Pattern / delimiter", "Field index"])
         for column, tooltip in enumerate(COLUMN_TOOLTIPS):
@@ -43,13 +46,19 @@ class RulesTable(QObject):
         self._update_columns()
 
     def set_rules(self, rules):
-        self._table.setRowCount(0)
-        for rule in rules:
-            self.add_rule(rule)
-        self._update_columns()
+        self._setting_rules = True
+        try:
+            self._table.setRowCount(0)
+            for rule in rules:
+                self.add_rule(rule)
+            self._update_columns()
+        finally:
+            self._setting_rules = False
+        self.rulesChanged.emit()
 
     def add_rule(self, rule=None):
         rule = rule or ExtractionRule("value", "first_number")
+        blocker = QSignalBlocker(self._table)
         row = self._table.rowCount()
         self._table.insertRow(row)
         texts = ["", rule.label, "", rule.delimiter.replace("\t", r"\t")
@@ -66,7 +75,6 @@ class RulesTable(QObject):
             function.setItemData(function.count() - 1, help_text, Qt.ItemDataRole.ToolTipRole)
         function.setCurrentIndex(function.findData("time" if rule.sample_counter else "plot"))
         self._table.setCellWidget(row, 0, function)
-        self._function_changed(function)
         combo = QComboBox()
         for mode, (label, help_text) in RULE_MODES.items():
             combo.addItem(label, mode)
@@ -76,7 +84,11 @@ class RulesTable(QObject):
         self._update_row(row)
         combo.currentIndexChanged.connect(lambda: self._mode_changed(combo))
         function.currentIndexChanged.connect(lambda: self._function_changed(function))
+        self._function_changed(function)
         self._update_columns()
+        del blocker
+        if not self._setting_rules:
+            self.rulesChanged.emit()
 
     def remove_selected_rules(self):
         rows = {index.row() for index in self._table.selectedIndexes()}
@@ -85,6 +97,7 @@ class RulesTable(QObject):
         for row in sorted(rows, reverse=True):
             self._table.removeRow(row)
         self._update_columns()
+        self.rulesChanged.emit()
 
     def rules(self):
         rules = []
@@ -93,7 +106,6 @@ class RulesTable(QObject):
             text = [self._table.item(row, column).text().strip() for column in (1, 3, 4)]
             rules.append(ExtractionRule(
                 label=text[0] or "value", mode=mode,
-                enabled=True,
                 sample_counter=self._table.cellWidget(row, 0).currentData() == "time",
                 extra_setting=text[2] if mode == "delimiter_column" else text[1] if mode == "regex" else "",
                 delimiter=text[1].replace(r"\t", "\t") if mode == "delimiter_column" else ",",
@@ -110,9 +122,11 @@ class RulesTable(QObject):
                 self._update_row(row)
                 break
         self._update_columns()
+        self.rulesChanged.emit()
 
     def _function_changed(self, combo):
         combo.setToolTip(RULE_FUNCTIONS[combo.currentData()][1])
+        self.rulesChanged.emit()
 
     def _update_row(self, row):
         combo = self._table.cellWidget(row, 2)

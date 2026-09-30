@@ -26,7 +26,7 @@ from modules.controllers.serial_session import SerialSession
 from modules.core.extraction import clean_label, default_rules, validate_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
-from modules.widgets.rules_dialog import RulesEditor
+from modules.widgets.rules_editor import RulesEditor
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 import rc_resources  # noqa: F401
 
@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
         self.ui.menuFile.addAction(self._export_csv_action)
         self._export_csv_action.triggered.connect(self.on_export_csv)
         self._connect_signals()
+        self.rules_editor.set_rules(default_rules())
         self.apply_rules(default_rules())
         self.statusBar().addPermanentWidget(self.plot.visible_points_label)
         self.statusBar().addPermanentWidget(self.plot.downsample_ratio_label)
@@ -247,7 +248,6 @@ class MainWindow(QMainWindow):
         self.plot.update_series_labels(renamed_series)
         self.applied_rules = [replace(rule) for rule in rules]
         self.session.set_rules([replace(rule) for rule in self.applied_rules])
-        self.rules_editor.rules_table.set_rules(self.applied_rules)
 
     @Slot()
     def on_open_profile(self) -> None:
@@ -261,6 +261,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Open Profile Failed", str(exc))
             return
 
+        self.rules_editor.set_rules(profile.rules)
         self.apply_rules(profile.rules)
         self.profile_path = Path(path)
         self.statusBar().showMessage(f"Loaded {self.profile_path.name}")
