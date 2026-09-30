@@ -69,14 +69,14 @@ class WorkspaceTest(unittest.TestCase):
         self.window.apply_rules(rules)
         rules[0].label = "caller mutation"
         dialog = self.dialog()
-        dialog.table.item(0, 2).setText("draft")
+        dialog.table.item(0, 1).setText("draft")
         path = Path(self.temp.name) / "profile.json"
         save_profile(AppProfile("test", self.window.applied_rules), path)
         self.assertEqual(load_profile(path).rules[0].label, "original")
         with patch.object(self.window.session, "set_rules", wraps=self.window.session.set_rules) as commit:
             self.assertTrue(dialog.apply_rules())
             commit.assert_called_once()
-        dialog.table.item(0, 2).setText("unapplied")
+        dialog.table.item(0, 1).setText("unapplied")
         dialog.reject()
         self.assertEqual(self.window.applied_rules[0].label, "draft")
         self.assertEqual(self.window.session._engine.extract("1")[0].label, "draft")
@@ -94,7 +94,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(spy.count(), 1)
         self.assertEqual(dialog.result(), dialog.DialogCode.Accepted)
         dialog = self.dialog()
-        dialog.table.item(0, 2).setText("discarded")
+        dialog.table.item(0, 1).setText("discarded")
         dialog.close()
         self.assertNotEqual(self.window.applied_rules[0].label, "discarded")
 
@@ -103,7 +103,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertIs(editor.parentWidget(), self.window.ui.SeriesSidebar)
         self.assertTrue(editor.isVisible())
         self.assertIs(self.window.ui.SeriesList.parentWidget(), self.window.plot.series_selector)
-        editor.table.item(0, 2).setText("inline")
+        editor.table.item(0, 1).setText("inline")
         self.assertTrue(editor.apply_rules())
         self.assertEqual(self.window.applied_rules[0].label, "inline")
 
@@ -118,23 +118,36 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual([entry["label"] for entry in self.window.plot.series_info()], ["Voltage"])
         self.assertEqual(self.window.plot._series["Voltage"].sample_count(), 2)
 
+    def test_rule_function_replaces_enable_and_x_reference_columns(self):
+        dialog = self.dialog([
+            ExtractionRule("ignored-disabled-state", "first_number", enabled=False),
+            ExtractionRule("time", "delimiter_column", sample_counter=True, extra_setting="0"),
+        ])
+        self.assertEqual(dialog.table.horizontalHeaderItem(0).text(), "Function")
+        self.assertEqual(dialog.table.columnCount(), 5)
+        self.assertEqual(dialog.table.cellWidget(0, 0).currentData(), "plot")
+        self.assertEqual(dialog.table.cellWidget(1, 0).currentData(), "time")
+        rules = dialog.rules_table.rules()
+        self.assertTrue(rules[0].enabled)
+        self.assertTrue(rules[1].sample_counter)
+
     def test_validation_keeps_dialog_open_and_does_not_commit(self):
         dialog = self.dialog([ExtractionRule("bad", "regex", extra_setting="[")])
         dialog.show()
         spy = QSignalSpy(dialog.rulesApplied)
         for pattern in ("[", "no group"):
-            dialog.table.item(0, 4).setText(pattern)
+            dialog.table.item(0, 3).setText(pattern)
             dialog.accept()
             self.assertIn("Row 1", dialog.error.text())
             self.assertTrue(dialog.isVisible())
         self.assertEqual(spy.count(), 0)
-        dialog.table.item(0, 4).setText(r"(\d+)")
+        dialog.table.item(0, 3).setText(r"(\d+)")
         self.assertTrue(dialog.apply_rules())
         dialog.rules_table.set_rules([ExtractionRule("x", "delimiter_column", extra_setting="-1")])
         self.assertFalse(dialog.apply_rules())
-        dialog.table.item(0, 5).setText("1.5")
+        dialog.table.item(0, 4).setText("1.5")
         self.assertFalse(dialog.apply_rules())
-        dialog.table.item(0, 5).setText("0")
+        dialog.table.item(0, 4).setText("0")
         self.assertTrue(dialog.apply_rules())
 
     def test_rule_selection_remove_and_x_reference(self):
@@ -332,7 +345,7 @@ class WorkspaceTest(unittest.TestCase):
             self.window.on_open_profile()
         self.assertEqual(self.window.profile_path, source)
         draft = self.dialog()
-        draft.table.item(0, 2).setText("not applied")
+        draft.table.item(0, 1).setText("not applied")
         with patch("mainwindow.QFileDialog.getSaveFileName", return_value=(str(target), "")):
             self.window.on_save_profile_as()
         self.assertEqual(self.window.profile_path, target)
@@ -363,13 +376,13 @@ class WorkspaceTest(unittest.TestCase):
         captured = ExtractionEngine(rules).extract("Voltage: 3.32 V  Current: 0.15 A")
         self.assertEqual([v.unit for v in captured], ["V", "A"])
         dialog = self.dialog(rules)
-        combo = dialog.table.cellWidget(0, 3)
+        combo = dialog.table.cellWidget(0, 2)
         combo.setCurrentIndex(combo.findData("first_number"))
-        self.assertEqual(dialog.table.item(0, 4).text(), "")
-        self.assertFalse(dialog.table.item(0, 4).flags() & Qt.ItemFlag.ItemIsEditable)
+        self.assertEqual(dialog.table.item(0, 3).text(), "")
+        self.assertFalse(dialog.table.item(0, 3).flags() & Qt.ItemFlag.ItemIsEditable)
         combo.setCurrentIndex(combo.findData("delimiter_column"))
-        self.assertEqual(dialog.table.item(0, 4).text(), ",")
-        self.assertEqual(dialog.table.item(0, 5).text(), "0")
+        self.assertEqual(dialog.table.item(0, 3).text(), ",")
+        self.assertEqual(dialog.table.item(0, 4).text(), "0")
         self.assertTrue(dialog.apply_rules())
 
     def test_console_fixed_limit_and_no_latency_monitor(self):
