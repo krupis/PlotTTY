@@ -98,6 +98,7 @@ class Ui_MainWindow(object):
 
         self.EditRulesButton = QPushButton(self.SeriesSidebar)
         self.EditRulesButton.setObjectName(u"EditRulesButton")
+        self.EditRulesButton.setVisible(False)
 
         self.SeriesLayout.addWidget(self.EditRulesButton)
 

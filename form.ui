@@ -88,6 +88,9 @@
                 </item>
                 <item>
                   <widget class="QPushButton" name="EditRulesButton">
+                    <property name="visible">
+                      <bool>false</bool>
+                    </property>
                     <property name="text">
                       <string>Edit rules…</string>
                     </property>

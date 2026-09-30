@@ -98,6 +98,14 @@ class WorkspaceTest(unittest.TestCase):
         dialog.close()
         self.assertNotEqual(self.window.applied_rules[0].label, "discarded")
 
+    def test_rules_editor_is_persistent_in_sidebar(self):
+        editor = self.window.rules_editor
+        self.assertIs(editor.parentWidget(), self.window.ui.SeriesSidebar)
+        self.assertTrue(editor.isVisible())
+        editor.table.item(0, 2).setText("inline")
+        self.assertTrue(editor.apply_rules())
+        self.assertEqual(self.window.applied_rules[0].label, "inline")
+
     def test_validation_keeps_dialog_open_and_does_not_commit(self):
         dialog = self.dialog([ExtractionRule("bad", "regex", extra_setting="[")])
         dialog.show()

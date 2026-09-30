@@ -8,7 +8,7 @@ QDialog#ConnectionPopover { border: 1px solid #627180; background: #2a323b; }
 QLabel#ConnectionHeading { font-weight: 600; font-size: 11pt; }
 QToolButton#SettingsSection { border: none; background: transparent; padding: 3px 0; }
 QToolButton#SettingsSection:hover { color: #ffffff; }
-QLabel#SeriesHeading { font-weight: 600; padding: 4px 0 8px; }
+QLabel#SeriesHeading, QLabel#ExtractionHeading { font-weight: 600; padding: 4px 0 8px; }
 QLabel#PortStatusLabel { color: #a2adb8; padding: 0 12px; }
 QLabel#PortStatusLabel[connected="true"] { color: #7cd1a8; }
 QLabel#ValidationError { color: #ffadb7; }

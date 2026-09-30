@@ -26,7 +26,7 @@ from modules.controllers.serial_session import SerialSession
 from modules.core.extraction import default_rules, validate_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
-from modules.widgets.rules_dialog import RulesDialog
+from modules.widgets.rules_dialog import RulesEditor
 from modules.widgets.serial_settings_dialog import SerialSettingsDialog
 import rc_resources  # noqa: F401
 
@@ -125,7 +125,8 @@ class MainWindow(QMainWindow):
         self._rate_label = QLabel("0 B/s")
         self.statusBar().addWidget(self._recording_label, 1)
         self.statusBar().addPermanentWidget(self._rate_label)
-        self.ui.MainSplitter.setSizes([220, 1036])
+        self.ui.SeriesSidebar.setMinimumWidth(320)
+        self.ui.MainSplitter.setSizes([380, 876])
         self.ui.MainSplitter.setCollapsible(0, False)
         self.ui.MainSplitter.setStretchFactor(0, 0)
         self.ui.MainSplitter.setStretchFactor(1, 1)
@@ -136,7 +137,18 @@ class MainWindow(QMainWindow):
         self.ui.actionSidebar.setChecked(True)
         self._preferences = QSettings("PlotTTY", "PlotTTY")
         self._sidebar_structure = None
+        self._add_rules_editor()
         self.rebuild_sidebar()
+
+    def _add_rules_editor(self):
+        """Add persistent rule controls underneath the series visibility list."""
+        self.ui.ExtractionHeading = QLabel("Extraction engine", self.ui.SeriesSidebar)
+        self.ui.ExtractionHeading.setObjectName("ExtractionHeading")
+        self.rules_editor = RulesEditor([], self.ui.SeriesSidebar)
+        self.rules_editor.rulesApplied.connect(self.apply_rules)
+        self.ui.SeriesLayout.addWidget(self.ui.ExtractionHeading)
+        self.ui.SeriesLayout.addWidget(self.rules_editor, 2)
+        self.ui.SeriesLayout.setStretch(self.ui.SeriesLayout.indexOf(self.ui.SeriesList), 1)
 
     def apply_settings(self, settings):
         self.session.settings = settings
@@ -207,7 +219,6 @@ class MainWindow(QMainWindow):
         self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
         self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_serial_settings)
         self.ui.ClearConsoleButton.clicked.connect(self.console.clear)
-        self.ui.EditRulesButton.clicked.connect(self.open_rules_dialog)
         self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
         self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
         self.ui.actionLoad_log.triggered.connect(self.on_load_log)
@@ -224,12 +235,7 @@ class MainWindow(QMainWindow):
         validate_rules(rules)
         self.applied_rules = [replace(rule) for rule in rules]
         self.session.set_rules([replace(rule) for rule in self.applied_rules])
-
-    def open_rules_dialog(self):
-        dialog = RulesDialog(self.applied_rules, self)
-        dialog.rulesApplied.connect(self.apply_rules)
-        dialog.exec()
-        dialog.deleteLater()
+        self.rules_editor.rules_table.set_rules(self.applied_rules)
 
     @Slot()
     def on_open_profile(self) -> None:
