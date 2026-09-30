@@ -250,6 +250,7 @@ class MainWindow(QMainWindow):
         self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
         self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_serial_settings)
         self.ui.ClearConsoleButton.clicked.connect(self.console.clear)
+        self.plot.clearPlotRequested.connect(self.on_clear_plot)
         self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
         self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
         self.ui.actionLoad_log.triggered.connect(self.on_load_log)
@@ -422,10 +423,15 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, title, str(exc))
 
     @Slot()
-    def on_clear_console_and_plot(self) -> None:
-        self.console.clear()
+    def on_clear_plot(self) -> None:
         self.plot.clear_values()
         self.session.reset_receive_rate()
+        self.statusBar().showMessage("Cleared plot data")
+
+    @Slot()
+    def on_clear_console_and_plot(self) -> None:
+        self.console.clear()
+        self.on_clear_plot()
         self.statusBar().showMessage("Cleared console and plot data")
 
     @Slot(str)

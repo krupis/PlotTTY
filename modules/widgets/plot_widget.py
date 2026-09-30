@@ -320,6 +320,7 @@ class _CaptureTitle(QLabel):
 
 class PlotWidget(QWidget):
     seriesChanged = Signal()
+    clearPlotRequested = Signal()
 
     def __init__(self, parent=None, time_window: float = 10.0):
         super().__init__(parent)
@@ -362,11 +363,15 @@ class PlotWidget(QWidget):
         self.fit_capture_button.setCheckable(True)
         self.fit_capture_button.setToolTip(FIT_CAPTURE_TOOLTIP)
         self.fit_capture_button.clicked.connect(self.on_toggle_fit_capture)
+        self.clear_plot_button = QPushButton("Clear plot")
+        self.clear_plot_button.setObjectName("ClearPlotButton")
+        self.clear_plot_button.setToolTip("Clear all plotted data while keeping the console text.")
+        self.clear_plot_button.clicked.connect(self.clearPlotRequested)
 
         toolbar = self.controls_layout = QHBoxLayout()
         toolbar.setContentsMargins(0, 0, 0, 0)
         toolbar.addWidget(self.capture_title)
-        for widget in (self.fit_capture_button, self.auto_scroll_button):
+        for widget in (self.fit_capture_button, self.auto_scroll_button, self.clear_plot_button):
             toolbar.addWidget(widget)
         self.visible_points_label.hide()
         self.downsample_ratio_label.hide()

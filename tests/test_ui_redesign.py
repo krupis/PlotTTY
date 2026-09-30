@@ -207,6 +207,14 @@ class WorkspaceTest(unittest.TestCase):
         self.window.ui.SearchPreviousButton.click()
         self.assertEqual(self.window.ui.SearchMatchLabel.text(), "1/2")
 
+    def test_clear_plot_keeps_console_text(self):
+        self.window.console.append_received("keep this")
+        self.window.console.flush()
+        self.window.plot.append_values([CapturedValue(1, "value", 3.3)])
+        self.window.plot.clear_plot_button.click()
+        self.assertEqual(self.window.plot.series_info(), [])
+        self.assertEqual(self.window.ui.ConsoleTextEdit.toPlainText(), "keep this")
+
     def test_scroll_shared_axis_and_y_hit_testing(self):
         plot = self.window.plot
         plot.append_values([CapturedValue(i, f"s{j}", i + j) for i in range(20) for j in range(12)])
