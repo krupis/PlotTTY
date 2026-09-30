@@ -23,7 +23,7 @@ from ui_form import Ui_MainWindow
 
 from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.controllers.serial_session import SerialSession
-from modules.core.extraction import default_rules, validate_rules
+from modules.core.extraction import clean_label, default_rules, validate_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.rules_dialog import RulesEditor
@@ -137,8 +137,14 @@ class MainWindow(QMainWindow):
         self.ui.actionSidebar.setChecked(True)
         self._preferences = QSettings("PlotTTY", "PlotTTY")
         self._sidebar_structure = None
+        self._move_series_selector_to_plot()
         self._add_rules_editor()
         self.rebuild_sidebar()
+
+    def _move_series_selector_to_plot(self):
+        self.ui.SeriesLayout.removeWidget(self.ui.SeriesHeading)
+        self.ui.SeriesLayout.removeWidget(self.ui.SeriesList)
+        self.plot.attach_series_selector(self.ui.SeriesHeading, self.ui.SeriesList)
 
     def _add_rules_editor(self):
         """Add persistent rule controls underneath the series visibility list."""
@@ -147,8 +153,7 @@ class MainWindow(QMainWindow):
         self.rules_editor = RulesEditor([], self.ui.SeriesSidebar)
         self.rules_editor.rulesApplied.connect(self.apply_rules)
         self.ui.SeriesLayout.addWidget(self.ui.ExtractionHeading)
-        self.ui.SeriesLayout.addWidget(self.rules_editor, 2)
-        self.ui.SeriesLayout.setStretch(self.ui.SeriesLayout.indexOf(self.ui.SeriesList), 1)
+        self.ui.SeriesLayout.addWidget(self.rules_editor, 1)
 
     def apply_settings(self, settings):
         self.session.settings = settings
@@ -233,6 +238,13 @@ class MainWindow(QMainWindow):
 
     def apply_rules(self, rules):
         validate_rules(rules)
+        renamed_series = {
+            clean_label(previous.label): clean_label(current.label)
+            for previous, current in zip(self.applied_rules, rules)
+            # Named key/value rules use the incoming name, not their rule label.
+            if previous.mode != "auto_key_value" and current.mode != "auto_key_value"
+        }
+        self.plot.rename_series(renamed_series)
         self.applied_rules = [replace(rule) for rule in rules]
         self.session.set_rules([replace(rule) for rule in self.applied_rules])
         self.rules_editor.rules_table.set_rules(self.applied_rules)

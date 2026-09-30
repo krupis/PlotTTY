@@ -98,13 +98,25 @@ class WorkspaceTest(unittest.TestCase):
         dialog.close()
         self.assertNotEqual(self.window.applied_rules[0].label, "discarded")
 
-    def test_rules_editor_is_persistent_in_sidebar(self):
+    def test_rules_editor_is_persistent_in_extraction_sidebar(self):
         editor = self.window.rules_editor
         self.assertIs(editor.parentWidget(), self.window.ui.SeriesSidebar)
         self.assertTrue(editor.isVisible())
+        self.assertIs(self.window.ui.SeriesList.parentWidget(), self.window.plot.series_selector)
         editor.table.item(0, 2).setText("inline")
         self.assertTrue(editor.apply_rules())
         self.assertEqual(self.window.applied_rules[0].label, "inline")
+
+    def test_applying_a_rule_label_change_renames_existing_series(self):
+        initial = [ExtractionRule("Value 0", "delimiter_column", extra_setting="0")]
+        self.window.apply_rules(initial)
+        self.window.plot.append_values([CapturedValue(1, "Value 0", 3.3)])
+        renamed = [ExtractionRule("Voltage", "delimiter_column", extra_setting="0")]
+        self.window.apply_rules(renamed)
+        self.window.plot.append_values([CapturedValue(2, "Voltage", 3.4)])
+        self.window.plot.on_refresh_pending_data()
+        self.assertEqual([entry["label"] for entry in self.window.plot.series_info()], ["Voltage"])
+        self.assertEqual(self.window.plot._series["Voltage"].sample_count(), 2)
 
     def test_validation_keeps_dialog_open_and_does_not_commit(self):
         dialog = self.dialog([ExtractionRule("bad", "regex", extra_setting="[")])

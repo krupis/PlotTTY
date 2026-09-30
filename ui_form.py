@@ -197,7 +197,7 @@ class Ui_MainWindow(object):
         self.actionLoad_log.setText(QCoreApplication.translate("MainWindow", u"Load capture\u2026", None))
         self.actionClearCapturedData.setText(QCoreApplication.translate("MainWindow", u"Clear captured data", None))
         self.actionConsole.setText(QCoreApplication.translate("MainWindow", u"Console", None))
-        self.actionSidebar.setText(QCoreApplication.translate("MainWindow", u"Series sidebar", None))
+        self.actionSidebar.setText(QCoreApplication.translate("MainWindow", u"Extraction sidebar", None))
         self.actionDiagnostics.setText(QCoreApplication.translate("MainWindow", u"Diagnostics", None))
         self.ConnectionSettingsButton.setText(QCoreApplication.translate("MainWindow", u"Select port \u00b7 115200", None))
 #if QT_CONFIG(tooltip)

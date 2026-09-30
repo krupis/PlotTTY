@@ -8,7 +8,7 @@ import math
 
 from PySide6.QtCore import QPoint, QRectF, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue
 from ..core.plotter import Plotter
@@ -373,12 +373,32 @@ class PlotWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(toolbar)
+        self.series_selector = QWidget(self)
+        self.series_selector.setObjectName("SeriesSelector")
+        self.series_selector_layout = QHBoxLayout(self.series_selector)
+        self.series_selector_layout.setContentsMargins(0, 0, 0, 0)
+        self.series_selector_layout.setSpacing(8)
+        self.series_selector.hide()
+        layout.addWidget(self.series_selector)
         layout.addWidget(self.scroll_area, 1)
         layout.addWidget(self.time_axis_label)
         self._timer = QTimer(self)
         self._timer.setInterval(PLOT_REFRESH_INTERVAL_MS)
         self._timer.timeout.connect(self.on_refresh_pending_data)
         self._timer.start()
+
+    def attach_series_selector(self, heading: QLabel, series_list: QListWidget) -> None:
+        """Keep series visibility controls immediately above the plot panels."""
+        heading.setParent(self.series_selector)
+        series_list.setParent(self.series_selector)
+        series_list.setFlow(QListWidget.Flow.LeftToRight)
+        series_list.setWrapping(False)
+        series_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        series_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        series_list.setFixedHeight(42)
+        self.series_selector_layout.addWidget(heading)
+        self.series_selector_layout.addWidget(series_list, 1)
+        self.series_selector.show()
 
     @Slot(list)
     def append_values(self, values: Iterable[CapturedValue]) -> None:
@@ -485,6 +505,30 @@ class PlotWidget(QWidget):
         if label not in self._series or (label in self._visible_labels) == visible:
             return
         self._visible_labels.add(label) if visible else self._visible_labels.discard(label)
+        self._rebuild_plots()
+        self._has_pending_refresh = True
+        self.seriesChanged.emit()
+
+    def update_series_labels(self, labels: dict[str, str]) -> None:
+        """Rename plotted rule-backed series while retaining their captured history."""
+        labels = {old: new for old, new in labels.items() if old != new and old in self._series}
+        if not labels:
+            return
+        renamed = {}
+        visible = set()
+        for label, series in self._series.items():
+            new_label = labels.get(label, label)
+            # Two rules with the same new label intentionally share subsequent samples.
+            # Keep the existing history rather than silently discarding it on a collision.
+            if new_label not in renamed:
+                renamed[new_label] = series
+            if label in self._visible_labels:
+                visible.add(new_label)
+        self._series = renamed
+        self._visible_labels = visible
+        self.graph._y_ranges = {
+            labels.get(label, label): value for label, value in self.graph._y_ranges.items()
+        }
         self._rebuild_plots()
         self._has_pending_refresh = True
         self.seriesChanged.emit()
