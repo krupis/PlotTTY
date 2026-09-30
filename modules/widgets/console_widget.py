@@ -33,6 +33,32 @@ class ConsoleWidget(QObject):
         self._pending_text.clear()
         self._editor.clear()
 
+    def find_text(self, text: str, *, backwards: bool = False) -> tuple[int, int]:
+        """Select the next or previous case-insensitive console match."""
+        if not text:
+            return 0, 0
+        haystack = self._editor.toPlainText().casefold()
+        needle = text.casefold()
+        matches = []
+        start = 0
+        while (start := haystack.find(needle, start)) >= 0:
+            matches.append(start)
+            start += max(1, len(needle))
+        if not matches:
+            return 0, 0
+
+        cursor = self._editor.textCursor()
+        position = cursor.selectionStart() if backwards else cursor.selectionEnd()
+        if backwards:
+            index = next((row for row in range(len(matches) - 1, -1, -1) if matches[row] < position), len(matches) - 1)
+        else:
+            index = next((row for row, match in enumerate(matches) if match >= position), 0)
+        cursor.setPosition(matches[index])
+        cursor.setPosition(matches[index] + len(text), QTextCursor.MoveMode.KeepAnchor)
+        self._editor.setTextCursor(cursor)
+        self._editor.ensureCursorVisible()
+        return index + 1, len(matches)
+
     @Slot(str)
     def append_received(self, text: str) -> None:
         self.append_text(text, RECEIVED_TEXT_COLOR)

@@ -35,6 +35,7 @@
           <widget class="PlotWidget" name="Plot"/>
           <widget class="QWidget" name="ConsolePanel">
            <layout class="QVBoxLayout" name="ConsoleLayout">
+            <item><layout class="QHBoxLayout" name="SearchLayout"><item><widget class="QLineEdit" name="SearchEdit"><property name="placeholderText"><string>Search console</string></property></widget></item><item><widget class="QLabel" name="SearchMatchLabel"><property name="minimumSize"><size><width>52</width><height>0</height></size></property><property name="text"><string/></property></widget></item><item><widget class="QPushButton" name="SearchPreviousButton"><property name="text"><string>Previous</string></property></widget></item><item><widget class="QPushButton" name="SearchNextButton"><property name="text"><string>Next</string></property></widget></item></layout></item>
             <item><widget class="QPlainTextEdit" name="ConsoleTextEdit"/></item>
             <item>
              <layout class="QHBoxLayout" name="CommandLayout">

@@ -197,6 +197,16 @@ class WorkspaceTest(unittest.TestCase):
         window.ui.actionClearCapturedData.trigger()
         self.assertEqual(window.plot.series_info(), [])
 
+    def test_console_search_selects_and_navigates_matches(self):
+        self.window.console.append_received("alpha beta alpha")
+        self.window.console.flush()
+        self.window.ui.SearchEdit.setText("alpha")
+        self.assertEqual(self.window.ui.SearchMatchLabel.text(), "1/2")
+        self.window.ui.SearchNextButton.click()
+        self.assertEqual(self.window.ui.SearchMatchLabel.text(), "2/2")
+        self.window.ui.SearchPreviousButton.click()
+        self.assertEqual(self.window.ui.SearchMatchLabel.text(), "1/2")
+
     def test_scroll_shared_axis_and_y_hit_testing(self):
         plot = self.window.plot
         plot.append_values([CapturedValue(i, f"s{j}", i + j) for i in range(20) for j in range(12)])

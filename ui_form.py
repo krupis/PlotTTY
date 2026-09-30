@@ -113,6 +113,32 @@ class Ui_MainWindow(object):
         self.ConsoleLayout = QVBoxLayout(self.ConsolePanel)
         self.ConsoleLayout.setObjectName(u"ConsoleLayout")
         self.ConsoleLayout.setContentsMargins(0, 0, 0, 0)
+        self.SearchLayout = QHBoxLayout()
+        self.SearchLayout.setObjectName(u"SearchLayout")
+        self.SearchEdit = QLineEdit(self.ConsolePanel)
+        self.SearchEdit.setObjectName(u"SearchEdit")
+
+        self.SearchLayout.addWidget(self.SearchEdit)
+
+        self.SearchMatchLabel = QLabel(self.ConsolePanel)
+        self.SearchMatchLabel.setObjectName(u"SearchMatchLabel")
+        self.SearchMatchLabel.setMinimumSize(QSize(52, 0))
+
+        self.SearchLayout.addWidget(self.SearchMatchLabel)
+
+        self.SearchPreviousButton = QPushButton(self.ConsolePanel)
+        self.SearchPreviousButton.setObjectName(u"SearchPreviousButton")
+
+        self.SearchLayout.addWidget(self.SearchPreviousButton)
+
+        self.SearchNextButton = QPushButton(self.ConsolePanel)
+        self.SearchNextButton.setObjectName(u"SearchNextButton")
+
+        self.SearchLayout.addWidget(self.SearchNextButton)
+
+
+        self.ConsoleLayout.addLayout(self.SearchLayout)
+
         self.ConsoleTextEdit = QPlainTextEdit(self.ConsolePanel)
         self.ConsoleTextEdit.setObjectName(u"ConsoleTextEdit")
 
@@ -200,6 +226,10 @@ class Ui_MainWindow(object):
         self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"Disconnected", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
         self.SeriesHeading.setText(QCoreApplication.translate("MainWindow", u"Series", None))
+        self.SearchEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Search console", None))
+        self.SearchMatchLabel.setText("")
+        self.SearchPreviousButton.setText(QCoreApplication.translate("MainWindow", u"Previous", None))
+        self.SearchNextButton.setText(QCoreApplication.translate("MainWindow", u"Next", None))
         self.CommandEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type command and press Enter", None))
         self.SendButton.setText(QCoreApplication.translate("MainWindow", u"Send", None))
         self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear console", None))

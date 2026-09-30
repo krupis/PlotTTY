@@ -3,7 +3,7 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtGui import QAction, QColor, QIcon, QPalette, QPixmap
+from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPalette, QPixmap, QShortcut
 from PySide6.QtCore import QSettings, QTimer, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
@@ -116,6 +116,12 @@ class MainWindow(QMainWindow):
         self.ui.WorkspaceLayout.setContentsMargins(12, 0, 0, 0)
         self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
         self.ui.SendButton.clicked.connect(self.on_send_command)
+        self.ui.SearchEdit.textChanged.connect(self.on_console_search_changed)
+        self.ui.SearchEdit.returnPressed.connect(self.on_console_search_next)
+        self.ui.SearchNextButton.clicked.connect(self.on_console_search_next)
+        self.ui.SearchPreviousButton.clicked.connect(self.on_console_search_previous)
+        self._console_search_shortcut = QShortcut(QKeySequence.StandardKey.Find, self)
+        self._console_search_shortcut.activated.connect(self.focus_console_search)
         self.ui.ConsoleToggle.setDefaultAction(self.ui.actionConsole)
         self.ui.actionConsole.toggled.connect(self.set_console_visible)
         self.ui.actionSidebar.toggled.connect(self.ui.SeriesSidebar.setVisible)
@@ -198,6 +204,24 @@ class MainWindow(QMainWindow):
         if visible:
             height = self.ui.WorkspaceSplitter.height()
             self.ui.WorkspaceSplitter.setSizes([max(220, height - self._console_height), self._console_height])
+
+    def focus_console_search(self):
+        self.ui.actionConsole.setChecked(True)
+        self.ui.SearchEdit.setFocus()
+        self.ui.SearchEdit.selectAll()
+
+    def on_console_search_changed(self, text):
+        self._update_console_search(text)
+
+    def on_console_search_next(self):
+        self._update_console_search(self.ui.SearchEdit.text())
+
+    def on_console_search_previous(self):
+        self._update_console_search(self.ui.SearchEdit.text(), backwards=True)
+
+    def _update_console_search(self, text, *, backwards=False):
+        current, total = self.console.find_text(text, backwards=backwards)
+        self.ui.SearchMatchLabel.setText(f"{current}/{total}" if total else "")
 
     def set_diagnostics_visible(self, visible):
         self.plot.visible_points_label.setVisible(visible)
