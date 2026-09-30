@@ -165,7 +165,7 @@ class MainWindow(QMainWindow):
 
     def apply_settings(self, settings):
         self.session.settings = settings
-        self.ui.ConnectionSettingsButton.setText(f"{settings.port or 'Select port'} · {settings.baudrate}")
+        self.ui.ConnectionSettingsButton.setText(settings.port or "Select port")
 
     def rebuild_sidebar(self):
         self.ui.SeriesList.blockSignals(True)
