@@ -265,6 +265,7 @@ class WorkspaceTest(unittest.TestCase):
         with patch("modules.controllers.serial_session.SerialTransport", FakeTransport):
             w.ui.ConnectButton.click()
             self.assertTrue(session.is_connected)
+            self.assertEqual(w.ui.ConnectButton.text(), "● Disconnect")
             self.assertIn("Recording", w._recording_label.text())
             paths = session.recording_paths
             self.assertEqual(len(paths), 2)

@@ -457,7 +457,10 @@ class MainWindow(QMainWindow):
 
     @Slot(bool)
     def on_connected_changed(self, connected: bool) -> None:
-        self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
+        self.ui.ConnectButton.setText("● Disconnect" if connected else "Connect")
+        self.ui.ConnectButton.setProperty("connected", connected)
+        self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
+        self.ui.ConnectButton.style().polish(self.ui.ConnectButton)
         self.ui.ConnectionSettingsButton.setEnabled(not connected)
         if connected:
             self._serial_settings.reject()

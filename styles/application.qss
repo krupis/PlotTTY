@@ -9,8 +9,8 @@ QLabel#ConnectionHeading { font-weight: 600; font-size: 11pt; }
 QToolButton#SettingsSection { border: none; background: transparent; padding: 3px 0; }
 QToolButton#SettingsSection:hover { color: #ffffff; }
 QLabel#SeriesHeading, QLabel#ExtractionHeading { font-weight: 600; padding: 4px 0 8px; }
-QLabel#PortStatusLabel { color: #a2adb8; padding: 0 12px; }
-QLabel#PortStatusLabel[connected="true"] { color: #7cd1a8; }
+QLabel#PortStatusLabel { max-width: 0; max-height: 0; }
+QPushButton#ConnectButton[connected="true"] { color: #7cd1a8; border-color: #4c8f70; }
 QLabel#ValidationError { color: #ffadb7; }
 QPushButton, QToolButton { background: #303941; border: 1px solid #46515b;
     border-radius: 4px; padding: 5px 12px; min-height: 22px; }
