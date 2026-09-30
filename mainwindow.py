@@ -244,7 +244,7 @@ class MainWindow(QMainWindow):
             # Named key/value rules use the incoming name, not their rule label.
             if previous.mode != "auto_key_value" and current.mode != "auto_key_value"
         }
-        self.plot.rename_series(renamed_series)
+        self.plot.update_series_labels(renamed_series)
         self.applied_rules = [replace(rule) for rule in rules]
         self.session.set_rules([replace(rule) for rule in self.applied_rules])
         self.rules_editor.rules_table.set_rules(self.applied_rules)
