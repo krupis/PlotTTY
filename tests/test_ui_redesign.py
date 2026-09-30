@@ -71,10 +71,13 @@ class WorkspaceTest(unittest.TestCase):
         save_profile(AppProfile("test", self.window.applied_rules), path)
         self.assertEqual(load_profile(path).rules[0].label, "original")
 
-    def test_generate_rules_applies_immediately(self):
+    def test_generate_rules_requires_apply(self):
         editor = self.window.rules_editor
+        original = self.window.applied_rules
         editor.sample.setPlainText("Voltage: 3.31 V Current: 0.14 A")
         editor.generate_rules()
+        self.assertIs(self.window.applied_rules, original)
+        self.assertTrue(editor.apply_rules())
         self.assertEqual([rule.label for rule in self.window.applied_rules], ["Voltage", "Current"])
 
     def test_rules_editor_is_persistent_in_extraction_sidebar(self):
@@ -118,7 +121,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertIs(self.window.applied_rules, previous)
         dialog.table.item(0, 3).setText(r"(\d+)")
         self.assertTrue(dialog.apply_rules())
-        dialog.set_rules([ExtractionRule("x", "delimiter_column", extra_setting="-1")])
+        dialog.rules_table.set_rules([ExtractionRule("x", "delimiter_column", extra_setting="-1")])
         self.assertFalse(dialog.apply_rules())
         dialog.table.item(0, 4).setText("1.5")
         self.assertFalse(dialog.apply_rules())

@@ -39,29 +39,17 @@ class RulesEditor(QWidget):
         row.addWidget(remove)
         row.addStretch()
         layout.addLayout(row)
+        apply = QPushButton("Apply rules")
+        apply.clicked.connect(self.apply_rules)
+        layout.addWidget(apply)
         generate.clicked.connect(self.generate_rules)
         add.clicked.connect(self.rules_table.add_rule)
         remove.clicked.connect(self.rules_table.remove_selected_rules)
-        self._syncing_rules = False
-        self.table.itemChanged.connect(lambda _item: self._apply_changed_rules())
-        self.rules_table.rulesChanged.connect(self._apply_changed_rules)
-
-    def set_rules(self, rules):
-        self._syncing_rules = True
-        try:
-            self.rules_table.set_rules(rules)
-        finally:
-            self._syncing_rules = False
-
-    def _apply_changed_rules(self):
-        if not self._syncing_rules:
-            self.apply_rules()
 
     def generate_rules(self):
         rules = suggest_rules(self.sample.toPlainText())
         if rules:
-            self.set_rules(rules)
-            self.apply_rules()
+            self.rules_table.set_rules(rules)
 
     def apply_rules(self):
         rules = self.rules_table.rules()

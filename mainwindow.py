@@ -96,8 +96,9 @@ class MainWindow(QMainWindow):
         self.ui.menuFile.addAction(self._export_csv_action)
         self._export_csv_action.triggered.connect(self.on_export_csv)
         self._connect_signals()
-        self.rules_editor.set_rules(default_rules())
-        self.apply_rules(default_rules())
+        initial_rules = default_rules()
+        self.rules_editor.rules_table.set_rules(initial_rules)
+        self.apply_rules(initial_rules)
         self.statusBar().addPermanentWidget(self.plot.visible_points_label)
         self.statusBar().addPermanentWidget(self.plot.downsample_ratio_label)
         self.set_diagnostics_visible(False)
@@ -261,7 +262,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Open Profile Failed", str(exc))
             return
 
-        self.rules_editor.set_rules(profile.rules)
+        self.rules_editor.rules_table.set_rules(profile.rules)
         self.apply_rules(profile.rules)
         self.profile_path = Path(path)
         self.statusBar().showMessage(f"Loaded {self.profile_path.name}")
