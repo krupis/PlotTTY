@@ -149,6 +149,38 @@ class WorkspaceTest(unittest.TestCase):
         editor.rules_table.remove_selected_rules()
         self.assertEqual(editor.feedback.property("state"), "pending")
 
+    def test_apply_enables_only_for_changed_rules(self):
+        editor = self.window.rules_editor
+        self.assertFalse(editor.apply_button.isEnabled())
+        label = editor.table.item(0, 1)
+        original = label.text()
+        label.setText("changed")
+        self.assertTrue(editor.apply_button.isEnabled())
+        label.setText(original)
+        self.assertFalse(editor.apply_button.isEnabled())
+        editor.rules_table.add_rule()
+        self.assertTrue(editor.apply_button.isEnabled())
+        editor.apply_button.click()
+        self.assertFalse(editor.apply_button.isEnabled())
+        self.assertEqual(len(self.window.applied_rules), 2)
+        editor.table.selectRow(1)
+        editor.rules_table.remove_selected_rules()
+        self.assertTrue(editor.apply_button.isEnabled())
+
+    def test_rule_table_grows_then_scrolls_and_shrinks(self):
+        editor = self.window.rules_editor
+        APP.processEvents()
+        single_height = editor.table.height()
+        editor.rules_table.set_rules([ExtractionRule(f"v{i}", "first_number") for i in range(40)])
+        APP.processEvents()
+        self.assertGreater(editor.table.height(), single_height)
+        self.assertGreater(editor.table.verticalScrollBar().maximum(), 0)
+        self.assertTrue(editor.rect().contains(editor.apply_button.geometry()))
+        editor.rules_table.set_rules([ExtractionRule("one", "first_number")])
+        APP.processEvents()
+        self.assertLessEqual(editor.table.height(), single_height + 20)
+        self.assertEqual(editor.table.verticalScrollBar().maximum(), 0)
+
     def test_rule_selection_remove_and_x_reference(self):
         dialog = self.editor([ExtractionRule("time", "delimiter_column", sample_counter=True, extra_setting="0"),
                               ExtractionRule("voltage", "delimiter_column", extra_setting="1")])

@@ -128,11 +128,17 @@ class MainWindow(QMainWindow):
         self.ui.SeriesLayout.setSpacing(12)
         self.ui.SeriesSidebar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         self.ui.ConsolePanel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
-        self.ui.ConsoleLayout.setContentsMargins(12, 10, 12, 12)
+        self.ui.ConsoleLayout.setContentsMargins(12, 14, 12, 12)
+        self.plot.layout().setContentsMargins(0, 14, 0, 0)
         self.ui.ConsoleLayout.setSpacing(8)
-        console_heading = QLabel("Serial console", self.ui.ConsolePanel)
-        console_heading.setObjectName("ConsoleHeading")
-        self.ui.SearchLayout.insertWidget(0, console_heading)
+        for title, panel, layout in (
+            ("Extraction", self.ui.SeriesSidebar, self.ui.SeriesLayout),
+            ("Plot", self.plot, self.plot.layout()),
+            ("Console", self.ui.ConsolePanel, self.ui.ConsoleLayout),
+        ):
+            heading = QLabel(title, panel)
+            heading.setObjectName("PanelHeading")
+            layout.insertWidget(0, heading)
         collapse_console = QToolButton(self.ui.ConsolePanel)
         collapse_console.setText("Hide")
         collapse_console.setToolTip("Collapse the console")
@@ -140,6 +146,7 @@ class MainWindow(QMainWindow):
         self.ui.SearchLayout.addWidget(collapse_console)
         self.ui.SearchLayout.setSpacing(8)
         self.ui.SendButton.setProperty("primary", True)
+        self.ui.SendButton.setIcon(QIcon(":/icons/send.svg"))
         self.ui.SendButton.style().unpolish(self.ui.SendButton)
         self.ui.SendButton.style().polish(self.ui.SendButton)
         self.ui.WorkspaceLayout.setContentsMargins(12, 0, 0, 0)

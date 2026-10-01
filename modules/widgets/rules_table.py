@@ -1,5 +1,5 @@
 """Plain Qt table for extraction-rule edits."""
-from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtCore import QObject, QSignalBlocker, Qt, Signal
 from PySide6.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem
 
 from ..core.extraction import ExtractionRule
@@ -48,13 +48,16 @@ class RulesTable(QObject):
         self._update_columns()
 
     def set_rules(self, rules):
+        blocker = QSignalBlocker(self)
         self._table.setRowCount(0)
         for rule in rules:
             self.add_rule(rule)
         self._update_columns()
+        blocker.unblock()
         self.changed.emit()
 
     def add_rule(self, rule=None):
+        blocker = QSignalBlocker(self)
         rule = rule or ExtractionRule("value", "first_number")
         row = self._table.rowCount()
         self._table.insertRow(row)
@@ -83,14 +86,18 @@ class RulesTable(QObject):
         function.currentIndexChanged.connect(lambda: self._function_changed(function))
         self._function_changed(function)
         self._update_columns()
+        blocker.unblock()
+        self.changed.emit()
 
     def remove_selected_rules(self):
+        blocker = QSignalBlocker(self)
         rows = {index.row() for index in self._table.selectedIndexes()}
         if not rows and self._table.currentRow() >= 0:
             rows.add(self._table.currentRow())
         for row in sorted(rows, reverse=True):
             self._table.removeRow(row)
         self._update_columns()
+        blocker.unblock()
         self.changed.emit()
 
     def rules(self):
@@ -108,6 +115,7 @@ class RulesTable(QObject):
         return rules
 
     def _mode_changed(self, combo):
+        blocker = QSignalBlocker(self)
         for row in range(self._table.rowCount()):
             if self._table.cellWidget(row, 2) is combo:
                 # Settings belong to a mode; start with its defaults when switching.
@@ -116,6 +124,8 @@ class RulesTable(QObject):
                 self._update_row(row)
                 break
         self._update_columns()
+        blocker.unblock()
+        self.changed.emit()
 
     def _function_changed(self, combo):
         combo.setToolTip(RULE_FUNCTIONS[combo.currentData()][1])

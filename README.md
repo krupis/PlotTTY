@@ -33,6 +33,9 @@ Generate rules from a sample or edit the table, then
 choose **Apply rules** to update parsing for future samples. Inline feedback shows
 unapplied changes, validation errors, and successful application. Profiles save
 applied rules. Field indices are zero-based (0 is the first field).
+The table grows with its rows and scrolls when space is limited, keeping Add/Remove
+directly below it. Generate and Apply span the sidebar width. Apply is disabled
+until the draft differs from the applied rules; reverting edits disables it again.
 
 The Graphite & teal theme separates configuration panels from recessed plot and
 console surfaces. Teal highlights primary actions and active plot modes; each

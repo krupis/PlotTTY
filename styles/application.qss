@@ -4,7 +4,8 @@
 QMainWindow, QDialog, #centralwidget { background: #151c20; }
 QLabel { background: transparent; }
 #ConnectionBar, #SeriesSidebar, #ConsolePanel { background: #20292d; border: 1px solid #45565f; border-radius: 6px; }
-QLabel#ConsoleHeading, QLabel#SectionHeading, QLabel#ConnectionHeading { font-size: 11pt; font-weight: 600; }
+QLabel#PanelHeading { color: #a6b5bc; font-size: 10pt; font-weight: 400; padding: 0 0 4px; }
+QLabel#ConnectionHeading { font-size: 11pt; font-weight: 600; }
 QLabel#CaptureTitle { color: #bac5cb; }
 QLabel#RuleFeedback[state="success"] { color: #85e0b4; }
 QLabel#RuleFeedback { color: #bac5cb; }

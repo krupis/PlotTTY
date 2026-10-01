@@ -3,5 +3,8 @@
     <file>icons/Plottty.png</file>
     <file>icons/combo-chevron.svg</file>
     <file>icons/check.svg</file>
+    <file>icons/plus.svg</file>
+    <file>icons/minus.svg</file>
+    <file>icons/send.svg</file>
   </qresource>
 </RCC>
