@@ -128,6 +128,27 @@ class WorkspaceTest(unittest.TestCase):
         dialog.table.item(0, 4).setText("0")
         self.assertTrue(dialog.apply_rules())
 
+    def test_rule_feedback_tracks_drafts_validation_and_apply(self):
+        editor = self.window.rules_editor
+        editor.rules_table.set_rules([ExtractionRule("value", "regex", extra_setting=r"(\d+)")])
+        self.assertEqual(editor.feedback.property("state"), "pending")
+        self.assertTrue(editor.apply_rules())
+        self.assertEqual(editor.feedback.property("state"), "success")
+        applied = self.window.applied_rules
+        editor.table.item(0, 3).setText("[")
+        self.assertEqual(editor.feedback.property("state"), "pending")
+        self.assertFalse(editor.apply_rules())
+        self.assertEqual(editor.feedback.property("state"), "error")
+        self.assertTrue(editor.feedback.text())
+        self.assertIs(self.window.applied_rules, applied)
+        editor.table.item(0, 3).setText(r"(\d+)")
+        self.assertTrue(editor.apply_rules())
+        editor.table.cellWidget(0, 0).setCurrentIndex(1)
+        self.assertEqual(editor.feedback.property("state"), "pending")
+        editor.table.selectRow(0)
+        editor.rules_table.remove_selected_rules()
+        self.assertEqual(editor.feedback.property("state"), "pending")
+
     def test_rule_selection_remove_and_x_reference(self):
         dialog = self.editor([ExtractionRule("time", "delimiter_column", sample_counter=True, extra_setting="0"),
                               ExtractionRule("voltage", "delimiter_column", extra_setting="1")])
@@ -265,7 +286,7 @@ class WorkspaceTest(unittest.TestCase):
         with patch("modules.controllers.serial_session.SerialTransport", FakeTransport):
             w.ui.ConnectButton.click()
             self.assertTrue(session.is_connected)
-            self.assertEqual(w.ui.ConnectButton.text(), "● Disconnect")
+            self.assertEqual(w.ui.ConnectButton.text(), "Disconnect")
             self.assertIn("Recording", w._recording_label.text())
             paths = session.recording_paths
             self.assertEqual(len(paths), 2)
@@ -469,7 +490,7 @@ class WorkspaceTest(unittest.TestCase):
         dialog.buttons.button(QDialogButtonBox.StandardButton.Save).click()
         self.assertEqual(w.session.settings.port, "test-port")
         self.assertEqual(w.session.settings.baudrate, 230400)
-        self.assertIn("test-port · 230400", w.ui.ConnectionSettingsButton.text())
+        self.assertEqual(w.ui.ConnectionSettingsButton.text(), "test-port")
         w.on_connected_changed(True)
         self.assertFalse(w.ui.ConnectionSettingsButton.isEnabled())
         w.ui.actionConsole.setChecked(True)

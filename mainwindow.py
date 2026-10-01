@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPalette, QPixmap, QShortcut
-from PySide6.QtCore import QSettings, QTimer, Qt, Slot
+from PySide6.QtCore import QSettings, QSize, QTimer, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -13,6 +13,9 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QMainWindow,
     QProgressDialog,
+    QSizePolicy,
+    QToolButton,
+    QWidget,
 )
 
 # Important:
@@ -44,18 +47,19 @@ def apply_application_style(app: QApplication) -> None:
     app.setStyle("Fusion")
     palette = app.palette()
     for role, color in {
-        QPalette.ColorRole.Window: "#252b32",
-        QPalette.ColorRole.WindowText: "#dce3ea",
-        QPalette.ColorRole.Base: "#303b47",
-        QPalette.ColorRole.AlternateBase: "#262c33",
-        QPalette.ColorRole.Text: "#f0f4f8",
-        QPalette.ColorRole.Button: "#3a444f",
-        QPalette.ColorRole.ButtonText: "#f0f4f8",
-        QPalette.ColorRole.Light: "#a6b5c5",
-        QPalette.ColorRole.Mid: "#8091a3",
-        QPalette.ColorRole.Dark: "#687b8e",
-        QPalette.ColorRole.Highlight: "#2e8b57",
-        QPalette.ColorRole.HighlightedText: "#ffffff",
+        QPalette.ColorRole.Window: "#151c20",
+        QPalette.ColorRole.WindowText: "#f3f6f7",
+        QPalette.ColorRole.Base: "#0f1417",
+        QPalette.ColorRole.AlternateBase: "#20292d",
+        QPalette.ColorRole.Text: "#f3f6f7",
+        QPalette.ColorRole.Button: "#2b363b",
+        QPalette.ColorRole.ButtonText: "#f3f6f7",
+        QPalette.ColorRole.Light: "#bac5cb",
+        QPalette.ColorRole.Mid: "#56636b",
+        QPalette.ColorRole.Dark: "#2b363b",
+        QPalette.ColorRole.Highlight: "#41ccc3",
+        QPalette.ColorRole.HighlightedText: "#102823",
+        QPalette.ColorRole.PlaceholderText: "#a5b2ba",
     }.items():
         palette.setColor(role, QColor(color))
     for role in (QPalette.ColorRole.Text, QPalette.ColorRole.WindowText, QPalette.ColorRole.ButtonText):
@@ -106,13 +110,38 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self.restore_layout)
 
     def _configure_workspace(self):
+        self.ui.MainLayout.removeItem(self.ui.ConnectionLayout)
+        self.connection_bar = QWidget(self.ui.centralwidget)
+        self.connection_bar.setObjectName("ConnectionBar")
+        self.connection_bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.connection_bar.setLayout(self.ui.ConnectionLayout)
+        self.ui.MainLayout.insertWidget(0, self.connection_bar)
+        self.ui.MainLayout.setStretch(1, 1)
+        self.ui.ConnectionLayout.setContentsMargins(12, 10, 12, 10)
         self.plot.layout().removeItem(self.plot.controls_layout)
         self.ui.ConnectionLayout.addLayout(self.plot.controls_layout)
         self.ui.ConnectionLayout.setSpacing(12)
         self.plot.controls_layout.setSpacing(8)
         self.ui.MainLayout.setContentsMargins(12, 10, 12, 10)
         self.ui.MainSplitter.setHandleWidth(1)
-        self.ui.SeriesLayout.setContentsMargins(0, 0, 12, 0)
+        self.ui.SeriesLayout.setContentsMargins(16, 14, 16, 14)
+        self.ui.SeriesLayout.setSpacing(12)
+        self.ui.SeriesSidebar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        self.ui.ConsolePanel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        self.ui.ConsoleLayout.setContentsMargins(12, 10, 12, 12)
+        self.ui.ConsoleLayout.setSpacing(8)
+        console_heading = QLabel("Serial console", self.ui.ConsolePanel)
+        console_heading.setObjectName("ConsoleHeading")
+        self.ui.SearchLayout.insertWidget(0, console_heading)
+        collapse_console = QToolButton(self.ui.ConsolePanel)
+        collapse_console.setText("Hide")
+        collapse_console.setToolTip("Collapse the console")
+        collapse_console.clicked.connect(lambda: self.ui.actionConsole.setChecked(False))
+        self.ui.SearchLayout.addWidget(collapse_console)
+        self.ui.SearchLayout.setSpacing(8)
+        self.ui.SendButton.setProperty("primary", True)
+        self.ui.SendButton.style().unpolish(self.ui.SendButton)
+        self.ui.SendButton.style().polish(self.ui.SendButton)
         self.ui.WorkspaceLayout.setContentsMargins(12, 0, 0, 0)
         self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
         self.ui.SendButton.clicked.connect(self.on_send_command)
@@ -133,8 +162,8 @@ class MainWindow(QMainWindow):
         self._rate_label = QLabel("0 B/s")
         self.statusBar().addWidget(self._recording_label, 1)
         self.statusBar().addPermanentWidget(self._rate_label)
-        self.ui.SeriesSidebar.setMinimumWidth(320)
-        self.ui.MainSplitter.setSizes([380, 876])
+        self.ui.SeriesSidebar.setMinimumWidth(420)
+        self.ui.MainSplitter.setSizes([500, 1000])
         self.ui.MainSplitter.setCollapsible(0, False)
         self.ui.MainSplitter.setStretchFactor(0, 0)
         self.ui.MainSplitter.setStretchFactor(1, 1)
@@ -150,17 +179,13 @@ class MainWindow(QMainWindow):
         self.rebuild_sidebar()
 
     def _move_series_selector_to_plot(self):
-        self.ui.SeriesLayout.removeWidget(self.ui.SeriesHeading)
         self.ui.SeriesLayout.removeWidget(self.ui.SeriesList)
-        self.plot.attach_series_selector(self.ui.SeriesHeading, self.ui.SeriesList)
+        self.plot.attach_series_selector(self.ui.SeriesList)
 
     def _add_rules_editor(self):
-        """Add persistent rule controls underneath the series visibility list."""
-        self.ui.ExtractionHeading = QLabel("Extraction engine", self.ui.SeriesSidebar)
-        self.ui.ExtractionHeading.setObjectName("ExtractionHeading")
+        """Add persistent extraction controls to the configuration sidebar."""
         self.rules_editor = RulesEditor([], self.ui.SeriesSidebar)
         self.rules_editor.rulesApplied.connect(self.apply_rules)
-        self.ui.SeriesLayout.addWidget(self.ui.ExtractionHeading)
         self.ui.SeriesLayout.addWidget(self.rules_editor, 1)
 
     def apply_settings(self, settings):
@@ -178,9 +203,6 @@ class MainWindow(QMainWindow):
             return
         self._sidebar_structure = structure
         self.ui.SeriesList.clear()
-        if not info:
-            item = QListWidgetItem("Waiting for series", self.ui.SeriesList)
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
         for entry in info:
             text = entry["label"] + (f" ({entry['unit']})" if entry["unit"] else "")
             item = QListWidgetItem(text, self.ui.SeriesList)
@@ -191,6 +213,7 @@ class MainWindow(QMainWindow):
             swatch.fill(entry["color"])
             item.setIcon(QIcon(swatch))
             item.setToolTip(text)
+            item.setSizeHint(QSize(min(280, self.ui.SeriesList.fontMetrics().horizontalAdvance(text) + 64), 34))
         self.ui.SeriesList.blockSignals(False)
 
     def _series_visibility_changed(self, item):
@@ -201,6 +224,7 @@ class MainWindow(QMainWindow):
             self._console_height = max(80, self.ui.WorkspaceSplitter.sizes()[1])
         self.ui.ConsoleToggle.setArrowType(Qt.ArrowType.DownArrow if visible else Qt.ArrowType.RightArrow)
         self.ui.ConsolePanel.setVisible(visible)
+        self.ui.ConsoleToggle.setVisible(not visible)
         if visible:
             height = self.ui.WorkspaceSplitter.height()
             self.ui.WorkspaceSplitter.setSizes([max(220, height - self._console_height), self._console_height])
@@ -274,6 +298,8 @@ class MainWindow(QMainWindow):
         self.plot.update_series_labels(renamed_series)
         self.applied_rules = [replace(rule) for rule in rules]
         self.session.set_rules([replace(rule) for rule in self.applied_rules])
+        if self.rules_editor.rules_table.rules() == self.applied_rules:
+            self.rules_editor.mark_applied()
 
     @Slot()
     def on_open_profile(self) -> None:
@@ -457,19 +483,17 @@ class MainWindow(QMainWindow):
 
     @Slot(bool)
     def on_connected_changed(self, connected: bool) -> None:
-        self.ui.ConnectButton.setText("● Disconnect" if connected else "Connect")
-        self.ui.ConnectButton.setProperty("connected", connected)
-        self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
-        self.ui.ConnectButton.style().polish(self.ui.ConnectButton)
+        self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
+        self.ui.ConnectButton.setToolTip("Connected — click to disconnect" if connected else "Disconnected — click to connect")
         self.ui.ConnectionSettingsButton.setEnabled(not connected)
+        for button in (self.ui.ConnectButton, self.ui.ConnectionSettingsButton):
+            button.setProperty("connected", connected)
+            button.style().unpolish(button)
+            button.style().polish(button)
         if connected:
             self._serial_settings.reject()
         self.ui.CommandEdit.setEnabled(connected)
         self.ui.SendButton.setEnabled(connected)
-        self.ui.PortStatusLabel.setText("● Connected" if connected else "● Disconnected")
-        self.ui.PortStatusLabel.setProperty("connected", connected)
-        self.ui.PortStatusLabel.style().unpolish(self.ui.PortStatusLabel)
-        self.ui.PortStatusLabel.style().polish(self.ui.PortStatusLabel)
         self.update_recording_status()
 
     def update_recording_status(self):
@@ -478,6 +502,9 @@ class MainWindow(QMainWindow):
         recording = self.session.is_connected and self.session.settings.log_to_file
         self._recording_label.setText(f"Recording · {paths[-1].name}" if recording and paths else "Not recording")
         self._recording_label.setToolTip("\n".join(str(path) for path in paths))
+        self._recording_label.setProperty("recording", recording and bool(paths))
+        self._recording_label.style().unpolish(self._recording_label)
+        self._recording_label.style().polish(self._recording_label)
 
     @Slot(float)
     def on_receive_rate_changed(self, bytes_per_second: float) -> None:

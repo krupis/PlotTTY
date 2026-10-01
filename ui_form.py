@@ -58,11 +58,6 @@ class Ui_MainWindow(object):
 
         self.ConnectionLayout.addWidget(self.ConnectionSettingsButton)
 
-        self.PortStatusLabel = QLabel(self.centralwidget)
-        self.PortStatusLabel.setObjectName(u"PortStatusLabel")
-
-        self.ConnectionLayout.addWidget(self.PortStatusLabel)
-
         self.ConnectButton = QPushButton(self.centralwidget)
         self.ConnectButton.setObjectName(u"ConnectButton")
 
@@ -84,11 +79,6 @@ class Ui_MainWindow(object):
         self.SeriesLayout = QVBoxLayout(self.SeriesSidebar)
         self.SeriesLayout.setObjectName(u"SeriesLayout")
         self.SeriesLayout.setContentsMargins(0, 0, 0, 0)
-        self.SeriesHeading = QLabel(self.SeriesSidebar)
-        self.SeriesHeading.setObjectName(u"SeriesHeading")
-
-        self.SeriesLayout.addWidget(self.SeriesHeading)
-
         self.SeriesList = QListWidget(self.SeriesSidebar)
         self.SeriesList.setObjectName(u"SeriesList")
         self.SeriesList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -219,13 +209,11 @@ class Ui_MainWindow(object):
         self.actionConsole.setText(QCoreApplication.translate("MainWindow", u"Console", None))
         self.actionSidebar.setText(QCoreApplication.translate("MainWindow", u"Extraction sidebar", None))
         self.actionDiagnostics.setText(QCoreApplication.translate("MainWindow", u"Diagnostics", None))
-        self.ConnectionSettingsButton.setText(QCoreApplication.translate("MainWindow", u"Select port \u00b7 115200", None))
+        self.ConnectionSettingsButton.setText(QCoreApplication.translate("MainWindow", u"Select port", None))
 #if QT_CONFIG(tooltip)
         self.ConnectionSettingsButton.setToolTip(QCoreApplication.translate("MainWindow", u"Connection settings", None))
 #endif // QT_CONFIG(tooltip)
-        self.PortStatusLabel.setText(QCoreApplication.translate("MainWindow", u"Disconnected", None))
         self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
-        self.SeriesHeading.setText(QCoreApplication.translate("MainWindow", u"Series", None))
         self.SearchEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Search console", None))
         self.SearchMatchLabel.setText("")
         self.SearchPreviousButton.setText(QCoreApplication.translate("MainWindow", u"Previous", None))

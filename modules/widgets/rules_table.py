@@ -1,5 +1,5 @@
 """Plain Qt table for extraction-rule edits."""
-from PySide6.QtCore import QObject, Qt
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import QComboBox, QHeaderView, QTableWidget, QTableWidgetItem
 
 from ..core.extraction import ExtractionRule
@@ -27,19 +27,24 @@ EDITABLE = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFla
 
 
 class RulesTable(QObject):
+    changed = Signal()
+
     def __init__(self, table: QTableWidget, parent=None):
         super().__init__(parent)
         self._table = table
         table.setColumnCount(5)
-        table.setHorizontalHeaderLabels(["Function", "Label", "Find method", "Pattern / delimiter", "Field index"])
+        table.setHorizontalHeaderLabels(["Function", "Label", "Find method", "Delimiter", "Field"])
         for column, tooltip in enumerate(COLUMN_TOOLTIPS):
             table.horizontalHeaderItem(column).setToolTip(tooltip)
             table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch
                                                          if column in (1, 3) else QHeaderView.ResizeMode.ResizeToContents)
         table.verticalHeader().hide()
+        table.verticalHeader().setDefaultSectionSize(36)
+        table.horizontalHeader().setMinimumSectionSize(65)
         table.setAlternatingRowColors(True)
         table.setSelectionMode(table.SelectionMode.ExtendedSelection)
         table.setSelectionBehavior(table.SelectionBehavior.SelectRows)
+        table.itemChanged.connect(self.changed)
         self._update_columns()
 
     def set_rules(self, rules):
@@ -47,6 +52,7 @@ class RulesTable(QObject):
         for rule in rules:
             self.add_rule(rule)
         self._update_columns()
+        self.changed.emit()
 
     def add_rule(self, rule=None):
         rule = rule or ExtractionRule("value", "first_number")
@@ -85,6 +91,7 @@ class RulesTable(QObject):
         for row in sorted(rows, reverse=True):
             self._table.removeRow(row)
         self._update_columns()
+        self.changed.emit()
 
     def rules(self):
         rules = []
@@ -112,6 +119,7 @@ class RulesTable(QObject):
 
     def _function_changed(self, combo):
         combo.setToolTip(RULE_FUNCTIONS[combo.currentData()][1])
+        self.changed.emit()
 
     def _update_row(self, row):
         combo = self._table.cellWidget(row, 2)
@@ -125,5 +133,9 @@ class RulesTable(QObject):
 
     def _update_columns(self):
         modes = {self._table.cellWidget(row, 2).currentData() for row in range(self._table.rowCount())}
+        self._table.horizontalHeaderItem(3).setText(
+            "Pattern / delim." if {"regex", "delimiter_column"}.issubset(modes)
+            else "Pattern" if "regex" in modes else "Delimiter"
+        )
         self._table.setColumnHidden(3, not modes.intersection(("regex", "delimiter_column")))
         self._table.setColumnHidden(4, "delimiter_column" not in modes)

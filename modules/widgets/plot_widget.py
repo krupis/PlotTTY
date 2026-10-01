@@ -15,13 +15,16 @@ from ..core.plotter import Plotter
 
 
 PLOT_REFRESH_INTERVAL_MS = 33
-PLOT_BACKGROUND = QColor("#1f2328")
-PLOT_GRID = QColor(92, 99, 112, 56)
-PLOT_TEXT = QColor("#dce3ea")
+PLOT_BACKGROUND = QColor("#151c20")
+PLOT_SURFACE = QColor("#0f1417")
+PLOT_BORDER = QColor("#45565f")
+PLOT_GRID = QColor("#29343a")
+PLOT_TEXT = QColor("#f3f6f7")
+PLOT_SECONDARY = QColor("#bac5cb")
 PLOT_LEFT_MARGIN = 68
 PLOT_RIGHT_MARGIN = 12
-PLOT_TOP_MARGIN = 36
-PLOT_BOTTOM_MARGIN = 16
+PLOT_TOP_MARGIN = 42
+PLOT_BOTTOM_MARGIN = 20
 AUTO_SCROLL_TOOLTIP = "Keep the plot view following the newest incoming data."
 FIT_CAPTURE_TOOLTIP = "Zoom the plot out to show all captured data."
 
@@ -127,8 +130,16 @@ class _PlotCanvas(QWidget):
             end_time = start_time + 1.0
         minimum, maximum = self._y_range(label)
 
+        painter.setPen(PLOT_BORDER)
+        painter.setBrush(PLOT_SURFACE)
+        painter.drawRoundedRect(panel.adjusted(1, 1, -1, -7), 5, 5)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.setPen(PLOT_TEXT)
-        header = QRectF(12, panel.top() + 4, self.width() - 24, 24)
+        normal_font = painter.font()
+        heading_font = painter.font()
+        heading_font.setBold(True)
+        painter.setFont(heading_font)
+        header = QRectF(14, panel.top() + 7, self.width() - 28, 24)
         value_width = min(header.width() * .55, painter.fontMetrics().horizontalAdvance(curve.latest) + 16)
         name_rect = header.adjusted(0, 0, -value_width, 0)
         name = painter.fontMetrics().elidedText(label, Qt.TextElideMode.ElideRight, int(name_rect.width()))
@@ -137,6 +148,7 @@ class _PlotCanvas(QWidget):
         value_rect = QRectF(header.right() - value_width, header.top(), value_width, header.height())
         painter.drawText(value_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                          painter.fontMetrics().elidedText(curve.latest, Qt.TextElideMode.ElideRight, int(value_width)))
+        painter.setFont(normal_font)
         grid_pen = QPen(PLOT_GRID)
         grid_pen.setCosmetic(True)
         for fraction in _time_tick_fractions():
@@ -149,12 +161,10 @@ class _PlotCanvas(QWidget):
             y = plot.bottom() - fraction * plot.height()
             painter.setPen(grid_pen)
             painter.drawLine(plot.left(), y, plot.right(), y)
-            painter.setPen(QColor("#929da8"))
+            painter.setPen(PLOT_SECONDARY)
             painter.drawText(QRectF(0, y - 9, plot.left() - 8, 18),
                              Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                              _format_axis_value(minimum + fraction * (maximum - minimum)))
-        painter.setPen(grid_pen)
-        painter.drawLine(panel.bottomLeft(), panel.bottomRight())
         if curve.path.isEmpty():
             return
         x_scale = plot.width() / (end_time - start_time)
@@ -273,7 +283,7 @@ class _TimeAxis(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.fillRect(self.rect(), PLOT_BACKGROUND)
-        painter.setPen(QColor("#929da8"))
+        painter.setPen(PLOT_SECONDARY)
         start, end = self.graph.time_range
         for fraction in _time_tick_fractions():
             x = PLOT_LEFT_MARGIN + fraction * self.graph.plot_width()
@@ -352,10 +362,14 @@ class PlotWidget(QWidget):
         self.capture_title.setTextFormat(Qt.TextFormat.PlainText)
         self.capture_title.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.capture_title.setMaximumWidth(240)
-        self.auto_scroll_button = QPushButton("Auto scroll")
+        self.auto_scroll_button = QPushButton("Auto scroll on")
         self.auto_scroll_button.setObjectName("PlotModeButton")
+        self.auto_scroll_button.setMinimumWidth(130)
         self.auto_scroll_button.setCheckable(True)
         self.auto_scroll_button.setChecked(True)
+        self.auto_scroll_button.toggled.connect(
+            lambda checked: self.auto_scroll_button.setText("Auto scroll on" if checked else "Auto scroll off")
+        )
         self.auto_scroll_button.setToolTip(AUTO_SCROLL_TOOLTIP)
         self.auto_scroll_button.clicked.connect(self.on_toggle_auto_scroll)
         self.fit_capture_button = QPushButton("Fit capture")
@@ -392,16 +406,14 @@ class PlotWidget(QWidget):
         self._timer.timeout.connect(self.on_refresh_pending_data)
         self._timer.start()
 
-    def attach_series_selector(self, heading: QLabel, series_list: QListWidget) -> None:
+    def attach_series_selector(self, series_list: QListWidget) -> None:
         """Keep series visibility controls immediately above the plot panels."""
-        heading.setParent(self.series_selector)
         series_list.setParent(self.series_selector)
         series_list.setFlow(QListWidget.Flow.LeftToRight)
         series_list.setWrapping(False)
         series_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         series_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        series_list.setFixedHeight(42)
-        self.series_selector_layout.addWidget(heading)
+        series_list.setFixedHeight(50)
         self.series_selector_layout.addWidget(series_list, 1)
         self.series_selector.show()
 

@@ -28,9 +28,17 @@ Choose **Save settings**, then **Connect**. Escape or clicking outside discards
 unsaved edits; connection settings are locked while connected. Use the series strip above
 the plots to show or hide traces; hidden series continue recording and retain their colors.
 
-**Edit rules…** opens a draft editor. Generate rules from sample output or edit
-the table, then use **Apply** or **OK** to update parsing for future samples.
-**Cancel** discards edits made since the last Apply. Profiles save applied rules.
+The extraction sidebar contains a sample input and an editable rules table.
+Generate rules from a sample or edit the table, then
+choose **Apply rules** to update parsing for future samples. Inline feedback shows
+unapplied changes, validation errors, and successful application. Profiles save
+applied rules. Field indices are zero-based (0 is the first field).
+
+The Graphite & teal theme separates configuration panels from recessed plot and
+console surfaces. Teal highlights primary actions and active plot modes; each
+series retains its own color. The Connect/Disconnect button also indicates
+connection state; baud rate is shown only in connection settings. Auto-scroll
+state uses an explicit on/off label.
 
 Each plot header shows the latest captured value and unit, even when viewing
 older history. **Fit capture** and **Auto scroll**, on the right of the shared
@@ -39,7 +47,8 @@ appears only for loaded captures, showing the filename with its full path in a t
 Wheel or drag plots to zoom/pan time; use the Y axis to adjust its range and
 double-click it to reset. Larger stacks scroll vertically above a fixed time axis.
 
-Open the **Console** drawer to send commands with Enter or Send. **Clear console**
+Open the **Console** drawer to send commands with Enter or Send; **Hide** collapses
+it again. **Clear console**
 only clears text; **File → Clear captured data** also clears plotted history,
 without deleting recordings. The **View** menu controls the console, sidebar,
 and diagnostics (point counts and downsampling). The console retains the latest
