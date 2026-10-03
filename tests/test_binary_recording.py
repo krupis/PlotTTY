@@ -25,7 +25,7 @@ class BinaryRecordingTest(unittest.TestCase):
         self.session.settings.log_to_file = True
         self.session._serial_log.log_dir = Path(self.directory.name)
         self.session._plot_log.log_dir = Path(self.directory.name)
-        self.session.set_rules([ExtractionRule(label=f"Value {i}", mode="delimiter_column", extra_setting=str(i))
+        self.session.set_rules([ExtractionRule(label=f"Value {i}", method="delimited_values", extra_setting=str(i))
                                 for i in range(6)])
         self.session._serial_log.start('TEST', 115200)
         self.path = self.session._plot_log.start('TEST', 115200)

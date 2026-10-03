@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from PySide6.QtCore import QObject, QPoint, QPointF, QSettings, Qt, Signal
-from PySide6.QtGui import QWheelEvent
+from PySide6.QtGui import QColor, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
 
@@ -90,10 +90,10 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(self.window.applied_rules[0].label, "inline")
 
     def test_applying_a_rule_label_change_renames_existing_series(self):
-        initial = [ExtractionRule("Value 0", "delimiter_column", extra_setting="0")]
+        initial = [ExtractionRule("Value 0", "delimited_values", extra_setting="0")]
         self.window.apply_rules(initial)
         self.window.plot.append_values([CapturedValue(1, "Value 0", 3.3)])
-        renamed = [ExtractionRule("Voltage", "delimiter_column", extra_setting="0")]
+        renamed = [ExtractionRule("Voltage", "delimited_values", extra_setting="0")]
         self.window.apply_rules(renamed)
         self.window.plot.append_values([CapturedValue(2, "Voltage", 3.4)])
         self.window.plot.on_refresh_pending_data()
@@ -103,17 +103,17 @@ class WorkspaceTest(unittest.TestCase):
     def test_rule_function_replaces_enable_and_x_reference_columns(self):
         dialog = self.editor([
             ExtractionRule("plot", "first_number"),
-            ExtractionRule("time", "delimiter_column", sample_counter=True, extra_setting="0"),
+            ExtractionRule("time", "delimited_values", is_time=True, extra_setting="0"),
         ])
         self.assertEqual(dialog.table.horizontalHeaderItem(0).text(), "Function")
-        self.assertEqual(dialog.table.columnCount(), 5)
+        self.assertEqual(dialog.table.columnCount(), 6)
         self.assertEqual(dialog.table.cellWidget(0, 0).currentData(), "plot")
         self.assertEqual(dialog.table.cellWidget(1, 0).currentData(), "time")
         rules = dialog.rules_table.rules()
-        self.assertTrue(rules[1].sample_counter)
+        self.assertTrue(rules[1].is_time)
 
     def test_invalid_rule_edit_does_not_commit(self):
-        dialog = self.editor([ExtractionRule("bad", "regex", extra_setting="[")])
+        dialog = self.editor([ExtractionRule("bad", "regex_pattern", extra_setting="[")])
         previous = self.window.applied_rules
         for pattern in ("[", "no group"):
             dialog.table.item(0, 3).setText(pattern)
@@ -121,7 +121,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertIs(self.window.applied_rules, previous)
         dialog.table.item(0, 3).setText(r"(\d+)")
         self.assertTrue(dialog.apply_rules())
-        dialog.rules_table.set_rules([ExtractionRule("x", "delimiter_column", extra_setting="-1")])
+        dialog.rules_table.set_rules([ExtractionRule("x", "delimited_values", extra_setting="-1")])
         self.assertFalse(dialog.apply_rules())
         dialog.table.item(0, 4).setText("1.5")
         self.assertFalse(dialog.apply_rules())
@@ -130,7 +130,7 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_rule_feedback_tracks_drafts_validation_and_apply(self):
         editor = self.window.rules_editor
-        editor.rules_table.set_rules([ExtractionRule("value", "regex", extra_setting=r"(\d+)")])
+        editor.rules_table.set_rules([ExtractionRule("value", "regex_pattern", extra_setting=r"(\d+)")])
         self.assertTrue(editor.apply_button.isEnabled())
         self.assertTrue(editor.apply_rules())
         self.assertFalse(editor.apply_button.isEnabled())
@@ -183,9 +183,72 @@ class WorkspaceTest(unittest.TestCase):
         self.assertLessEqual(editor.table.height(), single_height + 20)
         self.assertEqual(editor.table.verticalScrollBar().maximum(), 0)
 
+    def test_rule_color_picker_is_draft_and_persists_in_profile(self):
+        editor = self.window.rules_editor
+        editor.rules_table.set_rules([ExtractionRule("Voltage", "first_number")])
+        editor.apply_rules()
+        self.window.plot.append_values([CapturedValue(1, "Voltage", 3.3)])
+        original = self.window.plot.series_info()[0]["color"].name()
+        swatch = editor.table.cellWidget(0, 5)
+        with patch("modules.widgets.rules_table.QColorDialog.getColor", return_value=QColor("#ff8844")):
+            swatch.click()
+        self.assertTrue(editor.apply_button.isEnabled())
+        self.assertEqual(self.window.plot.series_info()[0]["color"].name(), original)
+        editor.apply_button.click()
+        self.assertEqual(self.window.plot.series_info()[0]["color"].name(), "#ff8844")
+        self.assertEqual(self.window.plot._curves["Voltage"].color.name(), "#ff8844")
+
+        swatch = editor.table.cellWidget(0, 5)
+        with patch("modules.widgets.rules_table.QMenu") as menu:
+            menu.return_value.exec.return_value = menu.return_value.addAction.return_value
+            swatch.customContextMenuRequested.emit(QPoint())
+        self.assertEqual(swatch.property("color"), "")
+        self.assertTrue(editor.apply_button.isEnabled())
+        editor.apply_button.click()
+        self.assertEqual(self.window.plot.series_info()[0]["color"].name(), original)
+        with patch("modules.widgets.rules_table.QColorDialog.getColor", return_value=QColor("#ff8844")):
+            swatch.click()
+        editor.apply_button.click()
+        self.assertEqual(self.window.plot._series["Voltage"].sample_count(), 1)
+        path = Path(self.temp.name) / "colors.json"
+        save_profile(AppProfile("colors", self.window.applied_rules), path)
+        rules = load_profile(path).rules
+        self.assertEqual(rules[0].color, "#ff8844")
+        editor.rules_table.set_rules(rules)
+        self.assertEqual(editor.table.cellWidget(0, 5).property("color"), "#ff8844")
+        self.window.plot.set_series_visible("Voltage", False)
+        self.window.plot.set_series_visible("Voltage", True)
+        self.assertEqual(self.window.plot._curves["Voltage"].color.name(), "#ff8844")
+
+    def test_color_cancel_time_role_and_default_palette(self):
+        editor = self.window.rules_editor
+        editor.rules_table.set_rules([
+            ExtractionRule("Time", "delimited_values", is_time=True, extra_setting="0"),
+            ExtractionRule("Voltage", "first_number"),
+        ])
+        editor.apply_rules()
+        self.assertTrue(editor.table.cellWidget(0, 5).isHidden())
+        swatch = editor.table.cellWidget(1, 5)
+        with patch("modules.widgets.rules_table.QColorDialog.getColor", return_value=QColor()):
+            swatch.click()
+        self.assertFalse(editor.apply_button.isEnabled())
+        self.window.plot.append_values([CapturedValue(1, "Voltage", 3.3)])
+        self.assertEqual(swatch.property("displayColor"), self.window.plot.series_info()[0]["color"].name())
+
+    def test_named_rule_color_applies_to_multiple_series_and_validates_profile(self):
+        self.window.apply_rules([ExtractionRule("Auto", "named_values", color="#bb66ee")])
+        self.window.plot.append_values([CapturedValue(1, "A", 1), CapturedValue(1, "B", 2)])
+        self.assertEqual([entry["color"].name() for entry in self.window.plot.series_info()], ["#bb66ee", "#bb66ee"])
+        self.window.apply_rules([ExtractionRule("Auto", "named_values")])
+        self.assertNotEqual(*[entry["color"].name() for entry in self.window.plot.series_info()])
+        path = Path(self.temp.name) / "invalid-color.json"
+        save_profile(AppProfile("bad", [ExtractionRule("A", color="not-a-color")]), path)
+        with self.assertRaises(ValueError):
+            load_profile(path)
+
     def test_rule_selection_remove_and_x_reference(self):
-        dialog = self.editor([ExtractionRule("time", "delimiter_column", sample_counter=True, extra_setting="0"),
-                              ExtractionRule("voltage", "delimiter_column", extra_setting="1")])
+        dialog = self.editor([ExtractionRule("time", "delimited_values", is_time=True, extra_setting="0"),
+                              ExtractionRule("voltage", "delimited_values", extra_setting="1")])
         self.assertTrue(dialog.apply_rules())
         captured = self.window.session._engine.extract("12,3.3")
         self.assertEqual((captured[0].timestamp, captured[0].value), (12, 3.3))
@@ -448,9 +511,9 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_profile_validation_rejects_invalid_rules_and_unknown_fields(self):
         path = Path(self.temp.name) / "bad.json"
-        for rule in (ExtractionRule("bad", "regex", extra_setting="["),
-                     ExtractionRule("bad", "regex", extra_setting="no group"),
-                     ExtractionRule("bad", "delimiter_column", extra_setting="-1")):
+        for rule in (ExtractionRule("bad", "regex_pattern", extra_setting="["),
+                     ExtractionRule("bad", "regex_pattern", extra_setting="no group"),
+                     ExtractionRule("bad", "delimited_values", extra_setting="-1")):
             save_profile(AppProfile("invalid", [rule]), path)
             dialog = self.editor([rule])
             self.assertFalse(dialog.apply_rules())
@@ -465,7 +528,7 @@ class WorkspaceTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             load_profile(path)
 
-    def test_generated_units_and_mode_changes(self):
+    def test_generated_units_and_method_changes(self):
         rules = suggest_rules("Voltage: 3.31 V  Current: 0.14 A")
         captured = ExtractionEngine(rules).extract("Voltage: 3.32 V  Current: 0.15 A")
         self.assertEqual([v.unit for v in captured], ["V", "A"])
@@ -474,7 +537,7 @@ class WorkspaceTest(unittest.TestCase):
         combo.setCurrentIndex(combo.findData("first_number"))
         self.assertEqual(dialog.table.item(0, 3).text(), "")
         self.assertFalse(dialog.table.item(0, 3).flags() & Qt.ItemFlag.ItemIsEditable)
-        combo.setCurrentIndex(combo.findData("delimiter_column"))
+        combo.setCurrentIndex(combo.findData("delimited_values"))
         self.assertEqual(dialog.table.item(0, 3).text(), ",")
         self.assertEqual(dialog.table.item(0, 4).text(), "0")
         self.assertTrue(dialog.apply_rules())

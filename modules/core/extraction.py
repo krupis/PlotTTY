@@ -10,13 +10,13 @@ from typing import Literal
 
 
 NUMBER_PATTERN = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
-AUTO_KEY_VALUE_RE = re.compile(
+NAMED_VALUES_RE = re.compile(
     rf"([A-Za-z_][\w .\-/]*)\s*(?:=|:)\s*({NUMBER_PATTERN})\s*"
     rf"((?![A-Za-z_][\w.\-/]*\s*(?:=|:))[^\s,;=:]*)?"
 )
 FIRST_NUMBER_RE = re.compile(NUMBER_PATTERN)
 
-ExtractionMode = Literal["auto_key_value", "first_number", "regex", "delimiter_column"]
+ExtractionMethod = Literal["named_values", "first_number", "regex_pattern", "delimited_values"]
 
 
 @dataclass(frozen=True)
@@ -31,11 +31,12 @@ class CapturedValue:
 @dataclass
 class ExtractionRule:
     label: str
-    mode: ExtractionMode = "auto_key_value"
-    sample_counter: bool = False
+    method: ExtractionMethod = "named_values"
+    is_time: bool = False
     extra_setting: str = ""
     delimiter: str = ","
     unit: str = ""
+    color: str = ""
 
 
 def validate_rules(rules: Iterable[ExtractionRule]) -> None:
@@ -43,14 +44,16 @@ def validate_rules(rules: Iterable[ExtractionRule]) -> None:
     errors = []
     for row, rule in enumerate(rules, 1):
         try:
-            if rule.mode not in ("auto_key_value", "first_number", "regex", "delimiter_column"):
-                raise ValueError(f"Unknown extraction mode: {rule.mode}")
-            if rule.mode == "regex":
+            if not isinstance(rule.color, str) or (rule.color and not re.fullmatch(r"#[0-9a-fA-F]{6}", rule.color)):
+                raise ValueError("Color must be a #RRGGBB value or empty for automatic colors.")
+            if rule.method not in ("named_values", "first_number", "regex_pattern", "delimited_values"):
+                raise ValueError(f"Unknown extraction method: {rule.method}")
+            if rule.method == "regex_pattern":
                 if not rule.extra_setting:
                     raise ValueError("Regex pattern is required.")
                 if re.compile(rule.extra_setting).groups < 1:
                     raise ValueError("Regex must contain a capture group for the numeric value.")
-            if rule.mode == "delimiter_column":
+            if rule.method == "delimited_values":
                 if not rule.extra_setting.isdecimal():
                     raise ValueError("Field index must be a nonnegative integer.")
                 if not rule.delimiter:
@@ -69,14 +72,14 @@ class ExtractionEngine:
 
     def extract(self, text: str, timestamp: float | None = None) -> list[CapturedValue]:
         timestamp = timestamp if timestamp is not None else time()
-        # Split once per delimiter, shared by counter and value rules for this line.
+        # Split once per delimiter, shared by Time and Plot rules for this line.
         fields: dict[str, list[str]] = {}
-        counter_timestamp = _counter_timestamp(self.rules, text, fields)
-        timestamp = counter_timestamp if counter_timestamp is not None else timestamp
+        rule_timestamp = _rule_timestamp(self.rules, text, fields)
+        timestamp = rule_timestamp if rule_timestamp is not None else timestamp
         captured_values = []
 
         for rule in self.rules:
-            if rule.sample_counter:
+            if rule.is_time:
                 continue
 
             captured_values.extend(_extract_rule(rule, text, timestamp, fields))
@@ -85,7 +88,7 @@ class ExtractionEngine:
 
 
 def default_rules() -> list[ExtractionRule]:
-    return [ExtractionRule(label="Auto key/value", mode="auto_key_value")]
+    return [ExtractionRule(label="Named values", method="named_values")]
 
 
 def _extract_rule(
@@ -93,27 +96,27 @@ def _extract_rule(
 ) -> list[CapturedValue]:
     captured_values = []
 
-    if rule.mode == "auto_key_value":
-        for match in AUTO_KEY_VALUE_RE.finditer(text):
+    if rule.method == "named_values":
+        for match in NAMED_VALUES_RE.finditer(text):
             label = match.group(1)
             value = float(match.group(2))
             unit = (match.group(3) or rule.unit or "").strip()
             captured_values.append(_captured_value(timestamp, label, value, unit, text))
 
-    elif rule.mode == "first_number":
+    elif rule.method == "first_number":
         match = FIRST_NUMBER_RE.search(text)
         if match:
             value = float(match.group(0))
             captured_values.append(_captured_value(timestamp, rule.label, value, rule.unit, text))
 
-    elif rule.mode == "regex" and rule.extra_setting:
+    elif rule.method == "regex_pattern" and rule.extra_setting:
         for match in re.finditer(rule.extra_setting, text):
             if match.groups():
                 captured_values.append(
                     _captured_value(timestamp, rule.label, float(match.group(1)), rule.unit, text)
                 )
 
-    elif rule.mode == "delimiter_column":
+    elif rule.method == "delimited_values":
         try:
             column = int(rule.extra_setting)
         except ValueError:
@@ -136,11 +139,11 @@ def _extract_rule(
     return captured_values
 
 
-def _counter_timestamp(
+def _rule_timestamp(
     rules: Iterable[ExtractionRule], text: str, fields: dict[str, list[str]]
 ) -> float | None:
     for rule in rules:
-        if not rule.sample_counter:
+        if not rule.is_time:
             continue
 
         values = _extract_rule(rule, text, 0.0, fields)

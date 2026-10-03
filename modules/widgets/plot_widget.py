@@ -10,8 +10,9 @@ from PySide6.QtCore import QPoint, QRectF, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
-from ..core.extraction import CapturedValue
+from ..core.extraction import CapturedValue, clean_label
 from ..core.plotter import Plotter
+from ..core.series_colors import default_series_color
 
 
 PLOT_REFRESH_INTERVAL_MS = 33
@@ -339,6 +340,8 @@ class PlotWidget(QWidget):
         self._time_window = time_window
         self._last_time_range = (0.0, time_window)
         self._series: dict[str, Plotter] = {}
+        self._series_colors: dict[str, str] = {}
+        self._named_values_color = ""
         self._curves: dict[str, _CurveData] = {}
         self._visible_labels: set[str] = set()
         self._start_time: float | None = None
@@ -517,9 +520,30 @@ class PlotWidget(QWidget):
         self._set_time_range(start_time, end_time)
 
     def series_info(self):
-        return [{"label": label, "unit": series.unit, "color": QColor(_color_for_index(row)),
+        return [{"label": label, "unit": series.unit, "color": self._series_color(label, row),
                  "visible": label in self._visible_labels}
                 for row, (label, series) in enumerate(self._series.items())]
+
+    def set_rule_colors(self, rules):
+        self._series_colors = {}
+        self._named_values_color = ""
+        index = 0
+        for rule in rules:
+            if rule.is_time:
+                continue
+            if rule.method == "named_values":
+                self._named_values_color = rule.color
+            else:
+                self._series_colors[clean_label(rule.label)] = rule.color or default_series_color(index)
+            index += 1
+        for row, label in enumerate(self._series):
+            if label in self._curves:
+                self._curves[label].color = self._series_color(label, row)
+        self.graph.update()
+        self.seriesChanged.emit()
+
+    def _series_color(self, label, index):
+        return QColor(self._series_colors.get(label) or self._named_values_color or default_series_color(index))
 
     def set_series_visible(self, label: str, visible: bool) -> None:
         if label not in self._series or (label in self._visible_labels) == visible:
@@ -555,7 +579,7 @@ class PlotWidget(QWidget):
 
     def _rebuild_plots(self) -> None:
         self._curves = {
-            label: _CurveData(QColor(_color_for_index(row)))
+            label: _CurveData(self._series_color(label, row))
             for row, label in enumerate(self._series) if label in self._visible_labels
         }
         self.graph.empty_message = "No series selected" if self._series else "Waiting for series"
@@ -647,9 +671,6 @@ def _format_time_value(value: float, visible_span: float) -> str:
     return "0" if text in ("-0", "-0.0") else text
 
 
-def _color_for_index(index: int) -> str:
-    colors = ["#7cd1a8", "#89b4fa", "#f9c74f", "#f7768e", "#cba6f7", "#4dd0e1"]
-    return colors[index % len(colors)]
 
 
 def _prepare_plot_arrays(x_values: list[float], y_values: list[float]) -> tuple[list[float], list[float]]:

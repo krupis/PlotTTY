@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .extraction import AUTO_KEY_VALUE_RE, FIRST_NUMBER_RE, NUMBER_PATTERN, ExtractionRule, clean_label
+from .extraction import NAMED_VALUES_RE, FIRST_NUMBER_RE, NUMBER_PATTERN, ExtractionRule, clean_label
 
 
 DELIMITER_SPLIT_RE = re.compile(r"[,;\t]")
@@ -15,37 +15,37 @@ def suggest_rules(text: str) -> list[ExtractionRule]:
     if not lines:
         return []
 
-    suggestions = _key_value_suggestions(lines)
+    suggestions = _named_values_suggestions(lines)
     if suggestions:
         return suggestions
 
-    suggestions = _delimiter_suggestions(lines)
+    suggestions = _delimited_values_suggestions(lines)
     if suggestions:
         return suggestions
 
     return _first_number_suggestion(lines)
 
 
-def _key_value_suggestions(lines: list[str]) -> list[ExtractionRule]:
+def _named_values_suggestions(lines: list[str]) -> list[ExtractionRule]:
     suggestions = []
     seen_labels = set()
 
     for line in lines:
-        for match in AUTO_KEY_VALUE_RE.finditer(line):
+        for match in NAMED_VALUES_RE.finditer(line):
             label = clean_label(match.group(1))
             if label in seen_labels:
                 continue
             seen_labels.add(label)
             regex_pattern = rf"{re.escape(label)}\s*(?:=|:)\s*({NUMBER_PATTERN})"
             suggestions.append(
-                ExtractionRule(label=label, mode="regex", extra_setting=regex_pattern,
+                ExtractionRule(label=label, method="regex_pattern", extra_setting=regex_pattern,
                                unit=(match.group(3) or "").strip())
             )
 
     return suggestions
 
 
-def _delimiter_suggestions(lines: list[str]) -> list[ExtractionRule]:
+def _delimited_values_suggestions(lines: list[str]) -> list[ExtractionRule]:
     first_delimited_line = next((line for line in lines if DELIMITER_SPLIT_RE.search(line)), "")
     if not first_delimited_line:
         return []
@@ -68,7 +68,7 @@ def _delimiter_suggestions(lines: list[str]) -> list[ExtractionRule]:
         suggestions.append(
             ExtractionRule(
                 label=f"Value {index}",
-                mode="delimiter_column",
+                method="delimited_values",
                 extra_setting=str(index),
                 delimiter=delimiter,
             )
@@ -79,7 +79,7 @@ def _delimiter_suggestions(lines: list[str]) -> list[ExtractionRule]:
 def _first_number_suggestion(lines: list[str]) -> list[ExtractionRule]:
     for line in lines:
         if FIRST_NUMBER_RE.search(line):
-            return [ExtractionRule(label="Value", mode="first_number")]
+            return [ExtractionRule(label="Value", method="first_number")]
     return []
 
 

@@ -25,6 +25,7 @@ files = [
     "modules/core/line_decoder.py",
     "modules/core/plotter.py",
     "modules/core/profiles.py",
+    "modules/core/series_colors.py",
     "modules/core/rule_suggestions.py",
     "modules/core/serial_log.py",
     "modules/core/serial_transport.py",

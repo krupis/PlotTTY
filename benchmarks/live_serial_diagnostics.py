@@ -59,7 +59,7 @@ def main():
     window = MainWindow()
     window._preferences = QSettings(str(args.output.resolve() / "layout.ini"), QSettings.Format.IniFormat)
     window.resize(1280, 720)
-    window.apply_rules([ExtractionRule(f"Value {i}", "delimiter_column", extra_setting=str(i)) for i in range(6)])
+    window.apply_rules([ExtractionRule(f"Value {i}", "delimited_values", extra_setting=str(i)) for i in range(6)])
     window.apply_settings(SerialSettings(port=args.port, log_to_file=not args.no_logging))
     window.session._serial_log.log_dir = args.output
     window.session._plot_log.log_dir = args.output

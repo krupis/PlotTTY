@@ -38,6 +38,25 @@ directly below it. Generate and Apply span the sidebar width, with Apply
 anchored at the bottom. Apply is disabled
 until the draft differs from the applied rules; reverting edits disables it again.
 
+Click a color dot beside a Plot rule to choose its trace color, then **Apply rules**.
+Colors update both existing traces and the series strip and are saved in profiles.
+Right-click a dot and choose **Automatic color** to return to the default palette.
+Time rules have no swatch. A custom color on a **Named values** rule applies to all
+series extracted by that rule; automatic mode gives those series separate colors.
+
+Extraction methods use matching names in the UI and in `ExtractionRule.method`
+(also the `method` field in saved profiles):
+
+| UI method | Code/profile value |
+| --- | --- |
+| Named values | `named_values` |
+| Delimited values | `delimited_values` |
+| Regex pattern | `regex_pattern` |
+| First number | `first_number` |
+
+The **Function** column maps to `is_time`: `true` for Time and `false` for Plot.
+Profiles use these current names; legacy field names are not supported.
+
 The Graphite & teal theme separates configuration panels from recessed plot and
 console surfaces. Teal highlights primary actions and active plot modes; each
 series retains its own color. The Connect/Disconnect button also indicates
