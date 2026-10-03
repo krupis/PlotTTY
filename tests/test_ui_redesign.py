@@ -250,6 +250,45 @@ class WorkspaceTest(unittest.TestCase):
         window.ui.actionClearCapturedData.trigger()
         self.assertEqual(window.plot.series_info(), [])
 
+    def test_console_divider_collapses_and_reopens_by_drag(self):
+        window = self.window
+        splitter = window.ui.WorkspaceSplitter
+        window.ui.actionConsole.setChecked(True)
+        APP.processEvents()
+        handle = splitter.handle(1)
+        self.assertGreater(splitter.sizes()[1], 0)
+        QTest.mousePress(handle, Qt.MouseButton.LeftButton, pos=handle.rect().center())
+        QTest.mouseMove(handle, QPoint(handle.width() // 2, splitter.height()))
+        QTest.mouseRelease(handle, Qt.MouseButton.LeftButton)
+        APP.processEvents()
+        self.assertEqual(splitter.sizes()[1], 0)
+        self.assertFalse(window.ui.actionConsole.isChecked())
+        self.assertTrue(handle.isVisible())
+        self.assertGreater(handle.height(), 0)
+        QTest.mousePress(handle, Qt.MouseButton.LeftButton, pos=handle.rect().center())
+        QTest.mouseMove(handle, QPoint(handle.width() // 2, -250))
+        QTest.mouseRelease(handle, Qt.MouseButton.LeftButton)
+        APP.processEvents()
+        self.assertGreater(splitter.sizes()[1], 0)
+        self.assertTrue(window.ui.actionConsole.isChecked())
+
+    def test_collapsed_console_restores_and_search_reopens_it(self):
+        window = self.window
+        window.ui.actionConsole.setChecked(True)
+        window.ui.actionConsole.setChecked(False)
+        self.assertEqual(window.ui.WorkspaceSplitter.sizes()[1], 0)
+        window.close()
+        restored = MainWindow()
+        self.addCleanup(restored.close)
+        restored.show()
+        APP.processEvents()
+        self.assertEqual(restored.ui.WorkspaceSplitter.sizes()[1], 0)
+        self.assertTrue(restored.ui.WorkspaceSplitter.handle(1).isVisible())
+        restored.focus_console_search()
+        APP.processEvents()
+        self.assertGreater(restored.ui.WorkspaceSplitter.sizes()[1], 0)
+        self.assertTrue(restored.ui.SearchEdit.hasFocus())
+
     def test_console_search_selects_and_navigates_matches(self):
         self.window.console.append_received("alpha beta alpha")
         self.window.console.flush()

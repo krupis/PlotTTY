@@ -19,7 +19,13 @@ The production UI retains per-rule
 extraction methods and zero-based fields, and displays actual latest values rather
 than the mockup's illustrative minimum/maximum statistics.
 
-Validation: 55 unit tests pass, including draft/apply behavior, adaptive table sizing, visible validation
+The console collapses and reopens by dragging its divider to/from the bottom edge;
+View → Console and Ctrl+F remain available. No separate Hide or drawer-toggle
+button is used. Both Clear buttons and the Add/Remove labels are compact, with
+tooltips explaining their scope.
+
+Validation: 57 unit tests pass, including console drag/reopen and persisted collapse,
+draft/apply behavior, adaptive table sizing, visible validation
 feedback, serial recording through a fake transport,
 console search and commands, capture import/export, and plot navigation. Screenshots
 were reviewed at 1672 × 941 and 1280 × 800. No physical device or packaged executable

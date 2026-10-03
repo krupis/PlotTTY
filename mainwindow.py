@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPalette, QPixmap, QShortcut
-from PySide6.QtCore import QSettings, QSize, QTimer, Qt, Slot
+from PySide6.QtCore import QSettings, QSignalBlocker, QSize, QTimer, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QProgressDialog,
     QSizePolicy,
-    QToolButton,
     QWidget,
 )
 
@@ -139,11 +138,6 @@ class MainWindow(QMainWindow):
             heading = QLabel(title, panel)
             heading.setObjectName("PanelHeading")
             layout.insertWidget(0, heading)
-        collapse_console = QToolButton(self.ui.ConsolePanel)
-        collapse_console.setText("Hide")
-        collapse_console.setToolTip("Collapse the console")
-        collapse_console.clicked.connect(lambda: self.ui.actionConsole.setChecked(False))
-        self.ui.SearchLayout.addWidget(collapse_console)
         self.ui.SearchLayout.setSpacing(8)
         self.ui.SendButton.setProperty("primary", True)
         self.ui.SendButton.setIcon(QIcon(":/icons/send.svg"))
@@ -158,7 +152,6 @@ class MainWindow(QMainWindow):
         self.ui.SearchPreviousButton.clicked.connect(self.on_console_search_previous)
         self._console_search_shortcut = QShortcut(QKeySequence.StandardKey.Find, self)
         self._console_search_shortcut.activated.connect(self.focus_console_search)
-        self.ui.ConsoleToggle.setDefaultAction(self.ui.actionConsole)
         self.ui.actionConsole.toggled.connect(self.set_console_visible)
         self.ui.actionSidebar.toggled.connect(self.ui.SeriesSidebar.setVisible)
         self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
@@ -175,9 +168,13 @@ class MainWindow(QMainWindow):
         self.ui.MainSplitter.setStretchFactor(0, 0)
         self.ui.MainSplitter.setStretchFactor(1, 1)
         self.ui.WorkspaceSplitter.setCollapsible(0, False)
-        self.ui.WorkspaceSplitter.setCollapsible(1, False)
+        self.ui.WorkspaceSplitter.setCollapsible(1, True)
+        self.ui.WorkspaceSplitter.setHandleWidth(8)
+        self.ui.WorkspaceSplitter.handle(1).setToolTip("Drag down to collapse the console; drag up to reopen it.")
+        self.ui.WorkspaceSplitter.handle(1).setAccessibleName("Resize or collapse console")
+        self.ui.WorkspaceSplitter.splitterMoved.connect(self._console_splitter_moved)
         self._console_height = 180
-        self.ui.ConsolePanel.hide()
+        self.set_console_visible(False)
         self.ui.actionSidebar.setChecked(True)
         self._preferences = QSettings("PlotTTY", "PlotTTY")
         self._sidebar_structure = None
@@ -227,14 +224,19 @@ class MainWindow(QMainWindow):
         self.plot.set_series_visible(item.data(Qt.ItemDataRole.UserRole), item.checkState() == Qt.CheckState.Checked)
 
     def set_console_visible(self, visible):
-        if not visible and self.ui.ConsolePanel.isVisible():
+        if not visible and self.ui.WorkspaceSplitter.sizes()[1] > 0:
             self._console_height = max(80, self.ui.WorkspaceSplitter.sizes()[1])
-        self.ui.ConsoleToggle.setArrowType(Qt.ArrowType.DownArrow if visible else Qt.ArrowType.RightArrow)
-        self.ui.ConsolePanel.setVisible(visible)
-        self.ui.ConsoleToggle.setVisible(not visible)
-        if visible:
-            height = self.ui.WorkspaceSplitter.height()
-            self.ui.WorkspaceSplitter.setSizes([max(220, height - self._console_height), self._console_height])
+        height = self.ui.WorkspaceSplitter.height()
+        console_height = self._console_height if visible else 0
+        self.ui.WorkspaceSplitter.setSizes([max(220, height - console_height), console_height])
+
+    def _console_splitter_moved(self, _position, _index):
+        height = self.ui.WorkspaceSplitter.sizes()[1]
+        if height > 0:
+            self._console_height = height
+        # Reflect a drag in the menu without resizing the splitter mid-gesture.
+        with QSignalBlocker(self.ui.actionConsole):
+            self.ui.actionConsole.setChecked(height > 0)
 
     def focus_console_search(self):
         self.ui.actionConsole.setChecked(True)
@@ -274,6 +276,7 @@ class MainWindow(QMainWindow):
             self._console_height = max(80, min(int(settings.value("consoleHeight", 180)), 1000))
             for name, default in (("Console", False), ("Sidebar", True), ("Diagnostics", False)):
                 getattr(self.ui, "action" + name).setChecked(settings.value(name, default, type=bool))
+            self.set_console_visible(self.ui.actionConsole.isChecked())
         except (TypeError, ValueError):
             self.resize(1280, 800)
 

@@ -50,8 +50,10 @@ appears only for loaded captures, showing the filename with its full path in a t
 Wheel or drag plots to zoom/pan time; use the Y axis to adjust its range and
 double-click it to reset. Larger stacks scroll vertically above a fixed time axis.
 
-Open the **Console** drawer to send commands with Enter or Send; **Hide** collapses
-it again. **Clear console**
+Drag the divider at the bottom of the plot upward to open the **Console**, or use
+**View → Console**. Drag it down to the bottom edge to collapse the console; the
+divider stays available for reopening. Ctrl+F also opens the console and focuses
+search. Send commands with Enter or Send. The console's **Clear** button
 only clears text; **File → Clear captured data** also clears plotted history,
 without deleting recordings. The **View** menu controls the console, sidebar,
 and diagnostics (point counts and downsampling). The console retains the latest

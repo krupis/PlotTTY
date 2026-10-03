@@ -39,14 +39,13 @@
              <layout class="QHBoxLayout" name="CommandLayout">
               <item><widget class="QLineEdit" name="CommandEdit"><property name="placeholderText"><string>Type command and press Enter</string></property></widget></item>
               <item><widget class="QPushButton" name="SendButton"><property name="text"><string>Send</string></property></widget></item>
-              <item><widget class="QPushButton" name="ClearConsoleButton"><property name="text"><string>Clear console</string></property></widget></item>
+              <item><widget class="QPushButton" name="ClearConsoleButton"><property name="text"><string>Clear</string></property><property name="toolTip"><string>Clear console text</string></property><property name="accessibleName"><string>Clear console</string></property></widget></item>
              </layout>
             </item>
            </layout>
           </widget>
          </widget>
         </item>
-        <item><widget class="QToolButton" name="ConsoleToggle"><property name="text"><string>Console</string></property><property name="toolButtonStyle"><enum>Qt::ToolButtonTextBesideIcon</enum></property><property name="arrowType"><enum>Qt::RightArrow</enum></property><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property></widget></item>
        </layout>
       </widget>
      </widget>

@@ -19,8 +19,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QMainWindow, QMenu,
     QMenuBar, QPlainTextEdit, QPushButton, QSizePolicy,
-    QSpacerItem, QSplitter, QStatusBar, QToolButton,
-    QVBoxLayout, QWidget)
+    QSpacerItem, QSplitter, QStatusBar, QVBoxLayout,
+    QWidget)
 
 from modules.widgets.plot_widget import PlotWidget
 
@@ -158,18 +158,6 @@ class Ui_MainWindow(object):
 
         self.WorkspaceLayout.addWidget(self.WorkspaceSplitter)
 
-        self.ConsoleToggle = QToolButton(self.Workspace)
-        self.ConsoleToggle.setObjectName(u"ConsoleToggle")
-        self.ConsoleToggle.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.ConsoleToggle.setArrowType(Qt.RightArrow)
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.ConsoleToggle.sizePolicy().hasHeightForWidth())
-        self.ConsoleToggle.setSizePolicy(sizePolicy)
-
-        self.WorkspaceLayout.addWidget(self.ConsoleToggle)
-
         self.MainSplitter.addWidget(self.Workspace)
 
         self.MainLayout.addWidget(self.MainSplitter)
@@ -220,8 +208,13 @@ class Ui_MainWindow(object):
         self.SearchNextButton.setText(QCoreApplication.translate("MainWindow", u"Next", None))
         self.CommandEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type command and press Enter", None))
         self.SendButton.setText(QCoreApplication.translate("MainWindow", u"Send", None))
-        self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear console", None))
-        self.ConsoleToggle.setText(QCoreApplication.translate("MainWindow", u"Console", None))
+        self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear", None))
+#if QT_CONFIG(tooltip)
+        self.ClearConsoleButton.setToolTip(QCoreApplication.translate("MainWindow", u"Clear console text", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.ClearConsoleButton.setAccessibleName(QCoreApplication.translate("MainWindow", u"Clear console", None))
+#endif // QT_CONFIG(accessibility)
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
         self.menuView.setTitle(QCoreApplication.translate("MainWindow", u"View", None))
         pass
