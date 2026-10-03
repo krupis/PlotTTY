@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from PySide6.QtCore import QObject, QPoint, QPointF, QSettings, Qt, Signal
-from PySide6.QtGui import QColor, QWheelEvent
+from PySide6.QtGui import QColor, QPalette, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
 
@@ -84,7 +84,6 @@ class WorkspaceTest(unittest.TestCase):
         editor = self.window.rules_editor
         self.assertIs(editor.parentWidget(), self.window.ui.SeriesSidebar)
         self.assertTrue(editor.isVisible())
-        self.assertIs(self.window.ui.SeriesList.parentWidget(), self.window.plot.series_selector)
         editor.table.item(0, 1).setText("inline")
         self.assertTrue(editor.apply_rules())
         self.assertEqual(self.window.applied_rules[0].label, "inline")
@@ -197,6 +196,9 @@ class WorkspaceTest(unittest.TestCase):
         editor.apply_button.click()
         self.assertEqual(self.window.plot.series_info()[0]["color"].name(), "#ff8844")
         self.assertEqual(self.window.plot._curves["Voltage"].color.name(), "#ff8844")
+        header = self.window.plot.graph.headers["Voltage"]
+        APP.processEvents()
+        self.assertEqual(header.palette().color(QPalette.ColorRole.WindowText).name(), "#ff8844")
 
         swatch = editor.table.cellWidget(0, 5)
         with patch("modules.widgets.rules_table.QMenu") as menu:
@@ -206,6 +208,8 @@ class WorkspaceTest(unittest.TestCase):
         self.assertTrue(editor.apply_button.isEnabled())
         editor.apply_button.click()
         self.assertEqual(self.window.plot.series_info()[0]["color"].name(), original)
+        APP.processEvents()
+        self.assertEqual(header.palette().color(QPalette.ColorRole.WindowText).name(), original)
         with patch("modules.widgets.rules_table.QColorDialog.getColor", return_value=QColor("#ff8844")):
             swatch.click()
         editor.apply_button.click()
@@ -256,20 +260,20 @@ class WorkspaceTest(unittest.TestCase):
         dialog.rules_table.remove_selected_rules()
         self.assertEqual(dialog.table.rowCount(), 1)
 
-    def test_colors_hidden_capture_and_sidebar_structure(self):
+    def test_colors_hidden_capture_and_header_structure(self):
         plot = self.window.plot
         self.window.session.settings.log_to_file = False
         self.window.session.on_receive(b"A: 1 V B: 2 A\n", 100)
         colors = [row["color"] for row in plot.series_info()]
-        first = self.window.ui.SeriesList.item(0)
+        first = self.window.plot.graph.headers["A"]
         plot.set_series_visible("A", False)
-        self.assertIs(first, self.window.ui.SeriesList.item(0))
+        self.assertIs(first, self.window.plot.graph.headers["A"])
         self.window.session.on_receive(b"A: 3 V B: 4 A\n", 101)
         plot.on_refresh_pending_data()
         self.assertEqual(plot._series["A"].sample_count(), 2)
         self.assertEqual(plot._curves["B"].color, colors[1])
         self.assertEqual([row["color"] for row in plot.series_info()], colors)
-        self.assertEqual(first.checkState(), Qt.CheckState.Unchecked)
+        self.assertFalse(first.isChecked())
 
     def test_live_and_loaded_units_exact_latest_in_old_view(self):
         values = [CapturedValue(100, "a", 1, "V"), CapturedValue(101, "a", 8.123456789, "mV"),
@@ -290,7 +294,7 @@ class WorkspaceTest(unittest.TestCase):
         plot.replace_series(series, loader.start_time)
         plot._set_time_range(0, .5)
         self.assertEqual(plot._series["a"].latest_value(), 3.987654321)
-        self.assertEqual(self.window.ui.SeriesList.item(0).text(), "a (mV)")
+        self.assertEqual(self.window.plot.graph.headers["a"].text(), "a (mV)")
         self.assertIn("mV", plot._curves["a"].latest)
 
     def test_console_collapse_clear_and_commands(self):
@@ -461,7 +465,7 @@ class WorkspaceTest(unittest.TestCase):
             QTest.qWait(10)
         self.assertIsNone(self.window._capture_job)
         self.assertEqual(self.window.plot.capture_title.text(), "capture.plotty")
-        self.assertEqual(self.window.ui.SeriesList.item(0).text(), "a (V)")
+        self.assertEqual(self.window.plot.graph.headers["a"].text(), "a (V)")
         destination = source.with_suffix(".csv")
         self.window._start_capture_job(str(source), str(destination))
         for _ in range(100):
@@ -472,30 +476,62 @@ class WorkspaceTest(unittest.TestCase):
         self.assertIn("1.23", destination.read_text())
         self.assertEqual(self.window.plot._series["a"].latest_value(), 1.23)
 
-    def test_invalid_layout_and_keyboard_sidebar(self):
+    def test_invalid_layout_and_keyboard_plot_header(self):
         self.settings.setValue("geometry", "invalid")
         self.settings.setValue("consoleHeight", "invalid")
         self.window.restore_layout()
         self.assertGreaterEqual(self.window.width(), 320)
         self.window.plot.append_values([CapturedValue(0, "a", 1)])
-        sidebar = self.window.ui.SeriesList
+        header = self.window.plot.graph.headers["a"]
         APP.processEvents()
-        item_rect = sidebar.visualItemRect(sidebar.item(0))
-        QTest.mouseClick(sidebar.viewport(), Qt.MouseButton.LeftButton,
-                         pos=QPoint(item_rect.right() - 8, item_rect.center().y()))
-        self.assertEqual(sidebar.selectedItems(), [])
-        self.assertTrue(self.window.plot.series_info()[0]["visible"])
-        sidebar.setCurrentRow(0)
-        sidebar.setFocus()
-        QTest.keyClick(sidebar, Qt.Key.Key_Space)
+        header.setFocus()
+        QTest.keyClick(header, Qt.Key.Key_Space)
         self.assertFalse(self.window.plot.series_info()[0]["visible"])
-        QTest.keyClick(sidebar, Qt.Key.Key_Space)
+        self.assertEqual(self.window.plot.graph._panels["a"].height(), 40)
+        self.assertTrue(header.isVisible())
+        QTest.keyClick(header, Qt.Key.Key_Space)
         self.assertTrue(self.window.plot.series_info()[0]["visible"])
+        self.assertGreaterEqual(self.window.plot.graph._panels["a"].height(), 150)
         self.window.ui.actionConsole.setChecked(True)
         self.window.on_connected_changed(True)
         self.window.ui.CommandEdit.setFocus()
         QTest.keyClick(self.window.ui.CommandEdit, Qt.Key.Key_Tab)
         self.assertIs(APP.focusWidget(), self.window.ui.SendButton)
+
+    def test_plot_header_color_updates_while_collapsed(self):
+        plot = self.window.plot
+        plot.append_values([CapturedValue(0, "a", 1)])
+        header = plot.graph.headers["a"]
+        APP.processEvents()
+        self.assertEqual(header.palette().color(QPalette.ColorRole.WindowText), plot._curves["a"].color)
+        header.click()
+        plot.set_rule_colors([ExtractionRule("a", "first_number", color="#ff8844")])
+        APP.processEvents()
+        self.assertFalse(header.isChecked())
+        self.assertEqual(header.palette().color(QPalette.ColorRole.WindowText).name(), "#ff8844")
+        header.click()
+        APP.processEvents()
+        self.assertEqual(header.palette().color(QPalette.ColorRole.WindowText), plot._curves["a"].color)
+
+    def test_plot_headers_hide_all_and_restore_with_mouse(self):
+        plot = self.window.plot
+        plot.append_values([CapturedValue(0, "a", 1), CapturedValue(0, "b", 2)])
+        plot.on_refresh_pending_data()
+        APP.processEvents()
+        for header in plot.graph.headers.values():
+            QTest.mouseClick(header, Qt.MouseButton.LeftButton, pos=QPoint(7, 12))
+        self.assertEqual(plot._curves, {})
+        self.assertTrue(all(panel.height() == 40 for panel in plot.graph._panels.values()))
+        plot.append_values([CapturedValue(1, "a", 3)])
+        self.assertEqual(plot._series["a"].sample_count(), 2)
+        header = plot.graph.headers["a"]
+        QTest.mouseClick(header, Qt.MouseButton.LeftButton, pos=QPoint(7, 12))
+        plot.on_refresh_pending_data()
+        self.assertIn("a", plot._curves)
+        self.assertEqual(plot._curves["a"].latest, "3")
+        self.assertFalse(plot.graph.headers["b"].isChecked())
+        plot.clear_values()
+        self.assertEqual(plot.graph.headers, {})
 
     def test_profile_file_actions_use_applied_rules_and_current_path(self):
         source = Path(self.temp.name) / "source.json"

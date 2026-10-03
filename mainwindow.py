@@ -3,13 +3,12 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPalette, QPixmap, QShortcut
-from PySide6.QtCore import QSettings, QSignalBlocker, QSize, QTimer, Qt, Slot
+from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPalette, QShortcut
+from PySide6.QtCore import QSettings, QSignalBlocker, QTimer, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QLabel,
-    QListWidgetItem,
     QMessageBox,
     QMainWindow,
     QProgressDialog,
@@ -156,7 +155,6 @@ class MainWindow(QMainWindow):
         self.ui.actionSidebar.toggled.connect(self.ui.SeriesSidebar.setVisible)
         self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
         self.ui.actionClearCapturedData.triggered.connect(self.on_clear_console_and_plot)
-        self.ui.SeriesList.itemChanged.connect(self._series_visibility_changed)
         self.apply_settings(self.session.settings)
         self._recording_label = QLabel("Not recording")
         self._rate_label = QLabel("0 B/s")
@@ -177,14 +175,7 @@ class MainWindow(QMainWindow):
         self.set_console_visible(False)
         self.ui.actionSidebar.setChecked(True)
         self._preferences = QSettings("PlotTTY", "PlotTTY")
-        self._sidebar_structure = None
-        self._move_series_selector_to_plot()
         self._add_rules_editor()
-        self.rebuild_sidebar()
-
-    def _move_series_selector_to_plot(self):
-        self.ui.SeriesLayout.removeWidget(self.ui.SeriesList)
-        self.plot.attach_series_selector(self.ui.SeriesList)
 
     def _add_rules_editor(self):
         """Add persistent extraction controls to the configuration sidebar."""
@@ -195,33 +186,6 @@ class MainWindow(QMainWindow):
     def apply_settings(self, settings):
         self.session.settings = settings
         self.ui.ConnectionSettingsButton.setText(settings.port or "Select port")
-
-    def rebuild_sidebar(self):
-        self.ui.SeriesList.blockSignals(True)
-        info = self.plot.series_info()
-        structure = [(entry["label"], entry["unit"], entry["color"].name()) for entry in info]
-        if structure == self._sidebar_structure:
-            for row, entry in enumerate(info):
-                self.ui.SeriesList.item(row).setCheckState(Qt.CheckState.Checked if entry["visible"] else Qt.CheckState.Unchecked)
-            self.ui.SeriesList.blockSignals(False)
-            return
-        self._sidebar_structure = structure
-        self.ui.SeriesList.clear()
-        for entry in info:
-            text = entry["label"] + (f" ({entry['unit']})" if entry["unit"] else "")
-            item = QListWidgetItem(text, self.ui.SeriesList)
-            item.setData(Qt.ItemDataRole.UserRole, entry["label"])
-            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Checked if entry["visible"] else Qt.CheckState.Unchecked)
-            swatch = QPixmap(12, 12)
-            swatch.fill(entry["color"])
-            item.setIcon(QIcon(swatch))
-            item.setToolTip(text)
-            item.setSizeHint(QSize(min(280, self.ui.SeriesList.fontMetrics().horizontalAdvance(text) + 64), 34))
-        self.ui.SeriesList.blockSignals(False)
-
-    def _series_visibility_changed(self, item):
-        self.plot.set_series_visible(item.data(Qt.ItemDataRole.UserRole), item.checkState() == Qt.CheckState.Checked)
 
     def set_console_visible(self, visible):
         if not visible and self.ui.WorkspaceSplitter.sizes()[1] > 0:
@@ -294,7 +258,6 @@ class MainWindow(QMainWindow):
         self.session.consoleText.connect(self.console.append_status)
         self.session.valuesCaptured.connect(self.plot.append_values)
         self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
-        self.plot.seriesChanged.connect(self.rebuild_sidebar)
         self.session.errorOccurred.connect(self.on_serial_error)
 
     def apply_rules(self, rules):

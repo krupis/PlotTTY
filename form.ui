@@ -21,7 +21,6 @@
       <widget class="QWidget" name="SeriesSidebar">
        <property name="minimumSize"><size><width>160</width><height>0</height></size></property>
        <layout class="QVBoxLayout" name="SeriesLayout">
-        <item><widget class="QListWidget" name="SeriesList"><property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarAlwaysOff</enum></property><property name="textElideMode"><enum>Qt::ElideRight</enum></property></widget></item>
        </layout>
       </widget>
       <widget class="QWidget" name="Workspace">

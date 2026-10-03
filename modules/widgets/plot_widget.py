@@ -6,9 +6,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 import math
 
-from PySide6.QtCore import QPoint, QRectF, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import QPoint, QRectF, Qt, QTimer, QSignalBlocker, Signal, Slot
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue, clean_label
 from ..core.plotter import Plotter
@@ -54,6 +54,7 @@ class _PlotCanvas(QWidget):
     """Draw stacked time-series panels and handle horizontal navigation."""
 
     timeRangeChanged = Signal(float, float)
+    seriesVisibilityChanged = Signal(str, bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -67,6 +68,8 @@ class _PlotCanvas(QWidget):
         )
         self.empty_message = "Waiting for series"
         self._curves: dict[str, _CurveData] = {}
+        self.headers: dict[str, QCheckBox] = {}
+        self._panels: dict[str, QRectF] = {}
         self._y_ranges: dict[str, tuple[float, float]] = {}
         self._time_range = (0.0, 10.0)
         self._drag_position: QPoint | None = None
@@ -74,10 +77,59 @@ class _PlotCanvas(QWidget):
         self._drag_label: str | None = None
         self._drag_y_range = (-1.0, 1.0)
 
-    def set_curves(self, curves: dict[str, _CurveData]) -> None:
+    def set_curves(self, curves: dict[str, _CurveData], series_info) -> None:
         self._curves = curves
-        self.setMinimumHeight(max(150, len(curves) * 150))
+        labels = {entry["label"] for entry in series_info}
+        for label in list(self.headers):
+            if label not in labels:
+                header = self.headers.pop(label)
+                header.hide()
+                header.deleteLater()
+        ordered = {}
+        for entry in series_info:
+            label = entry["label"]
+            header = self.headers.get(label)
+            if header is None:
+                header = QCheckBox(self)
+                header.setObjectName("PlotHeaderToggle")
+                header.toggled.connect(lambda visible, label=label: self.seriesVisibilityChanged.emit(label, visible))
+            with QSignalBlocker(header):
+                header.setChecked(entry["visible"])
+            self.set_header_color(header, entry["color"])
+            text = label + (f" ({entry['unit']})" if entry["unit"] else "")
+            header.setProperty("seriesTitle", text)
+            header.setAccessibleName(f"Show plot: {text}")
+            header.setToolTip(f"Show or hide {text}. Hidden series continue collecting data.")
+            header.show()
+            ordered[label] = header
+        self.headers = ordered
+        self.setMinimumHeight(max(150, len(curves) * 150 + (len(labels) - len(curves)) * 40))
+        self._layout_panels()
         self.update()
+
+    @staticmethod
+    def set_header_color(header: QCheckBox, color: QColor) -> None:
+        style = f"QCheckBox#PlotHeaderToggle {{ color: {color.name()}; }}"
+        if header.styleSheet() != style:
+            header.setStyleSheet(style)
+
+    def resizeEvent(self, event):
+        self._layout_panels()
+        super().resizeEvent(event)
+
+    def _layout_panels(self):
+        hidden_height = (len(self.headers) - len(self._curves)) * 40
+        expanded_height = max(150, (self.height() - hidden_height) / max(1, len(self._curves)))
+        top = 0
+        self._panels = {}
+        for label, header in self.headers.items():
+            height = expanded_height if label in self._curves else 40
+            self._panels[label] = QRectF(0, top, self.width(), height)
+            width = max(30, int((self.width() - 28) * .45))
+            title = header.fontMetrics().elidedText(header.property("seriesTitle"), Qt.TextElideMode.ElideRight, max(0, width - 24))
+            header.setText(title)
+            header.setGeometry(14, round(top + 7), width, 24)
+            top += height
 
     def set_time_range(self, start_time: float, end_time: float) -> None:
         self._time_range = _nonnegative_time_range(start_time, end_time)
@@ -94,17 +146,16 @@ class _PlotCanvas(QWidget):
         return max(1, self.width() - PLOT_LEFT_MARGIN - PLOT_RIGHT_MARGIN)
 
     def panel_geometry(self, row):
-        height = self.height() / max(1, len(self._curves))
-        panel = QRectF(0, row * height, self.width(), height)
+        panel = self._panels[list(self.headers)[row]]
         return panel, panel.adjusted(PLOT_LEFT_MARGIN, PLOT_TOP_MARGIN,
                                       -PLOT_RIGHT_MARGIN, -PLOT_BOTTOM_MARGIN)
 
     def _panel_at(self, position) -> tuple[str, QRectF, QRectF] | None:
-        if not self._curves or not 0 <= position.y() < self.height():
-            return None
-        labels = list(self._curves)
-        row = min(len(labels) - 1, int(position.y() / (self.height() / len(labels))))
-        return labels[row], *self.panel_geometry(row)
+        for row, label in enumerate(self.headers):
+            panel, plot = self.panel_geometry(row)
+            if label in self._curves and panel.contains(position) and position.y() >= plot.top():
+                return label, panel, plot
+        return None
 
     def _y_range(self, label: str) -> tuple[float, float]:
         return self._y_ranges.get(label, _value_range(self._curves[label].yData))
@@ -113,15 +164,20 @@ class _PlotCanvas(QWidget):
         painter = QPainter(self)
         painter.fillRect(self.rect(), PLOT_BACKGROUND)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        if not self._curves:
+        if not self.headers:
             painter.setPen(PLOT_TEXT)
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self.empty_message)
             return
 
-        for row, (label, curve) in enumerate(self._curves.items()):
+        for row, label in enumerate(self.headers):
             panel, plot = self.panel_geometry(row)
             if panel.intersects(QRectF(_event.rect())):
-                self._draw_panel(painter, panel, plot, label, curve)
+                if label in self._curves:
+                    self._draw_panel(painter, panel, plot, label, self._curves[label])
+                else:
+                    painter.setPen(PLOT_BORDER)
+                    painter.setBrush(PLOT_SURFACE)
+                    painter.drawRoundedRect(panel.adjusted(1, 1, -1, -7), 5, 5)
 
     def _draw_panel(self, painter: QPainter, panel: QRectF, plot: QRectF, label: str, curve: _CurveData) -> None:
         if plot.width() <= 1 or plot.height() <= 1:
@@ -142,9 +198,6 @@ class _PlotCanvas(QWidget):
         painter.setFont(heading_font)
         header = QRectF(14, panel.top() + 7, self.width() - 28, 24)
         value_width = min(header.width() * .55, painter.fontMetrics().horizontalAdvance(curve.latest) + 16)
-        name_rect = header.adjusted(0, 0, -value_width, 0)
-        name = painter.fontMetrics().elidedText(label, Qt.TextElideMode.ElideRight, int(name_rect.width()))
-        painter.drawText(name_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name)
         painter.setPen(curve.color)
         value_rect = QRectF(header.right() - value_width, header.top(), value_width, header.height())
         painter.drawText(value_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
@@ -330,7 +383,6 @@ class _CaptureTitle(QLabel):
 
 
 class PlotWidget(QWidget):
-    seriesChanged = Signal()
     clearPlotRequested = Signal()
 
     def __init__(self, parent=None, time_window: float = 10.0):
@@ -349,6 +401,7 @@ class PlotWidget(QWidget):
 
         self.graph = _PlotCanvas()
         self.graph.timeRangeChanged.connect(self.on_time_range_changed)
+        self.graph.seriesVisibilityChanged.connect(self.set_series_visible)
         self.visible_points_label = QLabel("Points: 0")
         self.visible_points_label.setToolTip("Maximum number of data points currently visible in any shown series.")
         self.downsample_ratio_label = QLabel("Downsample: 1:1")
@@ -396,32 +449,12 @@ class PlotWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(toolbar)
-        self.series_selector = QWidget(self)
-        self.series_selector.setObjectName("SeriesSelector")
-        self.series_selector_layout = QHBoxLayout(self.series_selector)
-        self.series_selector_layout.setContentsMargins(0, 0, 0, 0)
-        self.series_selector_layout.setSpacing(8)
-        self.series_selector.hide()
-        layout.addWidget(self.series_selector)
         layout.addWidget(self.scroll_area, 1)
         layout.addWidget(self.time_axis_label)
         self._timer = QTimer(self)
         self._timer.setInterval(PLOT_REFRESH_INTERVAL_MS)
         self._timer.timeout.connect(self.on_refresh_pending_data)
         self._timer.start()
-
-    def attach_series_selector(self, series_list: QListWidget) -> None:
-        """Keep series visibility controls immediately above the plot panels."""
-        series_list.setParent(self.series_selector)
-        series_list.setFlow(QListWidget.Flow.LeftToRight)
-        series_list.setWrapping(False)
-        series_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
-        series_list.setFocusPolicy(Qt.FocusPolicy.TabFocus)
-        series_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        series_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        series_list.setFixedHeight(50)
-        self.series_selector_layout.addWidget(series_list, 1)
-        self.series_selector.show()
 
     @Slot(list)
     def append_values(self, values: Iterable[CapturedValue]) -> None:
@@ -440,7 +473,6 @@ class PlotWidget(QWidget):
             self._has_pending_refresh = True
         if added_series:
             self._rebuild_plots()
-            self.seriesChanged.emit()
 
     def clear_values(self) -> None:
         for series in self._series.values():
@@ -455,11 +487,10 @@ class PlotWidget(QWidget):
         self.capture_title.clear()
         self.capture_title.hide()
         self.capture_title.setToolTip("")
-        self.graph.set_curves({})
+        self.graph.set_curves({}, [])
         self.visible_points_label.setText("Points: 0")
         self.downsample_ratio_label.setText("Downsample: 1:1")
         self.on_toggle_auto_scroll(True)
-        self.seriesChanged.emit()
 
     def replace_series(self, series: dict[str, Plotter], start_time: float | None) -> None:
         self.clear_values()
@@ -470,7 +501,6 @@ class PlotWidget(QWidget):
         self.fit_capture_button.setChecked(True)
         self._rebuild_plots()
         self.fit_capture()
-        self.seriesChanged.emit()
         self._has_pending_refresh = False
 
     @Slot()
@@ -537,10 +567,11 @@ class PlotWidget(QWidget):
                 self._series_colors[clean_label(rule.label)] = rule.color or default_series_color(index)
             index += 1
         for row, label in enumerate(self._series):
+            color = self._series_color(label, row)
             if label in self._curves:
-                self._curves[label].color = self._series_color(label, row)
+                self._curves[label].color = color
+            self.graph.set_header_color(self.graph.headers[label], color)
         self.graph.update()
-        self.seriesChanged.emit()
 
     def _series_color(self, label, index):
         return QColor(self._series_colors.get(label) or self._named_values_color or default_series_color(index))
@@ -551,7 +582,6 @@ class PlotWidget(QWidget):
         self._visible_labels.add(label) if visible else self._visible_labels.discard(label)
         self._rebuild_plots()
         self._has_pending_refresh = True
-        self.seriesChanged.emit()
 
     def update_series_labels(self, labels: dict[str, str]) -> None:
         """Rename plotted rule-backed series while retaining their captured history."""
@@ -575,7 +605,6 @@ class PlotWidget(QWidget):
         }
         self._rebuild_plots()
         self._has_pending_refresh = True
-        self.seriesChanged.emit()
 
     def _rebuild_plots(self) -> None:
         self._curves = {
@@ -583,7 +612,7 @@ class PlotWidget(QWidget):
             for row, label in enumerate(self._series) if label in self._visible_labels
         }
         self.graph.empty_message = "No series selected" if self._series else "Waiting for series"
-        self.graph.set_curves(self._curves)
+        self.graph.set_curves(self._curves, self.series_info())
         self.graph.set_time_range(*self._last_time_range)
 
     def _latest_sample_time(self) -> float:

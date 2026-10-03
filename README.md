@@ -25,8 +25,9 @@ For rendering benchmarks and live-device diagnostics, see
 Click the connection summary in the top bar to choose a port and baud rate.
 The same popover shows all serial settings, with expandable capture options.
 Choose **Save settings**, then **Connect**. Escape or clicking outside discards
-unsaved edits; connection settings are locked while connected. Use the series strip above
-the plots to show or hide traces; hidden series continue recording and retain their colors.
+unsaved edits; connection settings are locked while connected. Use the checkbox in each
+plot header to show or hide its trace. Hidden plots collapse to a compact header;
+their series continue recording and retain their colors. Recheck the header to reopen a plot.
 
 The extraction sidebar contains a sample input and an editable rules table.
 Generate rules from a sample or edit the table, then
@@ -39,7 +40,8 @@ anchored at the bottom. Apply is disabled
 until the draft differs from the applied rules; reverting edits disables it again.
 
 Click a color dot beside a Plot rule to choose its trace color, then **Apply rules**.
-Colors update both existing traces and the series strip and are saved in profiles.
+Colors update existing traces, plot header labels (including collapsed headers), and
+latest-value labels and are saved in profiles.
 Right-click a dot and choose **Automatic color** to return to the default palette.
 Time rules have no swatch. A custom color on a **Named values** rule applies to all
 series extracted by that rule; automatic mode gives those series separate colors.

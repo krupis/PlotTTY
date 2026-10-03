@@ -17,10 +17,9 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit,
-    QListWidget, QListWidgetItem, QMainWindow, QMenu,
-    QMenuBar, QPlainTextEdit, QPushButton, QSizePolicy,
-    QSpacerItem, QSplitter, QStatusBar, QVBoxLayout,
-    QWidget)
+    QMainWindow, QMenu, QMenuBar, QPlainTextEdit,
+    QPushButton, QSizePolicy, QSpacerItem, QSplitter,
+    QStatusBar, QVBoxLayout, QWidget)
 
 from modules.widgets.plot_widget import PlotWidget
 
@@ -79,13 +78,6 @@ class Ui_MainWindow(object):
         self.SeriesLayout = QVBoxLayout(self.SeriesSidebar)
         self.SeriesLayout.setObjectName(u"SeriesLayout")
         self.SeriesLayout.setContentsMargins(0, 0, 0, 0)
-        self.SeriesList = QListWidget(self.SeriesSidebar)
-        self.SeriesList.setObjectName(u"SeriesList")
-        self.SeriesList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.SeriesList.setTextElideMode(Qt.ElideRight)
-
-        self.SeriesLayout.addWidget(self.SeriesList)
-
         self.MainSplitter.addWidget(self.SeriesSidebar)
         self.Workspace = QWidget(self.MainSplitter)
         self.Workspace.setObjectName(u"Workspace")
