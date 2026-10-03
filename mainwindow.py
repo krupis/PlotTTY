@@ -211,7 +211,7 @@ class MainWindow(QMainWindow):
             text = entry["label"] + (f" ({entry['unit']})" if entry["unit"] else "")
             item = QListWidgetItem(text, self.ui.SeriesList)
             item.setData(Qt.ItemDataRole.UserRole, entry["label"])
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(Qt.CheckState.Checked if entry["visible"] else Qt.CheckState.Unchecked)
             swatch = QPixmap(12, 12)
             swatch.fill(entry["color"])

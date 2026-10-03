@@ -30,11 +30,12 @@ the plots to show or hide traces; hidden series continue recording and retain th
 
 The extraction sidebar contains a sample input and an editable rules table.
 Generate rules from a sample or edit the table, then
-choose **Apply rules** to update parsing for future samples. Inline feedback shows
-unapplied changes, validation errors, and successful application. Profiles save
+choose **Apply rules** to update parsing for future samples. The button is teal
+for unapplied changes and muted when up to date; inline text appears only for errors. Profiles save
 applied rules. Field indices are zero-based (0 is the first field).
 The table grows with its rows and scrolls when space is limited, keeping Add/Remove
-directly below it. Generate and Apply span the sidebar width. Apply is disabled
+directly below it. Generate and Apply span the sidebar width, with Apply
+anchored at the bottom. Apply is disabled
 until the draft differs from the applied rules; reverting edits disables it again.
 
 The Graphite & teal theme separates configuration panels from recessed plot and

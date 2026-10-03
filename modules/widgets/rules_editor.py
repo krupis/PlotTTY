@@ -60,14 +60,16 @@ class RulesEditor(QWidget):
         self.apply_button.setProperty("primary", True)
         self.apply_button.setIcon(QIcon(":/icons/check.svg"))
         self.apply_button.setEnabled(False)
+        self.apply_button.setToolTip("Rules are up to date")
         self.apply_button.clicked.connect(self.apply_rules)
-        self.feedback = QLabel("No unapplied changes")
-        self.feedback.setObjectName("RuleFeedback")
-        self.feedback.setWordWrap(True)
-        self.feedback.setTextFormat(Qt.TextFormat.PlainText)
-        layout.addWidget(self.apply_button)
-        layout.addWidget(self.feedback)
+        self.error_label = QLabel()
+        self.error_label.setObjectName("ValidationError")
+        self.error_label.setWordWrap(True)
+        self.error_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.error_label.hide()
         layout.addStretch(1)
+        layout.addWidget(self.apply_button)
+        layout.addWidget(self.error_label)
         self.rules_table.changed.connect(self._mark_pending)
         self.generate_button.clicked.connect(self.generate_rules)
         add.clicked.connect(self.rules_table.add_rule)
@@ -77,34 +79,32 @@ class RulesEditor(QWidget):
         rules = suggest_rules(self.sample.toPlainText())
         if rules:
             self.rules_table.set_rules(rules)
-            if self.apply_button.isEnabled():
-                self._set_feedback("Rules generated · Apply to use", "pending")
         else:
-            self._set_feedback("Paste a sample containing numeric values to generate rules.", "error")
+            self._show_error("Paste a sample containing numeric values to generate rules.")
 
-    def _set_feedback(self, text, state):
-        self.feedback.setText(text)
-        self.feedback.setProperty("state", state)
-        self.feedback.style().unpolish(self.feedback)
-        self.feedback.style().polish(self.feedback)
+    def _show_error(self, text):
+        self.error_label.setText(text)
+        self.error_label.show()
 
     def _mark_pending(self):
         pending = self.rules_table.rules() != self._applied_rules
         self.apply_button.setEnabled(pending)
+        self.apply_button.setToolTip("Apply unapplied changes" if pending else "Rules are up to date")
         self.table.updateGeometry()
-        self._set_feedback("Unapplied changes" if pending else "No unapplied changes", "pending" if pending else "success")
+        self.error_label.hide()
 
     def mark_applied(self):
         self._applied_rules = self.rules_table.rules()
         self.apply_button.setEnabled(False)
-        self._set_feedback("Rules applied", "success")
+        self.apply_button.setToolTip("Rules are up to date")
+        self.error_label.hide()
 
     def apply_rules(self):
         rules = self.rules_table.rules()
         try:
             validate_rules(rules)
         except ValueError as exc:
-            self._set_feedback(str(exc), "error")
+            self._show_error(str(exc))
             return False
         self.rulesApplied.emit(rules)
         self.mark_applied()

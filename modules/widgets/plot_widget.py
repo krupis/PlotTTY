@@ -412,6 +412,8 @@ class PlotWidget(QWidget):
         series_list.setParent(self.series_selector)
         series_list.setFlow(QListWidget.Flow.LeftToRight)
         series_list.setWrapping(False)
+        series_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        series_list.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         series_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         series_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         series_list.setFixedHeight(50)

@@ -11,7 +11,8 @@ connected UI state; they are not evidence of a physical serial-device session.
 The design implements concept 01A's graphite surfaces, teal actions, brighter text,
 and panel boundaries. Subdued Extraction, Plot, and Console headers identify
 each panel. The sidebar groups full-width Generate/Apply buttons and a table that
-grows with its rows above Add/Remove, with spare space below the controls. Apply
+grows with its rows above Add/Remove, with Apply and feedback anchored at the bottom.
+Series labels have no selectable tile state; checkboxes control visibility. Apply
 is disabled when there are no draft changes. Add, Remove, Apply, and Send use
 small outline icons alongside their labels. Surface and accent colors
 were sampled from the generated 01A image rather than its prompt palette.

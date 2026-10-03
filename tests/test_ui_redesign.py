@@ -131,23 +131,25 @@ class WorkspaceTest(unittest.TestCase):
     def test_rule_feedback_tracks_drafts_validation_and_apply(self):
         editor = self.window.rules_editor
         editor.rules_table.set_rules([ExtractionRule("value", "regex", extra_setting=r"(\d+)")])
-        self.assertEqual(editor.feedback.property("state"), "pending")
+        self.assertTrue(editor.apply_button.isEnabled())
         self.assertTrue(editor.apply_rules())
-        self.assertEqual(editor.feedback.property("state"), "success")
+        self.assertFalse(editor.apply_button.isEnabled())
+        self.assertTrue(editor.error_label.isHidden())
         applied = self.window.applied_rules
         editor.table.item(0, 3).setText("[")
-        self.assertEqual(editor.feedback.property("state"), "pending")
+        self.assertTrue(editor.apply_button.isEnabled())
         self.assertFalse(editor.apply_rules())
-        self.assertEqual(editor.feedback.property("state"), "error")
-        self.assertTrue(editor.feedback.text())
+        self.assertFalse(editor.error_label.isHidden())
+        self.assertTrue(editor.error_label.text())
         self.assertIs(self.window.applied_rules, applied)
         editor.table.item(0, 3).setText(r"(\d+)")
         self.assertTrue(editor.apply_rules())
         editor.table.cellWidget(0, 0).setCurrentIndex(1)
-        self.assertEqual(editor.feedback.property("state"), "pending")
+        self.assertTrue(editor.apply_button.isEnabled())
+        self.assertTrue(editor.error_label.isHidden())
         editor.table.selectRow(0)
         editor.rules_table.remove_selected_rules()
-        self.assertEqual(editor.feedback.property("state"), "pending")
+        self.assertTrue(editor.apply_button.isEnabled())
 
     def test_apply_enables_only_for_changed_rules(self):
         editor = self.window.rules_editor
@@ -414,6 +416,12 @@ class WorkspaceTest(unittest.TestCase):
         self.assertGreaterEqual(self.window.width(), 320)
         self.window.plot.append_values([CapturedValue(0, "a", 1)])
         sidebar = self.window.ui.SeriesList
+        APP.processEvents()
+        item_rect = sidebar.visualItemRect(sidebar.item(0))
+        QTest.mouseClick(sidebar.viewport(), Qt.MouseButton.LeftButton,
+                         pos=QPoint(item_rect.right() - 8, item_rect.center().y()))
+        self.assertEqual(sidebar.selectedItems(), [])
+        self.assertTrue(self.window.plot.series_info()[0]["visible"])
         sidebar.setCurrentRow(0)
         sidebar.setFocus()
         QTest.keyClick(sidebar, Qt.Key.Key_Space)

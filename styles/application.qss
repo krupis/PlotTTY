@@ -7,10 +7,7 @@ QLabel { background: transparent; }
 QLabel#PanelHeading { color: #a6b5bc; font-size: 10pt; font-weight: 400; padding: 0 0 4px; }
 QLabel#ConnectionHeading { font-size: 11pt; font-weight: 600; }
 QLabel#CaptureTitle { color: #bac5cb; }
-QLabel#RuleFeedback[state="success"] { color: #85e0b4; }
-QLabel#RuleFeedback { color: #bac5cb; }
-QLabel#RuleFeedback[state="error"], QLabel#ValidationError { color: #ffadb7; }
-QLabel#RuleFeedback[state="pending"] { color: #f1ce88; }
+QLabel#ValidationError { color: #ffadb7; }
 QDialog#ConnectionPopover { border: 1px solid #56636b; background: #20292d; }
 QToolButton#SettingsSection { border: none; background: transparent; padding: 3px 0; }
 QPushButton, QToolButton { background: #2b363b; border: 1px solid #56636b;
@@ -50,7 +47,6 @@ QPlainTextEdit { padding: 8px; }
 QPlainTextEdit#ConsoleTextEdit, QPlainTextEdit#SampleOutput { font-family: "Consolas", "Menlo"; background: #0f1417; }
 QListWidget { border: none; background: transparent; outline: none; }
 QListWidget::item { padding: 8px 5px; border: 1px solid transparent; }
-QListWidget::item:selected { background: #303e40; border-radius: 4px; }
 QListWidget::item:focus { border-color: #41ccc3; }
 QListWidget::indicator, QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #8d9da5; border-radius: 3px; background: #0f1417; }
 QListWidget::indicator:checked, QCheckBox::indicator:checked { background: #41ccc3; border-color: #41ccc3; image: url(:/icons/check.svg); }
