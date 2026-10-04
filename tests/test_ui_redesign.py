@@ -500,8 +500,11 @@ class WorkspaceTest(unittest.TestCase):
         from modules.core.rtt_transport import RttSettings
         from modules.core.connection_settings import ConnectionSettings
         w = self.window
-        w.apply_settings(ConnectionSettings(transport=SerialSettings(port="COM123", baudrate=230400),
-                                           encoding="latin-1", line_ending="\r\n", log_to_file=False))
+        w._connection_settings.set_settings(ConnectionSettings(
+            transport=SerialSettings(port="COM123", baudrate=230400),
+            encoding="latin-1", line_ending="\r\n", log_to_file=False,
+        ))
+        w._connection_settings.accept()
         QTest.keyClick(w.connection_type_combo, Qt.Key.Key_Down)
         self.assertIsInstance(w.session.settings.transport, RttSettings)
         w.on_open_connection_settings()

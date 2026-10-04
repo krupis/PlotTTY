@@ -30,7 +30,6 @@ from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.rules_editor import RulesEditor
 from modules.widgets.connection_settings_dialog import ConnectionSettingsDialog
-from modules.core.serial_transport import SerialSettings
 from modules.core.rtt_transport import RttSettings
 import rc_resources  # noqa: F401
 
@@ -89,7 +88,6 @@ class MainWindow(QMainWindow):
         self._close_after_capture = False
         self.session = ConnectionSession(self)
         self._connection_settings = ConnectionSettingsDialog(self.session.settings, self)
-        self._connection_settings.accepted.connect(self.on_save_connection_settings)
         self.profile_path = Path("profile.json")
 
         self.plot = self.ui.Plot
@@ -99,7 +97,6 @@ class MainWindow(QMainWindow):
         self._configure_workspace()
         self._export_csv_action = QAction("Export capture as CSV...", self)
         self.ui.menuFile.addAction(self._export_csv_action)
-        self._export_csv_action.triggered.connect(self.on_export_csv)
         self._connect_signals()
         initial_rules = default_rules()
         self.rules_editor.rules_table.set_rules(initial_rules)
@@ -124,9 +121,8 @@ class MainWindow(QMainWindow):
         self.ui.ConnectionLayout.setSpacing(12)
         self.connection_type_combo = QComboBox(self.connection_bar)
         self.connection_type_combo.setObjectName("ConnectionTypeCombo")
-        self.connection_type_combo.addItem("Serial", SerialSettings())
+        self.connection_type_combo.addItem("Serial", self.session.settings.transport)
         self.connection_type_combo.addItem("J-Link RTT", RttSettings())
-        self.connection_type_combo.activated.connect(self._connection_type_changed)
         self.ui.ConnectionSettingsButton.setText("Connection settings")
         self.ui.ConnectionLayout.insertWidget(0, self.connection_type_combo)
         self.plot.controls_layout.setSpacing(8)
@@ -147,17 +143,7 @@ class MainWindow(QMainWindow):
         self.ui.SendButton.style().unpolish(self.ui.SendButton)
         self.ui.SendButton.style().polish(self.ui.SendButton)
         self.ui.WorkspaceLayout.setContentsMargins(0, 0, 0, 0)
-        self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
-        self.ui.SendButton.clicked.connect(self.on_send_command)
-        self.ui.SearchEdit.textChanged.connect(self.on_console_search_changed)
-        self.ui.SearchEdit.returnPressed.connect(self.on_console_search_next)
-        self.ui.SearchNextButton.clicked.connect(self.on_console_search_next)
-        self.ui.SearchPreviousButton.clicked.connect(self.on_console_search_previous)
         self._console_search_shortcut = QShortcut(QKeySequence.StandardKey.Find, self)
-        self._console_search_shortcut.activated.connect(self.focus_console_search)
-        self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
-        self.ui.actionClearCapturedData.triggered.connect(self.on_clear_console_and_plot)
-        self.apply_settings(self.session.settings)
         self._recording_label = QLabel("Not recording")
         self._rate_label = QLabel("0 B/s")
         self.statusBar().addWidget(self._recording_label, 1)
@@ -166,33 +152,19 @@ class MainWindow(QMainWindow):
         self.ui.MainSplitter.setSizes([500, 1000])
         self.ui.MainSplitter.setStretchFactor(0, 0)
         self.ui.MainSplitter.setStretchFactor(1, 1)
-        self._add_rules_editor()
+        self.rules_editor = RulesEditor([], self.ui.SeriesSidebar)
+        self.ui.SeriesLayout.addWidget(self.rules_editor, 1)
         self.ui.MainSplitter.configure_panel("Extraction", 0, self.ui.actionSidebar, 500)
         self.ui.WorkspaceSplitter.configure_panel("Console", 1, self.ui.actionConsole, 180)
         self.ui.WorkspaceSplitter.set_panel_expanded(False)
         self.ui.actionSidebar.setChecked(True)
         self._preferences = QSettings("PlotTTY", "PlotTTY")
 
-    def _add_rules_editor(self):
-        """Add persistent extraction controls to the configuration sidebar."""
-        self.rules_editor = RulesEditor([], self.ui.SeriesSidebar)
-        self.rules_editor.rulesApplied.connect(self.apply_rules)
-        self.ui.SeriesLayout.addWidget(self.rules_editor, 1)
-
-    def apply_settings(self, settings):
+    @Slot(int)
+    def _connection_type_changed(self, index):
         if self.session.is_connected:
             return
-        self.session.settings = settings
-        for index in range(self.connection_type_combo.count()):
-            saved_settings = self.connection_type_combo.itemData(index)
-            if type(saved_settings) is type(settings.transport):
-                if saved_settings is not settings.transport:
-                    self.connection_type_combo.setItemData(index, settings.transport)
-                self.connection_type_combo.setCurrentIndex(index)
-                break
-
-    def _connection_type_changed(self, index):
-        self.apply_settings(replace(self.session.settings, transport=self.connection_type_combo.itemData(index)))
+        self.session.settings.transport = self.connection_type_combo.itemData(index)
 
     def focus_console_search(self):
         self.ui.actionConsole.setChecked(True)
@@ -241,13 +213,30 @@ class MainWindow(QMainWindow):
             self.resize(1280, 800)
 
     def _connect_signals(self) -> None:
+        """Connect controls and session signals after window setup."""
+        self.connection_type_combo.activated.connect(self._connection_type_changed)
+        self._connection_settings.accepted.connect(self.on_save_connection_settings)
         self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
         self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_connection_settings)
         self.ui.ClearConsoleButton.clicked.connect(self.console.clear)
+        self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
+        self.ui.SendButton.clicked.connect(self.on_send_command)
+
+        self.ui.SearchEdit.textChanged.connect(self.on_console_search_changed)
+        self.ui.SearchEdit.returnPressed.connect(self.on_console_search_next)
+        self.ui.SearchNextButton.clicked.connect(self.on_console_search_next)
+        self.ui.SearchPreviousButton.clicked.connect(self.on_console_search_previous)
+        self._console_search_shortcut.activated.connect(self.focus_console_search)
+
+        self.rules_editor.rulesApplied.connect(self.apply_rules)
         self.plot.clearPlotRequested.connect(self.on_clear_plot)
+        self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
+        self.ui.actionClearCapturedData.triggered.connect(self.on_clear_console_and_plot)
         self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
         self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
         self.ui.actionLoad_log.triggered.connect(self.on_load_log)
+        self._export_csv_action.triggered.connect(self.on_export_csv)
+
         self.session.connectedChanged.connect(self.on_connected_changed)
         self.session.receivedText.connect(self.console.append_received)
         self.session.sentText.connect(self.console.append_sent)
@@ -343,6 +332,7 @@ class MainWindow(QMainWindow):
         dialog.setMinimumDuration(0)
         self.ui.actionLoad_log.setEnabled(False)
         self._export_csv_action.setEnabled(False)
+        # These signals belong to this job and its temporary progress dialog.
         job.progress.connect(self._on_capture_progress)
         job.finished.connect(self._finish_capture_job)
         dialog.canceled.connect(job.requestInterruption)
@@ -405,7 +395,11 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_save_connection_settings(self) -> None:
-        self.apply_settings(self._connection_settings.selected_settings())
+        if self.session.is_connected:
+            return
+        self.session.settings = self._connection_settings.selected_settings()
+        index = self.connection_type_combo.currentIndex()
+        self.connection_type_combo.setItemData(index, self.session.settings.transport)
 
     @Slot()
     def on_toggle_connection(self) -> None:

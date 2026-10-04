@@ -12,8 +12,6 @@ from PySide6.QtCore import QSettings, QTimer
 from PySide6.QtWidgets import QApplication
 from mainwindow import MainWindow, apply_application_style
 from modules.core.extraction import ExtractionRule
-from modules.core.connection_settings import ConnectionSettings
-from modules.core.serial_transport import SerialSettings
 from modules.controllers.connection_session import ConnectionSession
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.plot_widget import PlotWidget
@@ -63,7 +61,8 @@ def main():
     window._preferences = QSettings(str(args.output.resolve() / "layout.ini"), QSettings.Format.IniFormat)
     window.resize(1280, 720)
     window.apply_rules([ExtractionRule(f"Value {i}", "delimited_values", extra_setting=str(i)) for i in range(6)])
-    window.apply_settings(ConnectionSettings(transport=SerialSettings(port=args.port), log_to_file=not args.no_logging))
+    window.session.settings.transport.port = args.port
+    window.session.settings.log_to_file = not args.no_logging
     window.session._serial_log.log_dir = args.output
     window.session._plot_log.log_dir = args.output
     window.show()
