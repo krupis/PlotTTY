@@ -194,9 +194,9 @@ class PlotSessionLog:
         self._file: BinaryIO | None = None
         self._writer: BinaryCaptureWriter | None = None
 
-    def start(self, port: str, baudrate: int) -> Path:
+    def start(self, connection: str) -> Path:
         self.close()
-        self.path = create_log_path(self.log_dir, port, baudrate, "plot.plotty")
+        self.path = create_log_path(self.log_dir, connection, "plot.plotty")
         self._file = self.path.open("xb")
         try:
             self._writer = BinaryCaptureWriter(self._file)

@@ -7,6 +7,7 @@ from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPalette, QShort
 from PySide6.QtCore import QSettings, QTimer, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
+    QComboBox,
     QFileDialog,
     QLabel,
     QMessageBox,
@@ -23,12 +24,14 @@ from PySide6.QtWidgets import (
 from ui_form import Ui_MainWindow
 
 from modules.core.profiles import AppProfile, load_profile, save_profile
-from modules.controllers.serial_session import SerialSession
+from modules.controllers.connection_session import ConnectionSession
 from modules.core.extraction import clean_label, default_rules, validate_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.rules_editor import RulesEditor
-from modules.widgets.serial_settings_dialog import SerialSettingsDialog
+from modules.widgets.connection_settings_dialog import ConnectionSettingsDialog
+from modules.core.serial_transport import SerialSettings
+from modules.core.rtt_transport import RttSettings
 import rc_resources  # noqa: F401
 
 
@@ -84,9 +87,9 @@ class MainWindow(QMainWindow):
         self._capture_job: CaptureJob | None = None
         self._loading_dialog: QProgressDialog | None = None
         self._close_after_capture = False
-        self.session = SerialSession(self)
-        self._serial_settings = SerialSettingsDialog(self.session.settings, self)
-        self._serial_settings.accepted.connect(self._save_serial_settings)
+        self.session = ConnectionSession(self)
+        self._connection_settings = ConnectionSettingsDialog(self.session.settings, self)
+        self._connection_settings.accepted.connect(self.on_save_connection_settings)
         self.profile_path = Path("profile.json")
 
         self.plot = self.ui.Plot
@@ -119,6 +122,13 @@ class MainWindow(QMainWindow):
         self.plot.layout().removeItem(self.plot.controls_layout)
         self.ui.ConnectionLayout.addLayout(self.plot.controls_layout)
         self.ui.ConnectionLayout.setSpacing(12)
+        self.connection_type_combo = QComboBox(self.connection_bar)
+        self.connection_type_combo.setObjectName("ConnectionTypeCombo")
+        self.connection_type_combo.addItem("Serial", SerialSettings())
+        self.connection_type_combo.addItem("J-Link RTT", RttSettings())
+        self.connection_type_combo.activated.connect(self._connection_type_changed)
+        self.ui.ConnectionSettingsButton.setText("Connection settings")
+        self.ui.ConnectionLayout.insertWidget(0, self.connection_type_combo)
         self.plot.controls_layout.setSpacing(8)
         self.ui.MainLayout.setContentsMargins(12, 10, 12, 10)
         self.ui.SeriesLayout.setContentsMargins(16, 14, 16, 14)
@@ -170,8 +180,19 @@ class MainWindow(QMainWindow):
         self.ui.SeriesLayout.addWidget(self.rules_editor, 1)
 
     def apply_settings(self, settings):
+        if self.session.is_connected:
+            return
         self.session.settings = settings
-        self.ui.ConnectionSettingsButton.setText(settings.port or "Select port")
+        for index in range(self.connection_type_combo.count()):
+            saved_settings = self.connection_type_combo.itemData(index)
+            if type(saved_settings) is type(settings.transport):
+                if saved_settings is not settings.transport:
+                    self.connection_type_combo.setItemData(index, settings.transport)
+                self.connection_type_combo.setCurrentIndex(index)
+                break
+
+    def _connection_type_changed(self, index):
+        self.apply_settings(replace(self.session.settings, transport=self.connection_type_combo.itemData(index)))
 
     def focus_console_search(self):
         self.ui.actionConsole.setChecked(True)
@@ -221,7 +242,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
-        self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_serial_settings)
+        self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_connection_settings)
         self.ui.ClearConsoleButton.clicked.connect(self.console.clear)
         self.plot.clearPlotRequested.connect(self.on_clear_plot)
         self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
@@ -233,14 +254,14 @@ class MainWindow(QMainWindow):
         self.session.consoleText.connect(self.console.append_status)
         self.session.valuesCaptured.connect(self.plot.append_values)
         self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
-        self.session.errorOccurred.connect(self.on_serial_error)
+        self.session.errorOccurred.connect(self.on_transport_error)
 
     def apply_rules(self, rules):
         validate_rules(rules)
         renamed_series = {
             clean_label(previous.label): clean_label(current.label)
             for previous, current in zip(self.applied_rules, rules)
-            # Named values rules use the incoming name, not their rule label.
+            # Named values ruleuse the incoming name, not their rule label.
             if previous.method != "named_values" and current.method != "named_values"
         }
         self.plot.update_series_labels(renamed_series)
@@ -313,7 +334,7 @@ class MainWindow(QMainWindow):
         if self._capture_job is not None:
             return
         if destination is None:
-            self.session.disconnect_serial()  # Do not mix live samples into an imported time base.
+            self.session.disconnect_device()  # Do not mix live samples into an imported time base.
         job = self._capture_job = CaptureJob(path, destination, parent=self)
         message = f"{'Exporting' if destination else 'Loading'} {Path(path).name}..."
         dialog = self._loading_dialog = QProgressDialog(message, "Cancel", 0, 0, self)
@@ -377,25 +398,24 @@ class MainWindow(QMainWindow):
             self.close()
 
     @Slot()
-    def on_open_serial_settings(self) -> None:
+    def on_open_connection_settings(self) -> None:
         if not self.session.is_connected:
-            self._serial_settings.set_settings(self.session.settings)
-            self._serial_settings.show_below(self.ui.ConnectionSettingsButton)
+            self._connection_settings.set_settings(self.session.settings)
+            self._connection_settings.show_below(self.ui.ConnectionSettingsButton)
 
-    def _save_serial_settings(self) -> None:
-        if not self.session.is_connected:
-            self.apply_settings(self._serial_settings.selected_settings())
+    @Slot()
+    def on_save_connection_settings(self) -> None:
+        self.apply_settings(self._connection_settings.selected_settings())
 
     @Slot()
     def on_toggle_connection(self) -> None:
         if self.session.is_connected:
-            self.session.disconnect_serial()
+            self.session.disconnect_device()
         else:
             try:
-                self.session.connect_serial()
+                self.session.connect_device()
             except Exception as exc:
-                title = "No Port" if not self.session.settings.port else "Connection Failed"
-                QMessageBox.warning(self, title, str(exc))
+                QMessageBox.warning(self, "Connection Failed", str(exc))
 
     @Slot()
     def on_clear_plot(self) -> None:
@@ -410,8 +430,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Cleared console and plot data")
 
     @Slot(str)
-    def on_serial_error(self, message: str) -> None:
-        QMessageBox.warning(self, "Serial Error", message)
+    def on_transport_error(self, message: str) -> None:
+        QMessageBox.warning(self, "Connection Error", message)
 
     @Slot()
     def on_send_command(self) -> None:
@@ -435,12 +455,13 @@ class MainWindow(QMainWindow):
         self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
         self.ui.ConnectButton.setToolTip("Connected — click to disconnect" if connected else "Disconnected — click to connect")
         self.ui.ConnectionSettingsButton.setEnabled(not connected)
+        self.connection_type_combo.setEnabled(not connected)
         for button in (self.ui.ConnectButton, self.ui.ConnectionSettingsButton):
             button.setProperty("connected", connected)
             button.style().unpolish(button)
             button.style().polish(button)
         if connected:
-            self._serial_settings.reject()
+            self._connection_settings.reject()
         self.ui.CommandEdit.setEnabled(connected)
         self.ui.SendButton.setEnabled(connected)
         self.update_recording_status()
@@ -475,7 +496,7 @@ class MainWindow(QMainWindow):
             settings.setValue(name, getattr(self.ui, "action" + name).isChecked())
         self.plot.clear_values()
         self.console.flush()
-        self.session.disconnect_serial()
+        self.session.disconnect_device()
         super().closeEvent(event)
 
 

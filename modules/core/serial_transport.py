@@ -1,12 +1,10 @@
 """Qt serial transport."""
-
 from __future__ import annotations
-
 from dataclasses import dataclass
 from time import time
-
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import Slot
 from PySide6.QtSerialPort import QSerialPort
+from .transport import Transport
 
 
 @dataclass
@@ -16,19 +14,13 @@ class SerialSettings:
     data_bits: int = 8
     parity: str = "N"
     stop_bits: float = 1
-    encoding: str = "utf-8"
-    line_ending: str = "\n"
-    log_to_file: bool = True
-    raw_capture_mode: bool = False
 
 
-class SerialTransport(QObject):
-    bytesReceived = Signal(bytes, float)
-    errorReceived = Signal(str)
+class SerialTransport(Transport):
+    settings: SerialSettings
 
-    def __init__(self, settings: SerialSettings, parent: QObject | None = None):
-        super().__init__(parent)
-        self.settings = settings
+    def __init__(self, settings: SerialSettings, *, on_bytes_received, on_error, parent=None):
+        super().__init__(settings, on_bytes_received=on_bytes_received, on_error=on_error, parent=parent)
         self._serial = QSerialPort(self)
         self._serial.readyRead.connect(self.on_ready_read)
         self._serial.errorOccurred.connect(self.on_error)
@@ -37,7 +29,13 @@ class SerialTransport(QObject):
     def is_open(self) -> bool:
         return self._serial.isOpen()
 
+    @property
+    def connection_description(self) -> str:
+        return f"Serial {self.settings.port} at {self.settings.baudrate} baud"
+
     def open(self) -> None:
+        if not self.settings.port:
+            raise RuntimeError("Choose a serial port in connection settings first.")
         self._serial.setPortName(self.settings.port)
         self._serial.setBaudRate(self.settings.baudrate)
         self._serial.setDataBits(_data_bits(self.settings.data_bits))
@@ -49,14 +47,14 @@ class SerialTransport(QObject):
             raise RuntimeError(message)
 
     def close(self) -> None:
+        super().close()
         if self._serial.isOpen():
             self._serial.close()
 
-    def write_text(self, text: str) -> None:
+    def write(self, data: bytes) -> None:
         if not self._serial.isOpen():
             raise RuntimeError("Serial port is not open.")
 
-        data = f"{text}{self.settings.line_ending}".encode(self.settings.encoding)
         bytes_written = self._serial.write(data)
         if bytes_written == -1:
             message = self._serial.errorString() or "Could not write to serial port."
@@ -67,12 +65,12 @@ class SerialTransport(QObject):
     def on_ready_read(self) -> None:
         received_at = time()
         data = bytes(self._serial.readAll())
-        self.bytesReceived.emit(data, received_at)
+        self.bytesReceived.emit(self, data, received_at)
 
     @Slot(QSerialPort.SerialPortError)
     def on_error(self, error: QSerialPort.SerialPortError) -> None:
         if error != QSerialPort.SerialPortError.NoError:
-            self.errorReceived.emit(self._serial.errorString())
+            self.errorReceived.emit(self, self._serial.errorString())
 
 
 def _data_bits(value: int) -> QSerialPort.DataBits:

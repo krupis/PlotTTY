@@ -1,4 +1,4 @@
-"""Serial session logging."""
+"""Connection text logging."""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ from typing import TextIO
 from uuid import uuid4
 
 
-def create_log_path(log_dir: Path, port: str, baudrate: int, suffix: str) -> Path:
-    """Create the log directory and build a filename safe for the port name."""
+def create_log_path(log_dir: Path, connection: str, suffix: str) -> Path:
+    """Create the log directory and sanitize the connection description."""
     log_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    safe_port = "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in port)
-    return log_dir / f"serial_{safe_port}_{baudrate}_{timestamp}_{uuid4().hex[:8]}_{suffix}"
+    name = "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in connection)
+    return log_dir / f"{name}_{timestamp}_{uuid4().hex[:8]}_{suffix}"
 
 
 class SerialSessionLog:
@@ -22,9 +22,9 @@ class SerialSessionLog:
         self.path: Path | None = None
         self._file: TextIO | None = None
 
-    def start(self, port: str, baudrate: int) -> Path:
+    def start(self, connection: str) -> Path:
         self.close()
-        self.path = create_log_path(self.log_dir, port, baudrate, "console.log")
+        self.path = create_log_path(self.log_dir, connection, "console.log")
         self._file = self.path.open("x", encoding="utf-8", newline="\n")
         return self.path
 

@@ -22,12 +22,47 @@ For rendering benchmarks and live-device diagnostics, see
 
 ## Plot workspace
 
-Click the connection summary in the top bar to choose a port and baud rate.
+Click **Connection settings** in the top bar to choose a port and baud rate.
 The same popover shows all serial settings, with expandable capture options.
 Choose **Save settings**, then **Connect**. Escape or clicking outside discards
 unsaved edits; connection settings are locked while connected. Use the checkbox in each
 plot header to show or hide its trace. Hidden plots collapse to a compact header;
 their series continue recording and retain their colors. Recheck the header to reopen a plot.
+
+Use the connection type selector to choose **J-Link RTT** when the target firmware
+provides SEGGER RTT. Install the SEGGER J-Link Software and Documentation Pack and
+`pylink-square` (included in `requirements.txt`); `JLinkARM.dll` must be available
+through `PATH`. In connection settings enter the target device name and, if needed,
+the probe serial number, SWD/JTAG interface, speed, control-block address, and RTT
+up/down channels. PlotTTY polls the selected up channel into the same console,
+extraction, plotting, and recording pipeline as serial, and sends commands on the
+selected down channel. Close RTT Viewer, J-Link Commander, and other tools using
+the probe before connecting. The J-Link DLL is provided by the separately installed
+SEGGER package and is not bundled with PlotTTY.
+
+Transport implementations are separate: `modules/core/serial_transport.py` and
+`modules/core/rtt_transport.py` implement the `Transport` interface in
+`modules/core/transport.py`. `ConnectionSession.connect_device()` selects and constructs
+the backend using its settings class. The connection selector holds its Serial and RTT
+settings directly. To add a backend, implement the interface, add it to `TRANSPORT_TYPES`, and
+add its settings UI. `ConnectionSession` owns the shared decoding,
+extraction, recording, and receive-rate pipeline.
+`SerialSettingsWidget` and `RttSettingsWidget` own their transport fields;
+`ConnectionSettingsDialog` hosts the selected widget, shared options, and Save/Cancel.
+`SerialSettings` and `RttSettings` live with their respective transports;
+`ConnectionSettings` holds one selected transport's settings and shared encoding,
+line ending, and capture options. Backends exchange bytes; the session encodes
+console commands. Switching connection type keeps each backend's saved settings
+for the current app session.
+
+The session passes its receive and error handlers to the backend constructor.
+Backends emit `self.bytesReceived.emit(self, data, timestamp)` and
+`self.errorReceived.emit(self, message)`. The transport constructor connects the
+supplied handlers directly using Qt queued connections. Each handler receives the
+source transport first and ignores events from a disconnected connection.
+Backend `close()` calls `super().close()` to stop further signals before releasing
+resources. Create a new transport for each connection.
+Recording filenames use the connection description, timestamp, and a unique ID.
 
 The extraction sidebar contains a sample input and an editable rules table.
 Generate rules from a sample or edit the table, then

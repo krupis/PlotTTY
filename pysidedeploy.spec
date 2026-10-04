@@ -19,5 +19,5 @@ plugins = platforms,styles,imageformats,iconengines
 [nuitka]
 mode = standalone
 macos.permissions = 
-extra_args = --include-qt-plugins=platforms,styles,imageformats,iconengines --msvc=latest --assume-yes-for-downloads --output-folder-name=mainwindow --output-filename=PlotTTY.exe --windows-console-mode=disable --force-stderr-spec={PROGRAM_BASE}.err.txt --noinclude-qt-translations --noinclude-dlls=**/qpdf.dll --include-data-files=styles/application.qss=styles/application.qss --include-data-files=LICENSE=LICENSE --report=dist/build-report.xml
+extra_args = --include-qt-plugins=platforms,styles,imageformats,iconengines --include-package=pylink --msvc=latest --assume-yes-for-downloads --output-folder-name=mainwindow --output-filename=PlotTTY.exe --windows-console-mode=disable --force-stderr-spec={PROGRAM_BASE}.err.txt --noinclude-qt-translations --noinclude-dlls=**/qpdf.dll --include-data-files=styles/application.qss=styles/application.qss --include-data-files=LICENSE=LICENSE --report=dist/build-report.xml
 

@@ -12,8 +12,9 @@ from PySide6.QtCore import QSettings, QTimer
 from PySide6.QtWidgets import QApplication
 from mainwindow import MainWindow, apply_application_style
 from modules.core.extraction import ExtractionRule
+from modules.core.connection_settings import ConnectionSettings
 from modules.core.serial_transport import SerialSettings
-from modules.controllers.serial_session import SerialSession
+from modules.controllers.connection_session import ConnectionSession
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.plot_widget import PlotWidget
 from plot_benchmark import stats
@@ -44,6 +45,8 @@ def main():
         def timed(self, *a, **kw):
             if not active:
                 return original(self, *a, **kw)
+            if method == "on_receive":
+                counts["bytes"] += len(a[1])
             tick = perf_counter()
             try:
                 return original(self, *a, **kw)
@@ -51,16 +54,16 @@ def main():
                 timings[method].append((perf_counter() - tick) * 1000)
         setattr(cls, method, timed)
 
-    for cls, method in ((SerialSession, "on_receive"), (ConsoleWidget, "flush"),
+    for cls, method in ((ConnectionSession, "on_receive"), (ConsoleWidget, "flush"),
                         (PlotWidget, "append_values"), (PlotWidget, "_update_visible_curve_data")):
         instrument(cls, method)
     # Avoid modal errors during unattended device measurements.
-    MainWindow.on_serial_error = lambda self, message: errors.append(message)
+    MainWindow.on_transport_error = lambda self, message: errors.append(message)
     window = MainWindow()
     window._preferences = QSettings(str(args.output.resolve() / "layout.ini"), QSettings.Format.IniFormat)
     window.resize(1280, 720)
     window.apply_rules([ExtractionRule(f"Value {i}", "delimited_values", extra_setting=str(i)) for i in range(6)])
-    window.apply_settings(SerialSettings(port=args.port, log_to_file=not args.no_logging))
+    window.apply_settings(ConnectionSettings(transport=SerialSettings(port=args.port), log_to_file=not args.no_logging))
     window.session._serial_log.log_dir = args.output
     window.session._plot_log.log_dir = args.output
     window.show()
@@ -70,18 +73,14 @@ def main():
     monitor = EventLoopLatencyMonitor(window)
     monitor.start()
     try:
-        window.session.connect_serial()
+        window.session.connect_device()
     except Exception as exc:
         window.close()
         raise SystemExit(str(exc))
 
-    def received(data, _timestamp):
-        if active:
-            counts["bytes"] += len(data)
     def captured(values):
         if active:
             counts["values"] += len(values)
-    window.session._connection.bytesReceived.connect(received)
     window.session.valuesCaptured.connect(captured)
     started = 0.
 
@@ -96,7 +95,7 @@ def main():
         nonlocal active
         active = False
         elapsed = perf_counter() - started
-        window.session.disconnect_serial()
+        window.session.disconnect_device()
         window.grab().save(str(args.output / "window.png"))
         result = {"elapsed_seconds": elapsed, "counts": counts, "errors": errors,
                   "receive_bytes_per_second": counts["bytes"] / elapsed,

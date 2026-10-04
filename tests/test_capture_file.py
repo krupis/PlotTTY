@@ -120,10 +120,10 @@ class CaptureFileTest(unittest.TestCase):
 
     def test_session_close_flushes_and_reconnect_does_not_overwrite(self):
         log = PlotSessionLog(self.root)
-        first = log.start('COM15', 115200)
+        first = log.start('Serial COM15 at 115200 baud')
         log.write_values([CapturedValue(1, 'a', 2)])
         log.flush(); log.close(); log.close()
-        second = log.start('COM15', 115200)
+        second = log.start('Serial COM15 at 115200 baud')
         log.close()
         self.assertNotEqual(first, second)
         self.assertEqual(sum(len(b) for b in iter_binary_capture(first)), 1)

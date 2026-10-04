@@ -1,4 +1,4 @@
-"""Serial connection session controller."""
+"""Shared connection session: decoding, extraction, recording, and status."""
 
 from __future__ import annotations
 
@@ -12,14 +12,23 @@ from ..core.extraction import CapturedValue, ExtractionEngine, ExtractionRule
 from ..core.line_decoder import LineDecoder
 from ..core.serial_log import SerialSessionLog
 from ..core.binary_logging import PlotSessionLog
+from ..core.connection_settings import ConnectionSettings
+from ..core.transport import Transport
 from ..core.serial_transport import SerialSettings, SerialTransport
+from ..core.rtt_transport import RttSettings, RttTransport
 
 
 RECEIVE_RATE_REFRESH_INTERVAL_MS = 100
 RECEIVE_RATE_WINDOW_SECONDS = 1.0
 
 
-class SerialSession(QObject):
+TRANSPORT_TYPES = {
+    SerialSettings: SerialTransport,
+    RttSettings: RttTransport,
+}
+
+
+class ConnectionSession(QObject):
     connectedChanged = Signal(bool)
     receivedText = Signal(str)
     sentText = Signal(str)
@@ -30,8 +39,8 @@ class SerialSession(QObject):
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self.settings = SerialSettings()
-        self._connection: SerialTransport | None = None
+        self.settings = ConnectionSettings()
+        self._connection: Transport | None = None
         self._line_decoder = LineDecoder()
         self._engine = ExtractionEngine()
         self._serial_log = SerialSessionLog()
@@ -63,20 +72,23 @@ class SerialSession(QObject):
     def set_rules(self, rules: list[ExtractionRule]) -> None:
         self._engine = ExtractionEngine(rules)
 
-    def connect_serial(self) -> None:
+    def connect_device(self) -> None:
         if self.is_connected:
             return
-        if not self.settings.port:
-            raise RuntimeError("Choose a serial port in the top bar first.")
-
-        transport = SerialTransport(self.settings, self)
-        message = f"[connected to {self.settings.port} at {self.settings.baudrate} baud]"
+        backend = TRANSPORT_TYPES[type(self.settings.transport)]
+        transport = backend(
+            settings=self.settings.transport,
+            on_bytes_received=self.on_receive,
+            on_error=self.on_transport_error,
+            parent=self,
+        )
+        message = f"[connected to {transport.connection_description}]"
         try:
             self._line_decoder = LineDecoder(self.settings.encoding)
             transport.open()
             if self.settings.log_to_file:
-                self._serial_log.start(self.settings.port, self.settings.baudrate)
-                self._plot_log.start(self.settings.port, self.settings.baudrate)
+                self._serial_log.start(transport.connection_description)
+                self._plot_log.start(transport.connection_description)
                 self._serial_log.write_status(message)
         except Exception:
             transport.close()
@@ -85,13 +97,11 @@ class SerialSession(QObject):
             raise
 
         self._connection = transport
-        transport.bytesReceived.connect(self.on_receive)
-        transport.errorReceived.connect(self.on_serial_error)
         self.reset_receive_rate()
         self.connectedChanged.emit(True)
         self.consoleText.emit(f"{message}\n")
 
-    def disconnect_serial(self) -> None:
+    def disconnect_device(self) -> None:
         was_connected = self._close_connection()
         error = None
         try:
@@ -108,7 +118,6 @@ class SerialSession(QObject):
     def _close_connection(self) -> bool:
         was_connected = self.is_connected
         if self._connection:
-            self._connection.blockSignals(True)
             self._connection.close()
             self._connection.deleteLater()
             self._connection = None
@@ -117,9 +126,10 @@ class SerialSession(QObject):
 
     def send_command(self, command: str) -> None:
         if not self._connection or not self._connection.is_open:
-            raise RuntimeError("Connect to a serial port before sending commands")
+            raise RuntimeError("Connect before sending commands")
 
-        self._connection.write_text(command)
+        data = f"{command}{self.settings.line_ending}".encode(self.settings.encoding)
+        self._connection.write(data)
         if self.settings.log_to_file:
             try:
                 self._serial_log.write_sent(command)
@@ -131,8 +141,10 @@ class SerialSession(QObject):
         self._receive_rate_samples.clear()
         self.receiveRateChanged.emit(0.0)
 
-    @Slot(bytes, float)
-    def on_receive(self, data: bytes, received_at: float | None = None) -> None:
+    @Slot(object, bytes, float)
+    def on_receive(self, source: Transport | None, data: bytes, received_at: float | None = None) -> None:
+        if source is not self._connection:
+            return
         if not data:
             return
         self._receive_rate_samples.append((monotonic(), len(data)))
@@ -158,10 +170,11 @@ class SerialSession(QObject):
                     self._handle_log_error(exc)
             self.valuesCaptured.emit(captured_values)
 
-    @Slot(str)
-    def on_serial_error(self, message: str) -> None:
-        if self._connection is not None:
-            self.disconnect_serial()
+    @Slot(object, str)
+    def on_transport_error(self, source: Transport, message: str) -> None:
+        if source is not self._connection:
+            return
+        self.disconnect_device()
         self.errorOccurred.emit(message)
 
     @Slot()

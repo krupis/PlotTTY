@@ -12,6 +12,7 @@ Full license texts and upstream notices are collected in licenses/:
   Python.txt    CPython and its bundled components, including libffi.
   OpenSSL.txt   OpenSSL: Apache-2.0.
   nuitka.txt    Nuitka runtime: AGPLv3 with its runtime linking exception.
+  pylink-square.txt  PyLink: Apache-2.0.
 
 The Qt notice collection covers the upstream modules used in this build.
 It also preserves their bundled-component notices; some apply only to other

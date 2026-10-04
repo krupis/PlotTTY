@@ -8,39 +8,43 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from PySide6.QtCore import QObject, QPoint, QPointF, QSettings, Qt, Signal
+from PySide6.QtCore import QPoint, QPointF, QSettings, Qt
 from PySide6.QtGui import QColor, QPalette, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
 
 from mainwindow import MainWindow, apply_application_style
 from modules.controllers.capture_job import CaptureJob
+from modules.controllers.connection_session import TRANSPORT_TYPES
 from modules.core.binary_logging import BinaryCaptureWriter
 from modules.core.extraction import CapturedValue, ExtractionEngine, ExtractionRule
 from modules.core.rule_suggestions import suggest_rules
 from modules.core.profiles import AppProfile, load_profile, save_profile
+from modules.core.transport import Transport
 from modules.widgets.rules_editor import RulesEditor
 
 APP = QApplication.instance() or QApplication([])
 
 
-class FakeTransport(QObject):
-    bytesReceived = Signal(bytes, float)
-    errorReceived = Signal(str)
+class FakeTransport(Transport):
+    is_open = False
+    connection_description = ""
 
-    def __init__(self, settings, parent=None):
-        super().__init__(parent)
+    def __init__(self, settings, *, on_bytes_received, on_error, parent=None):
+        super().__init__(settings, on_bytes_received=on_bytes_received, on_error=on_error, parent=parent)
         self.is_open = False
         self.commands = []
+        self.connection_description = settings.port
 
     def open(self):
         self.is_open = True
 
     def close(self):
+        super().close()
         self.is_open = False
 
-    def write_text(self, command):
-        self.commands.append(command)
+    def write(self, data):
+        self.commands.append(data)
 
 
 class WorkspaceTest(unittest.TestCase):
@@ -263,12 +267,12 @@ class WorkspaceTest(unittest.TestCase):
     def test_colors_hidden_capture_and_header_structure(self):
         plot = self.window.plot
         self.window.session.settings.log_to_file = False
-        self.window.session.on_receive(b"A: 1 V B: 2 A\n", 100)
+        self.window.session.on_receive(None, b"A: 1 V B: 2 A\n", 100)
         colors = [row["color"] for row in plot.series_info()]
         first = self.window.plot.graph.headers["A"]
         plot.set_series_visible("A", False)
         self.assertIs(first, self.window.plot.graph.headers["A"])
-        self.window.session.on_receive(b"A: 3 V B: 4 A\n", 101)
+        self.window.session.on_receive(None, b"A: 3 V B: 4 A\n", 101)
         plot.on_refresh_pending_data()
         self.assertEqual(plot._series["A"].sample_count(), 2)
         self.assertEqual(plot._curves["B"].color, colors[1])
@@ -301,7 +305,7 @@ class WorkspaceTest(unittest.TestCase):
         window = self.window
         self.assertFalse(window.ui.actionConsole.isChecked())
         window.session.settings.log_to_file = False
-        window.session.on_receive(b"Voltage: 3 V\n", 100)
+        window.session.on_receive(None, b"Voltage: 3 V\n", 100)
         window.console.flush()
         self.assertIn("Voltage", window.ui.ConsoleTextEdit.toPlainText())
         window.ui.actionConsole.setChecked(True)
@@ -491,13 +495,43 @@ class WorkspaceTest(unittest.TestCase):
         plot.clear_values()
         self.assertEqual(plot.graph.empty_message, "Waiting for series")
 
+    def test_switching_transports_preserves_each_saved_configuration(self):
+        from modules.core.serial_transport import SerialSettings
+        from modules.core.rtt_transport import RttSettings
+        from modules.core.connection_settings import ConnectionSettings
+        w = self.window
+        w.apply_settings(ConnectionSettings(transport=SerialSettings(port="COM123", baudrate=230400),
+                                           encoding="latin-1", line_ending="\r\n", log_to_file=False))
+        QTest.keyClick(w.connection_type_combo, Qt.Key.Key_Down)
+        self.assertIsInstance(w.session.settings.transport, RttSettings)
+        w.on_open_connection_settings()
+        dialog = w._connection_settings
+        dialog.transport_widget.target_edit.setText("test-target")
+        dialog.transport_widget.speed_spin.setValue(2000)
+        dialog.accept()
+        QTest.keyClick(w.connection_type_combo, Qt.Key.Key_Up)
+        self.assertEqual(w.session.settings.transport.port, "COM123")
+        self.assertEqual(w.session.settings.transport.baudrate, 230400)
+        QTest.keyClick(w.connection_type_combo, Qt.Key.Key_Down)
+        self.assertEqual(w.session.settings.transport.target, "test-target")
+        self.assertEqual(w.session.settings.transport.speed_khz, 2000)
+        self.assertEqual(w.session.settings.encoding, "latin-1")
+        self.assertEqual(w.session.settings.line_ending, "\r\n")
+        self.assertFalse(w.session.settings.log_to_file)
+        self.assertFalse(hasattr(w.session.settings.transport, "port"))
+        # Cancelling a draft must not alter the saved backend settings.
+        w.on_open_connection_settings()
+        dialog.transport_widget.target_edit.setText("discarded-target")
+        dialog.reject()
+        self.assertEqual(w.session.settings.transport.target, "test-target")
+
     def test_connection_recording_raw_mode_and_error_status(self):
         w = self.window
         session = w.session
-        session.settings.port = "TEST"
+        session.settings.transport.port = "TEST"
         session._serial_log.log_dir = Path(self.temp.name)
         session._plot_log.log_dir = Path(self.temp.name)
-        with patch("modules.controllers.serial_session.SerialTransport", FakeTransport):
+        with patch.dict(TRANSPORT_TYPES, {type(session.settings.transport): FakeTransport}):
             w.ui.ConnectButton.click()
             self.assertTrue(session.is_connected)
             self.assertEqual(w.ui.ConnectButton.text(), "Disconnect")
@@ -505,11 +539,12 @@ class WorkspaceTest(unittest.TestCase):
             paths = session.recording_paths
             self.assertEqual(len(paths), 2)
             self.assertIn(str(paths[-1]), w._recording_label.toolTip())
-            session._connection.bytesReceived.emit(b"Voltage: 3.3 V\n", 100)
+            session._connection.bytesReceived.emit(session._connection, b"Voltage: 3.3 V\n", 100)
+            APP.processEvents()
             w.ui.actionConsole.setChecked(True)
             w.ui.CommandEdit.setText("READ")
             w.ui.SendButton.click()
-            self.assertEqual(session._connection.commands, ["READ"])
+            self.assertEqual(session._connection.commands, [b"READ\n"])
             w.ui.actionClearCapturedData.trigger()
             self.assertTrue(all(path.exists() for path in paths))
             w.ui.ConnectButton.click()
@@ -517,7 +552,8 @@ class WorkspaceTest(unittest.TestCase):
             self.assertEqual(w._recording_label.text(), "Not recording")
             session.settings.raw_capture_mode = True
             w.ui.ConnectButton.click()
-            session._connection.bytesReceived.emit(b"Voltage: 9 V\n", 101)
+            session._connection.bytesReceived.emit(session._connection, b"Voltage: 9 V\n", 101)
+            APP.processEvents()
             self.assertEqual(w.plot.series_info(), [])
             with patch.object(session._plot_log, "flush", side_effect=OSError("disk full")), \
                     patch("mainwindow.QMessageBox.warning") as warning:
@@ -731,18 +767,18 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_connection_controls_settings_and_layout_roundtrip(self):
         w = self.window
-        w.on_open_serial_settings()
-        dialog = w._serial_settings
-        dialog.port_combo.addItem("test-port")
-        dialog.port_combo.setCurrentText("test-port")
-        dialog.baud_combo.setCurrentText("230400")
-        dialog.refresh_ports()
-        self.assertEqual(dialog.port_combo.currentText(), "test-port")
-        self.assertEqual(w.session.settings.port, "")
+        w.on_open_connection_settings()
+        dialog = w._connection_settings
+        dialog.transport_widget.port_combo.addItem("test-port")
+        dialog.transport_widget.port_combo.setCurrentText("test-port")
+        dialog.transport_widget.baud_combo.setCurrentText("230400")
+        dialog.transport_widget.refresh_button.click()
+        self.assertEqual(dialog.transport_widget.port_combo.currentText(), "test-port")
+        self.assertEqual(w.session.settings.transport.port, "")
         dialog.buttons.button(QDialogButtonBox.StandardButton.Save).click()
-        self.assertEqual(w.session.settings.port, "test-port")
-        self.assertEqual(w.session.settings.baudrate, 230400)
-        self.assertEqual(w.ui.ConnectionSettingsButton.text(), "test-port")
+        self.assertEqual(w.session.settings.transport.port, "test-port")
+        self.assertEqual(w.session.settings.transport.baudrate, 230400)
+        self.assertEqual(w.ui.ConnectionSettingsButton.text(), "Connection settings")
         w.on_connected_changed(True)
         self.assertFalse(w.ui.ConnectionSettingsButton.isEnabled())
         w.ui.actionConsole.setChecked(True)
@@ -763,35 +799,35 @@ class WorkspaceTest(unittest.TestCase):
         apply_application_style(APP)
         self.addCleanup(lambda: APP.setStyleSheet(""))
         w = self.window
-        with patch("modules.widgets.serial_settings_dialog.QSerialPortInfo.availablePorts", return_value=[]):
-            w.on_open_serial_settings()
-        dialog = w._serial_settings
-        self.assertEqual(dialog.port_combo.count(), 0)
-        self.assertEqual(dialog.port_combo.currentIndex(), -1)
-        self.assertEqual(dialog.port_combo.placeholderText(), "Select port")
-        self.assertTrue(dialog.parity_combo.isVisible())
+        with patch("modules.widgets.serial_settings_widget.QSerialPortInfo.availablePorts", return_value=[]):
+            w.on_open_connection_settings()
+        dialog = w._connection_settings
+        self.assertEqual(dialog.transport_widget.port_combo.count(), 0)
+        self.assertEqual(dialog.transport_widget.port_combo.currentIndex(), -1)
+        self.assertEqual(dialog.transport_widget.port_combo.placeholderText(), "Select port")
+        self.assertTrue(dialog.transport_widget.parity_combo.isVisible())
         dialog.capture_toggle.click()
-        dialog.baud_combo.setCurrentText("230400")
-        dialog.parity_combo.setCurrentIndex(dialog.parity_combo.findData("E"))
+        dialog.transport_widget.baud_combo.setCurrentText("230400")
+        dialog.transport_widget.parity_combo.setCurrentIndex(dialog.transport_widget.parity_combo.findData("E"))
         dialog.log_to_file_checkbox.setChecked(False)
         QTest.keyClick(dialog, Qt.Key.Key_Escape)
         self.assertFalse(dialog.isVisible())
-        self.assertEqual(w.session.settings.baudrate, 115200)
-        self.assertEqual(w.session.settings.parity, "N")
+        self.assertEqual(w.session.settings.transport.baudrate, 115200)
+        self.assertEqual(w.session.settings.transport.parity, "N")
         self.assertTrue(w.session.settings.log_to_file)
-        w.on_open_serial_settings()
-        self.assertEqual(dialog.baud_combo.currentText(), "115200")
-        dialog.baud_combo.showPopup()
+        w.on_open_connection_settings()
+        self.assertEqual(dialog.transport_widget.baud_combo.currentText(), "115200")
+        dialog.transport_widget.baud_combo.showPopup()
         APP.processEvents()
-        view = dialog.baud_combo.view()
+        view = dialog.transport_widget.baud_combo.view()
         row_height = view.sizeHintForRow(0)
-        self.assertGreaterEqual(view.viewport().height(), row_height * dialog.baud_combo.count())
-        dialog.baud_combo.hidePopup()
+        self.assertGreaterEqual(view.viewport().height(), row_height * dialog.transport_widget.baud_combo.count())
+        dialog.transport_widget.baud_combo.hidePopup()
         self.assertTrue(dialog.isVisible())
-        dialog.parity_combo.setCurrentIndex(dialog.parity_combo.findData("E"))
+        dialog.transport_widget.parity_combo.setCurrentIndex(dialog.transport_widget.parity_combo.findData("E"))
         dialog.log_to_file_checkbox.setChecked(False)
         dialog.buttons.button(QDialogButtonBox.StandardButton.Save).click()
-        self.assertEqual(w.session.settings.parity, "E")
+        self.assertEqual(w.session.settings.transport.parity, "E")
         self.assertFalse(w.session.settings.log_to_file)
 
 
