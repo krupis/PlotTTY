@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPalette, QShortcut
-from PySide6.QtCore import QSettings, QSignalBlocker, QTimer, Qt, Slot
+from PySide6.QtCore import QSettings, QTimer, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -121,7 +121,6 @@ class MainWindow(QMainWindow):
         self.ui.ConnectionLayout.setSpacing(12)
         self.plot.controls_layout.setSpacing(8)
         self.ui.MainLayout.setContentsMargins(12, 10, 12, 10)
-        self.ui.MainSplitter.setHandleWidth(1)
         self.ui.SeriesLayout.setContentsMargins(16, 14, 16, 14)
         self.ui.SeriesLayout.setSpacing(12)
         self.ui.SeriesSidebar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
@@ -129,20 +128,15 @@ class MainWindow(QMainWindow):
         self.ui.ConsoleLayout.setContentsMargins(12, 14, 12, 12)
         self.plot.layout().setContentsMargins(0, 14, 0, 0)
         self.ui.ConsoleLayout.setSpacing(8)
-        for title, panel, layout in (
-            ("Extraction", self.ui.SeriesSidebar, self.ui.SeriesLayout),
-            ("Plot", self.plot, self.plot.layout()),
-            ("Console", self.ui.ConsolePanel, self.ui.ConsoleLayout),
-        ):
-            heading = QLabel(title, panel)
-            heading.setObjectName("PanelHeading")
-            layout.insertWidget(0, heading)
+        heading = QLabel("Plot", self.plot)
+        heading.setObjectName("PanelHeading")
+        self.plot.layout().insertWidget(0, heading)
         self.ui.SearchLayout.setSpacing(8)
         self.ui.SendButton.setProperty("primary", True)
         self.ui.SendButton.setIcon(QIcon(":/icons/send.svg"))
         self.ui.SendButton.style().unpolish(self.ui.SendButton)
         self.ui.SendButton.style().polish(self.ui.SendButton)
-        self.ui.WorkspaceLayout.setContentsMargins(12, 0, 0, 0)
+        self.ui.WorkspaceLayout.setContentsMargins(0, 0, 0, 0)
         self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
         self.ui.SendButton.clicked.connect(self.on_send_command)
         self.ui.SearchEdit.textChanged.connect(self.on_console_search_changed)
@@ -151,8 +145,6 @@ class MainWindow(QMainWindow):
         self.ui.SearchPreviousButton.clicked.connect(self.on_console_search_previous)
         self._console_search_shortcut = QShortcut(QKeySequence.StandardKey.Find, self)
         self._console_search_shortcut.activated.connect(self.focus_console_search)
-        self.ui.actionConsole.toggled.connect(self.set_console_visible)
-        self.ui.actionSidebar.toggled.connect(self.ui.SeriesSidebar.setVisible)
         self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
         self.ui.actionClearCapturedData.triggered.connect(self.on_clear_console_and_plot)
         self.apply_settings(self.session.settings)
@@ -162,20 +154,14 @@ class MainWindow(QMainWindow):
         self.statusBar().addPermanentWidget(self._rate_label)
         self.ui.SeriesSidebar.setMinimumWidth(420)
         self.ui.MainSplitter.setSizes([500, 1000])
-        self.ui.MainSplitter.setCollapsible(0, False)
         self.ui.MainSplitter.setStretchFactor(0, 0)
         self.ui.MainSplitter.setStretchFactor(1, 1)
-        self.ui.WorkspaceSplitter.setCollapsible(0, False)
-        self.ui.WorkspaceSplitter.setCollapsible(1, True)
-        self.ui.WorkspaceSplitter.setHandleWidth(8)
-        self.ui.WorkspaceSplitter.handle(1).setToolTip("Drag down to collapse the console; drag up to reopen it.")
-        self.ui.WorkspaceSplitter.handle(1).setAccessibleName("Resize or collapse console")
-        self.ui.WorkspaceSplitter.splitterMoved.connect(self._console_splitter_moved)
-        self._console_height = 180
-        self.set_console_visible(False)
+        self._add_rules_editor()
+        self.ui.MainSplitter.configure_panel("Extraction", 0, self.ui.actionSidebar, 500)
+        self.ui.WorkspaceSplitter.configure_panel("Console", 1, self.ui.actionConsole, 180)
+        self.ui.WorkspaceSplitter.set_panel_expanded(False)
         self.ui.actionSidebar.setChecked(True)
         self._preferences = QSettings("PlotTTY", "PlotTTY")
-        self._add_rules_editor()
 
     def _add_rules_editor(self):
         """Add persistent extraction controls to the configuration sidebar."""
@@ -186,21 +172,6 @@ class MainWindow(QMainWindow):
     def apply_settings(self, settings):
         self.session.settings = settings
         self.ui.ConnectionSettingsButton.setText(settings.port or "Select port")
-
-    def set_console_visible(self, visible):
-        if not visible and self.ui.WorkspaceSplitter.sizes()[1] > 0:
-            self._console_height = max(80, self.ui.WorkspaceSplitter.sizes()[1])
-        height = self.ui.WorkspaceSplitter.height()
-        console_height = self._console_height if visible else 0
-        self.ui.WorkspaceSplitter.setSizes([max(220, height - console_height), console_height])
-
-    def _console_splitter_moved(self, _position, _index):
-        height = self.ui.WorkspaceSplitter.sizes()[1]
-        if height > 0:
-            self._console_height = height
-        # Reflect a drag in the menu without resizing the splitter mid-gesture.
-        with QSignalBlocker(self.ui.actionConsole):
-            self.ui.actionConsole.setChecked(height > 0)
 
     def focus_console_search(self):
         self.ui.actionConsole.setChecked(True)
@@ -237,10 +208,14 @@ class MainWindow(QMainWindow):
                 state = settings.value(name)
                 if state:
                     getattr(self.ui, name).restoreState(state)
-            self._console_height = max(80, min(int(settings.value("consoleHeight", 180)), 1000))
             for name, default in (("Console", False), ("Sidebar", True), ("Diagnostics", False)):
                 getattr(self.ui, "action" + name).setChecked(settings.value(name, default, type=bool))
-            self.set_console_visible(self.ui.actionConsole.isChecked())
+            for splitter, action, key, default in (
+                (self.ui.MainSplitter, self.ui.actionSidebar, "sidebarWidth", 500),
+                (self.ui.WorkspaceSplitter, self.ui.actionConsole, "consoleHeight", 180),
+            ):
+                splitter.expanded_size = max(80, int(settings.value(key, default)))
+                splitter.set_panel_expanded(action.isChecked())
         except (TypeError, ValueError):
             self.resize(1280, 800)
 
@@ -494,9 +469,8 @@ class MainWindow(QMainWindow):
         settings.setValue("geometry", self.saveGeometry())
         for name in ("MainSplitter", "WorkspaceSplitter"):
             settings.setValue(name, getattr(self.ui, name).saveState())
-        if self.ui.actionConsole.isChecked():
-            self._console_height = max(80, self.ui.WorkspaceSplitter.sizes()[1])
-        settings.setValue("consoleHeight", self._console_height)
+        settings.setValue("consoleHeight", self.ui.WorkspaceSplitter.expanded_size)
+        settings.setValue("sidebarWidth", self.ui.MainSplitter.expanded_size)
         for name in ("Console", "Sidebar", "Diagnostics"):
             settings.setValue(name, getattr(self.ui, "action" + name).isChecked())
         self.plot.clear_values()

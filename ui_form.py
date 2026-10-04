@@ -18,9 +18,10 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMenu, QMenuBar, QPlainTextEdit,
-    QPushButton, QSizePolicy, QSpacerItem, QSplitter,
-    QStatusBar, QVBoxLayout, QWidget)
+    QPushButton, QSizePolicy, QSpacerItem, QStatusBar,
+    QVBoxLayout, QWidget)
 
+from modules.widgets.panel_splitter import PanelSplitter
 from modules.widgets.plot_widget import PlotWidget
 
 class Ui_MainWindow(object):
@@ -69,7 +70,7 @@ class Ui_MainWindow(object):
 
         self.MainLayout.addLayout(self.ConnectionLayout)
 
-        self.MainSplitter = QSplitter(self.centralwidget)
+        self.MainSplitter = PanelSplitter(self.centralwidget)
         self.MainSplitter.setObjectName(u"MainSplitter")
         self.MainSplitter.setOrientation(Qt.Horizontal)
         self.SeriesSidebar = QWidget(self.MainSplitter)
@@ -77,14 +78,13 @@ class Ui_MainWindow(object):
         self.SeriesSidebar.setMinimumSize(QSize(160, 0))
         self.SeriesLayout = QVBoxLayout(self.SeriesSidebar)
         self.SeriesLayout.setObjectName(u"SeriesLayout")
-        self.SeriesLayout.setContentsMargins(0, 0, 0, 0)
         self.MainSplitter.addWidget(self.SeriesSidebar)
         self.Workspace = QWidget(self.MainSplitter)
         self.Workspace.setObjectName(u"Workspace")
         self.WorkspaceLayout = QVBoxLayout(self.Workspace)
         self.WorkspaceLayout.setObjectName(u"WorkspaceLayout")
         self.WorkspaceLayout.setContentsMargins(0, 0, 0, 0)
-        self.WorkspaceSplitter = QSplitter(self.Workspace)
+        self.WorkspaceSplitter = PanelSplitter(self.Workspace)
         self.WorkspaceSplitter.setObjectName(u"WorkspaceSplitter")
         self.WorkspaceSplitter.setOrientation(Qt.Vertical)
         self.Plot = PlotWidget(self.WorkspaceSplitter)
@@ -94,7 +94,6 @@ class Ui_MainWindow(object):
         self.ConsolePanel.setObjectName(u"ConsolePanel")
         self.ConsoleLayout = QVBoxLayout(self.ConsolePanel)
         self.ConsoleLayout.setObjectName(u"ConsoleLayout")
-        self.ConsoleLayout.setContentsMargins(0, 0, 0, 0)
         self.SearchLayout = QHBoxLayout()
         self.SearchLayout.setObjectName(u"SearchLayout")
         self.SearchEdit = QLineEdit(self.ConsolePanel)

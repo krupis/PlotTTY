@@ -16,7 +16,7 @@
      </layout>
     </item>
     <item>
-     <widget class="QSplitter" name="MainSplitter">
+     <widget class="PanelSplitter" name="MainSplitter">
       <property name="orientation"><enum>Qt::Horizontal</enum></property>
       <widget class="QWidget" name="SeriesSidebar">
        <property name="minimumSize"><size><width>160</width><height>0</height></size></property>
@@ -27,7 +27,7 @@
        <layout class="QVBoxLayout" name="WorkspaceLayout">
         <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
         <item>
-         <widget class="QSplitter" name="WorkspaceSplitter">
+         <widget class="PanelSplitter" name="WorkspaceSplitter">
           <property name="orientation"><enum>Qt::Vertical</enum></property>
           <widget class="PlotWidget" name="Plot"/>
           <widget class="QWidget" name="ConsolePanel">
@@ -66,6 +66,7 @@
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <customwidgets>
+  <customwidget><class>PanelSplitter</class><extends>QSplitter</extends><header>modules.widgets.panel_splitter</header><container>1</container></customwidget>
   <customwidget><class>PlotWidget</class><extends>QWidget</extends><header>modules.widgets.plot_widget</header><container>1</container></customwidget>
  </customwidgets>
  <resources/>

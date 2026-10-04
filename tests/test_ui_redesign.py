@@ -319,7 +319,7 @@ class WorkspaceTest(unittest.TestCase):
         window.ui.actionClearCapturedData.trigger()
         self.assertEqual(window.plot.series_info(), [])
 
-    def test_console_divider_collapses_and_reopens_by_drag(self):
+    def test_console_drag_to_border_keeps_panel_and_title_visible(self):
         window = self.window
         splitter = window.ui.WorkspaceSplitter
         window.ui.actionConsole.setChecked(True)
@@ -330,8 +330,11 @@ class WorkspaceTest(unittest.TestCase):
         QTest.mouseMove(handle, QPoint(handle.width() // 2, splitter.height()))
         QTest.mouseRelease(handle, Qt.MouseButton.LeftButton)
         APP.processEvents()
-        self.assertEqual(splitter.sizes()[1], 0)
-        self.assertFalse(window.ui.actionConsole.isChecked())
+        self.assertGreater(splitter.sizes()[1], 0)
+        self.assertFalse(splitter.collapsed)
+        self.assertTrue(window.ui.actionConsole.isChecked())
+        self.assertTrue(splitter.collapse_button.isVisible())
+        self.assertTrue(window.ui.ConsoleTextEdit.isVisible())
         self.assertTrue(handle.isVisible())
         self.assertGreater(handle.height(), 0)
         QTest.mousePress(handle, Qt.MouseButton.LeftButton, pos=handle.rect().center())
@@ -341,22 +344,93 @@ class WorkspaceTest(unittest.TestCase):
         self.assertGreater(splitter.sizes()[1], 0)
         self.assertTrue(window.ui.actionConsole.isChecked())
 
+    def test_panel_buttons_collapse_reopen_and_follow_menu(self):
+        for splitter, action, index in (
+            (self.window.ui.MainSplitter, self.window.ui.actionSidebar, 0),
+            (self.window.ui.WorkspaceSplitter, self.window.ui.actionConsole, 1),
+        ):
+            action.setChecked(True)
+            APP.processEvents()
+            button = splitter.collapse_button
+            expanded = splitter.sizes()[index]
+            QTest.mouseClick(button, Qt.LeftButton)
+            APP.processEvents()
+            self.assertGreater(splitter.sizes()[index], 0)
+            self.assertLess(splitter.sizes()[index], expanded)
+            self.assertTrue(splitter.collapsed)
+            self.assertFalse(action.isChecked())
+            self.assertTrue(splitter.handle(1).isVisible())
+            self.assertTrue(button.isVisible())
+            self.assertIn("Expand", button.accessibleName())
+            handle = splitter.handle(1)
+            size = splitter.sizes()[index]
+            QTest.mousePress(handle, Qt.LeftButton, pos=handle.rect().center())
+            QTest.mouseMove(handle, QPoint(-splitter.width(), splitter.height()))
+            QTest.mouseRelease(handle, Qt.LeftButton)
+            APP.processEvents()
+            self.assertTrue(button.isVisible())
+            self.assertTrue(splitter.collapsed)
+            self.assertEqual(splitter.sizes()[index], size)
+            QTest.mouseClick(button, Qt.LeftButton)
+            APP.processEvents()
+            self.assertTrue(action.isChecked())
+            self.assertAlmostEqual(splitter.sizes()[index], expanded, delta=24)
+            button.setFocus()
+            QTest.keyClick(button, Qt.Key_Space)
+            APP.processEvents()
+            self.assertFalse(action.isChecked())
+            self.assertTrue(splitter.collapsed)
+            self.assertTrue(button.isVisible())
+            self.assertIn("Expand", button.accessibleName())
+
+    def test_sidebar_drag_and_collapsed_layout_restore(self):
+        splitter = self.window.ui.MainSplitter
+        handle = splitter.handle(1)
+        QTest.mousePress(handle, Qt.LeftButton, pos=handle.rect().center())
+        QTest.mouseMove(handle, QPoint(-splitter.width(), handle.height()//2))
+        QTest.mouseRelease(handle, Qt.LeftButton)
+        APP.processEvents()
+        self.assertGreaterEqual(splitter.sizes()[0], 420)
+        self.assertTrue(self.window.ui.actionSidebar.isChecked())
+        self.assertTrue(self.window.rules_editor.isVisible())
+        splitter.collapse_button.click()
+        APP.processEvents()
+        self.assertTrue(splitter.collapsed)
+        self.assertTrue(splitter.collapse_button.isVisible())
+        self.assertFalse(self.window.rules_editor.isVisible())
+        self.window.close()
+        restored = MainWindow()
+        self.addCleanup(restored.close)
+        restored.show()
+        APP.processEvents()
+        self.assertTrue(restored.ui.MainSplitter.collapsed)
+        self.assertTrue(restored.ui.MainSplitter.collapse_button.isVisible())
+        restored.ui.MainSplitter.collapse_button.click()
+        APP.processEvents()
+        self.assertGreaterEqual(restored.ui.MainSplitter.sizes()[0], 420)
+        self.assertTrue(restored.rules_editor.isVisible())
+
     def test_collapsed_console_restores_and_search_reopens_it(self):
         window = self.window
         window.ui.actionConsole.setChecked(True)
         window.ui.actionConsole.setChecked(False)
-        self.assertEqual(window.ui.WorkspaceSplitter.sizes()[1], 0)
+        self.assertTrue(window.ui.WorkspaceSplitter.collapsed)
+        self.assertTrue(window.ui.WorkspaceSplitter.collapse_button.isVisible())
+        self.assertFalse(window.ui.ConsoleTextEdit.isVisible())
         window.close()
         restored = MainWindow()
         self.addCleanup(restored.close)
         restored.show()
         APP.processEvents()
-        self.assertEqual(restored.ui.WorkspaceSplitter.sizes()[1], 0)
+        self.assertTrue(restored.ui.WorkspaceSplitter.collapsed)
+        self.assertTrue(restored.ui.WorkspaceSplitter.collapse_button.isVisible())
         self.assertTrue(restored.ui.WorkspaceSplitter.handle(1).isVisible())
         restored.focus_console_search()
         APP.processEvents()
         self.assertGreater(restored.ui.WorkspaceSplitter.sizes()[1], 0)
         self.assertTrue(restored.ui.SearchEdit.hasFocus())
+        self.assertFalse(restored.ui.WorkspaceSplitter.collapsed)
+        self.assertTrue(restored.ui.ConsoleTextEdit.isVisible())
 
     def test_console_search_selects_and_navigates_matches(self):
         self.window.console.append_received("alpha beta alpha")
