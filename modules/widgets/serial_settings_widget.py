@@ -16,6 +16,8 @@ class SerialSettingsWidget(QWidget):
         self.port_combo = QComboBox()
         self.port_combo.setPlaceholderText("Select port")
         self.port_combo.setAccessibleName("Serial port")
+        self.port_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.port_combo.currentTextChanged.connect(self.port_combo.setToolTip)
         self.refresh_button = QPushButton("Rescan")
         self.refresh_button.clicked.connect(self.refresh_ports)
         port_row = QHBoxLayout()
@@ -47,7 +49,7 @@ class SerialSettingsWidget(QWidget):
 
     def selected_settings(self) -> SerialSettings:
         return SerialSettings(
-            port=self.port_combo.currentText(),
+            port=self.port_combo.currentData() or "",
             baudrate=int(self.baud_combo.currentText()),
             data_bits=self.data_bits_combo.currentData(),
             parity=self.parity_combo.currentData(),
@@ -57,7 +59,7 @@ class SerialSettingsWidget(QWidget):
     def set_settings(self, settings: SerialSettings) -> None:
         self.port_combo.clear()
         if settings.port:
-            self.port_combo.addItem(settings.port)
+            self.port_combo.addItem(settings.port, settings.port)
             self.port_combo.setCurrentIndex(0)
         self.refresh_ports()
         if self.baud_combo.findText(str(settings.baudrate)) < 0:
@@ -68,11 +70,19 @@ class SerialSettingsWidget(QWidget):
         self.stop_bits_combo.setCurrentIndex(self.stop_bits_combo.findData(settings.stop_bits))
 
     def refresh_ports(self) -> None:
-        selected = self.port_combo.currentText()
+        selected = self.port_combo.currentData()
         self.port_combo.clear()
         for port in QSerialPortInfo.availablePorts():
-            self.port_combo.addItem(port.portName())
-            self.port_combo.setItemData(self.port_combo.count() - 1, port.description(), Qt.ItemDataRole.ToolTipRole)
-        if selected and self.port_combo.findText(selected) < 0:
-            self.port_combo.addItem(selected)
-        self.port_combo.setCurrentIndex(self.port_combo.findText(selected) if selected else -1)
+            name = port.portName()
+            description = port.description().strip()
+            label = f"{name} — {description}" if description else name
+            self.port_combo.addItem(label, name)
+            self.port_combo.setItemData(self.port_combo.count() - 1, label, Qt.ItemDataRole.ToolTipRole)
+        if selected and self.port_combo.findData(selected) < 0:
+            self.port_combo.addItem(selected, selected)
+        self.port_combo.setCurrentIndex(self.port_combo.findData(selected) if selected else -1)
+        self.window().ensurePolished()
+        view = self.port_combo.view()
+        view.ensurePolished()
+        popup_width = view.sizeHintForColumn(0) + 2 * view.frameWidth() + view.verticalScrollBar().sizeHint().width()
+        view.setMinimumWidth(min(popup_width, self.screen().availableGeometry().width()))

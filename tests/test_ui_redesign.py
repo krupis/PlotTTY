@@ -772,7 +772,7 @@ class WorkspaceTest(unittest.TestCase):
         w = self.window
         w.on_open_connection_settings()
         dialog = w._connection_settings
-        dialog.transport_widget.port_combo.addItem("test-port")
+        dialog.transport_widget.port_combo.addItem("test-port", "test-port")
         dialog.transport_widget.port_combo.setCurrentText("test-port")
         dialog.transport_widget.baud_combo.setCurrentText("230400")
         dialog.transport_widget.refresh_button.click()

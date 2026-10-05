@@ -23,6 +23,8 @@ For rendering benchmarks and live-device diagnostics, see
 ## Plot workspace
 
 Click **Connection settings** in the top bar to choose a port and baud rate.
+The port selector shows device descriptions beside port names when available
+(for example, **COM3 — USB Serial Port**).
 The same popover shows all serial settings, with expandable capture options.
 Choose **Save settings**, then **Connect**. Escape or clicking outside discards
 unsaved edits; connection settings are locked while connected. Use the checkbox in each
