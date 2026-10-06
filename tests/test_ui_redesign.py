@@ -512,7 +512,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertIsInstance(w.session.settings.transport, RttSettings)
         w.on_open_connection_settings()
         dialog = w._connection_settings
-        dialog.transport_widget.target_edit.setText("test-target")
+        dialog.transport_widget.target_combo.setEditText("test-target")
         dialog.transport_widget.speed_spin.setValue(2000)
         dialog.accept()
         QTest.keyClick(w.connection_type_combo, Qt.Key.Key_Up)
@@ -527,7 +527,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertFalse(hasattr(w.session.settings.transport, "port"))
         # Cancelling a draft must not alter the saved backend settings.
         w.on_open_connection_settings()
-        dialog.transport_widget.target_edit.setText("discarded-target")
+        dialog.transport_widget.target_combo.setEditText("discarded-target")
         dialog.reject()
         self.assertEqual(w.session.settings.transport.target, "test-target")
 

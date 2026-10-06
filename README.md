@@ -34,7 +34,10 @@ in each extraction-table row, then **Apply rules**, to show or hide that rule’
 and retain their colors without taking space in the plot panel.
 
 Use the connection type selector to choose **J-Link RTT** when the target firmware
-provides SEGGER RTT. Install the SEGGER J-Link Software and Documentation Pack and
+provides SEGGER RTT. The RTT target field searches the supported-device catalog
+from your installed J-Link software. Type any part of a device name to filter matches
+or open the dropdown to browse. The catalog loads in the background and is cached
+for the app session; custom target names can also be entered. Install the SEGGER J-Link Software and Documentation Pack and
 `pylink-square` (included in `requirements.txt`); `JLinkARM.dll` must be available
 through `PATH`. In connection settings enter the target device name and, if needed,
 the probe serial number, SWD/JTAG interface, speed, control-block address, and RTT
