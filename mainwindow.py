@@ -25,7 +25,7 @@ from ui_form import Ui_MainWindow
 
 from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.controllers.connection_session import ConnectionSession
-from modules.core.extraction import clean_label, default_rules, validate_rules
+from modules.core.extraction import clean_label, validate_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.rules_editor import RulesEditor
@@ -98,9 +98,7 @@ class MainWindow(QMainWindow):
         self._export_csv_action = QAction("Export capture as CSV...", self)
         self.ui.menuFile.addAction(self._export_csv_action)
         self._connect_signals()
-        initial_rules = default_rules()
-        self.rules_editor.rules_table.set_rules(initial_rules)
-        self.apply_rules(initial_rules)
+        self.apply_rules([])
         self.statusBar().addPermanentWidget(self.plot.visible_points_label)
         self.statusBar().addPermanentWidget(self.plot.downsample_ratio_label)
         self.set_diagnostics_visible(False)
@@ -255,7 +253,7 @@ class MainWindow(QMainWindow):
         }
         self.plot.update_series_labels(renamed_series)
         self.applied_rules = [replace(rule) for rule in rules]
-        self.plot.set_rule_colors(self.applied_rules)
+        self.plot.set_rules(self.applied_rules)
         self.session.set_rules([replace(rule) for rule in self.applied_rules])
         if self.rules_editor.rules_table.rules() == self.applied_rules:
             self.rules_editor.mark_applied()

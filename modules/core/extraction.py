@@ -37,6 +37,7 @@ class ExtractionRule:
     delimiter: str = ","
     unit: str = ""
     color: str = ""
+    visible: bool = True
 
 
 def validate_rules(rules: Iterable[ExtractionRule]) -> None:
@@ -44,6 +45,8 @@ def validate_rules(rules: Iterable[ExtractionRule]) -> None:
     errors = []
     for row, rule in enumerate(rules, 1):
         try:
+            if not isinstance(rule.visible, bool):
+                raise ValueError("Plot visibility must be a boolean.")
             if not isinstance(rule.color, str) or (rule.color and not re.fullmatch(r"#[0-9a-fA-F]{6}", rule.color)):
                 raise ValueError("Color must be a #RRGGBB value or empty for automatic colors.")
             if rule.method not in ("named_values", "first_number", "regex_pattern", "delimited_values"):
@@ -68,7 +71,7 @@ class ExtractionEngine:
     """Apply extraction rules to one text line."""
 
     def __init__(self, rules: Iterable[ExtractionRule] | None = None):
-        self.rules = default_rules() if rules is None else list(rules)
+        self.rules = list(rules) if rules is not None else []
 
     def extract(self, text: str, timestamp: float | None = None) -> list[CapturedValue]:
         timestamp = timestamp if timestamp is not None else time()
@@ -85,10 +88,6 @@ class ExtractionEngine:
             captured_values.extend(_extract_rule(rule, text, timestamp, fields))
 
         return captured_values
-
-
-def default_rules() -> list[ExtractionRule]:
-    return [ExtractionRule(label="Named values", method="named_values")]
 
 
 def _extract_rule(

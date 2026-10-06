@@ -34,8 +34,8 @@ class RulesTable(QObject):
     def __init__(self, table: QTableWidget, parent=None):
         super().__init__(parent)
         self._table = table
-        table.setColumnCount(6)
-        table.setHorizontalHeaderLabels(["Function", "Label", "Method", "Delimiter", "Field", ""])
+        table.setColumnCount(7)
+        table.setHorizontalHeaderLabels(["Function", "Label", "Method", "Delimiter", "Field", "", "Show"])
         for column, tooltip in enumerate(COLUMN_TOOLTIPS):
             table.horizontalHeaderItem(column).setToolTip(tooltip)
             table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch
@@ -47,6 +47,9 @@ class RulesTable(QObject):
         table.setColumnWidth(5, 32)
         table.horizontalHeader().moveSection(5, 1)
         table.horizontalHeaderItem(5).setToolTip("Series color; right-click a swatch to restore automatic colors")
+        table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().moveSection(6, 0)
+        table.horizontalHeaderItem(6).setToolTip("Show this rule's plots after Apply rules. Hidden series keep collecting data.")
         table.setAlternatingRowColors(True)
         table.setSelectionMode(table.SelectionMode.ExtendedSelection)
         table.setSelectionBehavior(table.SelectionBehavior.SelectRows)
@@ -75,6 +78,11 @@ class RulesTable(QObject):
             item = QTableWidgetItem(text)
             item.setToolTip(COLUMN_TOOLTIPS[column])
             self._table.setItem(row, column, item)
+        visibility = QTableWidgetItem()
+        visibility.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable)
+        visibility.setCheckState(Qt.CheckState.Checked if rule.visible else Qt.CheckState.Unchecked)
+        visibility.setToolTip("Show or hide this rule's plots after Apply rules. Hidden series keep collecting data.")
+        self._table.setItem(row, 6, visibility)
         self._table.item(row, 1).setData(Qt.ItemDataRole.UserRole, rule.unit)
         swatch = QToolButton()
         swatch.setObjectName("RuleColorButton")
@@ -129,6 +137,7 @@ class RulesTable(QObject):
                 delimiter=text[1].replace(r"\t", "\t") if method == "delimited_values" else ",",
                 unit=self._table.item(row, 1).data(Qt.ItemDataRole.UserRole) or "",
                 color=self._table.cellWidget(row, 5).property("color") or "",
+                visible=self._table.item(row, 6).checkState() == Qt.CheckState.Checked,
             ))
         return rules
 
@@ -148,6 +157,12 @@ class RulesTable(QObject):
 
     def _function_changed(self, combo):
         combo.setToolTip(RULE_FUNCTIONS[combo.currentData()][1])
+        for row in range(self._table.rowCount()):
+            if self._table.cellWidget(row, 0) is combo:
+                item = self._table.item(row, 6)
+                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
+                              if combo.currentData() == "plot" else Qt.ItemFlag.NoItemFlags)
+                break
         self._update_swatches()
         self.changed.emit()
 

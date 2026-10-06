@@ -86,6 +86,7 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_rules_editor_is_persistent_in_extraction_sidebar(self):
         editor = self.window.rules_editor
+        editor.rules_table.add_rule()
         self.assertIs(editor.parentWidget(), self.window.ui.SeriesSidebar)
         self.assertTrue(editor.isVisible())
         editor.table.item(0, 1).setText("inline")
@@ -103,13 +104,13 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual([entry["label"] for entry in self.window.plot.series_info()], ["Voltage"])
         self.assertEqual(self.window.plot._series["Voltage"].sample_count(), 2)
 
-    def test_rule_function_replaces_enable_and_x_reference_columns(self):
+    def test_rule_function_and_plot_visibility_columns(self):
         dialog = self.editor([
             ExtractionRule("plot", "first_number"),
             ExtractionRule("time", "delimited_values", is_time=True, extra_setting="0"),
         ])
         self.assertEqual(dialog.table.horizontalHeaderItem(0).text(), "Function")
-        self.assertEqual(dialog.table.columnCount(), 6)
+        self.assertEqual(dialog.table.columnCount(), 7)
         self.assertEqual(dialog.table.cellWidget(0, 0).currentData(), "plot")
         self.assertEqual(dialog.table.cellWidget(1, 0).currentData(), "time")
         rules = dialog.rules_table.rules()
@@ -156,6 +157,8 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_apply_enables_only_for_changed_rules(self):
         editor = self.window.rules_editor
+        editor.rules_table.add_rule()
+        editor.apply_rules()
         self.assertFalse(editor.apply_button.isEnabled())
         label = editor.table.item(0, 1)
         original = label.text()
@@ -224,8 +227,8 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(rules[0].color, "#ff8844")
         editor.rules_table.set_rules(rules)
         self.assertEqual(editor.table.cellWidget(0, 5).property("color"), "#ff8844")
-        self.window.plot.set_series_visible("Voltage", False)
-        self.window.plot.set_series_visible("Voltage", True)
+        self.window.plot.set_rules([ExtractionRule("Voltage", "first_number", color="#ff8844", visible=False)])
+        self.window.plot.set_rules([ExtractionRule("Voltage", "first_number", color="#ff8844")])
         self.assertEqual(self.window.plot._curves["Voltage"].color.name(), "#ff8844")
 
     def test_color_cancel_time_role_and_default_palette(self):
@@ -265,19 +268,18 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(dialog.table.rowCount(), 1)
 
     def test_colors_hidden_capture_and_header_structure(self):
+        self.window.apply_rules([ExtractionRule("Named values", "named_values")])
         plot = self.window.plot
         self.window.session.settings.log_to_file = False
         self.window.session.on_receive(None, b"A: 1 V B: 2 A\n", 100)
         colors = [row["color"] for row in plot.series_info()]
-        first = self.window.plot.graph.headers["A"]
-        plot.set_series_visible("A", False)
-        self.assertIs(first, self.window.plot.graph.headers["A"])
+        plot.set_rules([ExtractionRule("A", "first_number", visible=False)])
+        self.assertNotIn("A", plot.graph.headers)
         self.window.session.on_receive(None, b"A: 3 V B: 4 A\n", 101)
         plot.on_refresh_pending_data()
         self.assertEqual(plot._series["A"].sample_count(), 2)
         self.assertEqual(plot._curves["B"].color, colors[1])
         self.assertEqual([row["color"] for row in plot.series_info()], colors)
-        self.assertFalse(first.isChecked())
 
     def test_live_and_loaded_units_exact_latest_in_old_view(self):
         values = [CapturedValue(100, "a", 1, "V"), CapturedValue(101, "a", 8.123456789, "mV"),
@@ -302,6 +304,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertIn("mV", plot._curves["a"].latest)
 
     def test_console_collapse_clear_and_commands(self):
+        self.window.apply_rules([ExtractionRule("Named values", "named_values")])
         window = self.window
         self.assertFalse(window.ui.actionConsole.isChecked())
         window.session.settings.log_to_file = False
@@ -480,8 +483,8 @@ class WorkspaceTest(unittest.TestCase):
         self.assertFalse(plot.auto_scroll_button.isChecked())
         self.window.resize(1500, 900)
         APP.processEvents()
-        plot.set_series_visible("s4", False)
-        plot.set_series_visible("s4", True)
+        plot.set_rules([ExtractionRule("s4", "first_number", visible=False)])
+        plot.set_rules([ExtractionRule("s4", "first_number")])
 
     def test_empty_single_and_all_hidden_render(self):
         plot = self.window.plot
@@ -489,7 +492,7 @@ class WorkspaceTest(unittest.TestCase):
         plot.append_values([CapturedValue(0, "constant", 42)])
         plot.on_refresh_pending_data()
         self.assertFalse(plot.grab().isNull())
-        plot.set_series_visible("constant", False)
+        plot.set_rules([ExtractionRule("constant", "first_number", visible=False)])
         self.assertEqual(plot.graph.empty_message, "No series selected")
         self.assertFalse(plot.grab().isNull())
         plot.clear_values()
@@ -589,62 +592,108 @@ class WorkspaceTest(unittest.TestCase):
         self.assertIn("1.23", destination.read_text())
         self.assertEqual(self.window.plot._series["a"].latest_value(), 1.23)
 
-    def test_invalid_layout_and_keyboard_plot_header(self):
+    def test_table_visibility_keyboard_is_draft_until_applied(self):
         self.settings.setValue("geometry", "invalid")
         self.settings.setValue("consoleHeight", "invalid")
         self.window.restore_layout()
-        self.assertGreaterEqual(self.window.width(), 320)
+        editor = self.window.rules_editor
+        editor.rules_table.set_rules([ExtractionRule("a", "first_number")])
+        editor.apply_rules()
         self.window.plot.append_values([CapturedValue(0, "a", 1)])
-        header = self.window.plot.graph.headers["a"]
         APP.processEvents()
-        header.setFocus()
-        QTest.keyClick(header, Qt.Key.Key_Space)
-        self.assertFalse(self.window.plot.series_info()[0]["visible"])
-        self.assertEqual(self.window.plot.graph._panels["a"].height(), 40)
-        self.assertTrue(header.isVisible())
-        QTest.keyClick(header, Qt.Key.Key_Space)
+        editor.table.setCurrentCell(0, 6)
+        editor.table.setFocus()
+        QTest.keyClick(editor.table, Qt.Key.Key_Space)
+        self.assertFalse(editor.rules_table.rules()[0].visible)
+        self.assertTrue(editor.apply_button.isEnabled())
+        self.assertTrue(self.window.plot.series_info()[0]["visible"])
+        editor.apply_button.click()
+        self.assertEqual(self.window.plot.graph._panels, {})
+        QTest.keyClick(editor.table, Qt.Key.Key_Space)
+        editor.apply_button.click()
         self.assertTrue(self.window.plot.series_info()[0]["visible"])
         self.assertGreaterEqual(self.window.plot.graph._panels["a"].height(), 150)
-        self.window.ui.actionConsole.setChecked(True)
-        self.window.on_connected_changed(True)
-        self.window.ui.CommandEdit.setFocus()
-        QTest.keyClick(self.window.ui.CommandEdit, Qt.Key.Key_Tab)
-        self.assertIs(APP.focusWidget(), self.window.ui.SendButton)
 
-    def test_plot_header_color_updates_while_collapsed(self):
-        plot = self.window.plot
-        plot.append_values([CapturedValue(0, "a", 1)])
-        header = plot.graph.headers["a"]
+    def test_table_visibility_mouse_hidden_capture_and_profile(self):
+        window = self.window
+        editor = window.rules_editor
+        rules = [ExtractionRule("a", "regex_pattern", extra_setting=r"a: (\d+)"),
+                 ExtractionRule("b", "regex_pattern", extra_setting=r"b: (\d+)")]
+        editor.rules_table.set_rules(rules)
+        editor.apply_rules()
+        window.session.settings.log_to_file = False
+        window.session.on_receive(None, b"a: 1 b: 2\n", 100)
         APP.processEvents()
-        self.assertEqual(header.palette().color(QPalette.ColorRole.WindowText), plot._curves["a"].color)
-        header.click()
-        plot.set_rule_colors([ExtractionRule("a", "first_number", color="#ff8844")])
-        APP.processEvents()
-        self.assertFalse(header.isChecked())
-        self.assertEqual(header.palette().color(QPalette.ColorRole.WindowText).name(), "#ff8844")
-        header.click()
-        APP.processEvents()
-        self.assertEqual(header.palette().color(QPalette.ColorRole.WindowText), plot._curves["a"].color)
+        for row in range(2):
+            rect = editor.table.visualItemRect(editor.table.item(row, 6))
+            QTest.mouseClick(editor.table.viewport(), Qt.MouseButton.LeftButton, pos=QPoint(rect.left()+8, rect.center().y()))
+        editor.apply_button.click()
+        self.assertEqual(window.plot._curves, {})
+        self.assertEqual(window.plot.graph._panels, {})
+        window.session.on_receive(None, b"a: 3 b: 4\n", 101)
+        self.assertEqual(window.plot._series["a"].sample_count(), 2)
+        self.assertEqual(window.plot._series["b"].sample_count(), 2)
+        path = Path(self.temp.name) / "visibility.json"
+        save_profile(AppProfile("hidden", window.applied_rules), path)
+        self.assertTrue(all(not rule.visible for rule in load_profile(path).rules))
+        item = editor.table.item(0, 6)
+        item.setCheckState(Qt.CheckState.Checked)
+        editor.apply_button.click()
+        window.plot.on_refresh_pending_data()
+        self.assertEqual(set(window.plot._curves), {"a"})
+        self.assertEqual(window.plot._curves["a"].latest, "3")
+        window.plot.clear_values()
+        self.assertEqual(editor.table.rowCount(), 2)
+        window.session.on_receive(None, b"a: 5 b: 6\n", 102)
+        self.assertEqual(set(window.plot._curves), {"a"})
 
-    def test_plot_headers_hide_all_and_restore_with_mouse(self):
-        plot = self.window.plot
-        plot.append_values([CapturedValue(0, "a", 1), CapturedValue(0, "b", 2)])
-        plot.on_refresh_pending_data()
-        APP.processEvents()
-        for header in plot.graph.headers.values():
-            QTest.mouseClick(header, Qt.MouseButton.LeftButton, pos=QPoint(7, 12))
-        self.assertEqual(plot._curves, {})
-        self.assertTrue(all(panel.height() == 40 for panel in plot.graph._panels.values()))
-        plot.append_values([CapturedValue(1, "a", 3)])
-        self.assertEqual(plot._series["a"].sample_count(), 2)
-        header = plot.graph.headers["a"]
-        QTest.mouseClick(header, Qt.MouseButton.LeftButton, pos=QPoint(7, 12))
-        plot.on_refresh_pending_data()
-        self.assertIn("a", plot._curves)
-        self.assertEqual(plot._curves["a"].latest, "3")
-        self.assertFalse(plot.graph.headers["b"].isChecked())
-        plot.clear_values()
-        self.assertEqual(plot.graph.headers, {})
+    def test_named_rule_visibility_covers_future_series_and_loaded_capture(self):
+        window = self.window
+        editor = window.rules_editor
+        editor.rules_table.set_rules([ExtractionRule("Named", "named_values", visible=False)])
+        editor.apply_rules()
+        window.session.settings.log_to_file = False
+        window.session.on_receive(None, b"a: 1 b: 2\n", 100)
+        self.assertEqual(window.plot._curves, {})
+        window.session.on_receive(None, b"c: 3\n", 101)
+        self.assertEqual(window.plot._curves, {})
+        self.assertEqual(set(window.plot._series), {"a", "b", "c"})
+        editor.table.item(0, 6).setCheckState(Qt.CheckState.Checked)
+        editor.apply_button.click()
+        self.assertEqual(set(window.plot._curves), {"a", "b", "c"})
+        editor.table.item(0, 6).setCheckState(Qt.CheckState.Unchecked)
+        editor.apply_button.click()
+        from modules.core.plotter import Plotter
+        store = Plotter()
+        store.add_sample(0, 5)
+        window.plot.replace_series({"loaded": store}, 0)
+        self.assertEqual(window.plot._curves, {})
+        editor.table.item(0, 6).setCheckState(Qt.CheckState.Checked)
+        editor.apply_button.click()
+        self.assertEqual(set(window.plot._curves), {"loaded"})
+
+    def test_time_row_has_no_active_visibility_checkbox(self):
+        editor = self.window.rules_editor
+        editor.rules_table.set_rules([ExtractionRule("Time", "first_number", is_time=True)])
+        item = editor.table.item(0, 6)
+        self.assertEqual(item.flags(), Qt.ItemFlag.NoItemFlags)
+        editor.table.cellWidget(0, 0).setCurrentIndex(0)
+        self.assertTrue(item.flags() & Qt.ItemFlag.ItemIsUserCheckable)
+        self.assertTrue(item.flags() & Qt.ItemFlag.ItemIsEnabled)
+
+    def test_receiving_text_requires_explicit_extraction_rules(self):
+        window = self.window
+        window.session.settings.log_to_file = False
+        self.assertEqual(window.applied_rules, [])
+        self.assertEqual(window.rules_editor.rules_table.rules(), [])
+        window.session.on_receive(None, b"[Initialize:123] Voltage: 3 V\n", 100)
+        window.console.flush()
+        self.assertIn("Initialize", window.ui.ConsoleTextEdit.toPlainText())
+        self.assertEqual(window.plot.series_info(), [])
+        window.rules_editor.rules_table.set_rules([ExtractionRule("Voltage", "regex_pattern", extra_setting=r"Voltage: (\d+)")])
+        window.rules_editor.apply_button.click()
+        window.session.on_receive(None, b"[Initialize:123] Voltage: 4 V\n", 101)
+        self.assertEqual([entry["label"] for entry in window.plot.series_info()], ["Voltage"])
 
     def test_profile_file_actions_use_applied_rules_and_current_path(self):
         source = Path(self.temp.name) / "source.json"

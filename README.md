@@ -27,9 +27,9 @@ The port selector shows device descriptions beside port names when available
 (for example, **COM3 — USB Serial Port**).
 The same popover shows all serial settings, with expandable capture options.
 Choose **Save settings**, then **Connect**. Escape or clicking outside discards
-unsaved edits; connection settings are locked while connected. Use the checkbox in each
-plot header to show or hide its trace. Hidden plots collapse to a compact header;
-their series continue recording and retain their colors. Recheck the header to reopen a plot.
+unsaved edits; connection settings are locked while connected. Use the **Show** checkbox
+in each extraction-table row, then **Apply rules**, to show or hide that rule’s traces. Hidden series continue recording
+and retain their colors without taking space in the plot panel.
 
 Use the connection type selector to choose **J-Link RTT** when the target firmware
 provides SEGGER RTT. Install the SEGGER J-Link Software and Documentation Pack and
@@ -66,6 +66,7 @@ Backend `close()` calls `super().close()` to stop further signals before releasi
 resources. Create a new transport for each connection.
 Recording filenames use the connection description, timestamp, and a unique ID.
 
+The app starts with no extraction rules: receiving text does not automatically create plots.
 The extraction sidebar contains a sample input and an editable rules table.
 Generate rules from a sample or edit the table, then
 choose **Apply rules** to update parsing for future samples. The button is teal
@@ -76,8 +77,12 @@ directly below it. Generate and Apply span the sidebar width, with Apply
 anchored at the bottom. Apply is disabled
 until the draft differs from the applied rules; reverting edits disables it again.
 
+The **Show** checkbox controls plot visibility and is saved in profiles.
+A Named values rule controls all its extracted series; Time rows have no active plot checkbox.
+Hidden series keep collecting data and take no space in the plot panel.
+
 Click a color dot beside a Plot rule to choose its trace color, then **Apply rules**.
-Colors update existing traces, plot header labels (including collapsed headers), and
+Colors update existing traces, plot header labels, and
 latest-value labels and are saved in profiles.
 Right-click a dot and choose **Automatic color** to return to the default palette.
 Time rules have no swatch. A custom color on a **Named values** rule applies to all
