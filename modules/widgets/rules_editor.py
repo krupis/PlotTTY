@@ -34,7 +34,7 @@ class RulesEditor(QWidget):
         self.sample.setObjectName("SampleOutput")
         self.sample.setAccessibleName("Sample output")
         self.sample.setPlaceholderText("Paste sample output to generate rules")
-        self.sample.setFixedHeight(self.fontMetrics().lineSpacing() * 3 + 16)
+        self.sample.setFixedHeight(self.fontMetrics().lineSpacing() * 8 + 16)
         layout.addWidget(self.sample)
         self.generate_button = QPushButton("Generate rules")
         layout.addWidget(self.generate_button)

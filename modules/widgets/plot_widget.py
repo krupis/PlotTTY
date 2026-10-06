@@ -6,8 +6,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 import math
 
-from PySide6.QtCore import QPoint, QRectF, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
+from PySide6.QtCore import QPoint, QRectF, QSize, Qt, QTimer, Signal, Slot
+from PySide6.QtGui import QColor, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue, clean_label
@@ -436,6 +436,16 @@ class PlotWidget(QWidget):
         toolbar.addWidget(self.capture_title)
         for widget in (self.fit_capture_button, self.auto_scroll_button, self.clear_plot_button):
             toolbar.addWidget(widget)
+        for button, name in (
+            (self.fit_capture_button, "fit-capture"),
+            (self.auto_scroll_button, "auto-scroll"),
+            (self.clear_plot_button, "clear"),
+        ):
+            icon = QIcon(f":/icons/{name}.svg")
+            if button.isCheckable():
+                icon.addFile(f":/icons/{name}-active.svg", QSize(), QIcon.Mode.Normal, QIcon.State.On)
+            button.setIcon(icon)
+            button.setIconSize(QSize(16, 16))
         self.visible_points_label.hide()
         self.downsample_ratio_label.hide()
         layout = QVBoxLayout(self)

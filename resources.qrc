@@ -7,5 +7,10 @@
     <file>icons/minus.svg</file>
     <file>icons/send.svg</file>
     <file>icons/settings.svg</file>
+    <file>icons/fit-capture.svg</file>
+    <file>icons/fit-capture-active.svg</file>
+    <file>icons/auto-scroll.svg</file>
+    <file>icons/auto-scroll-active.svg</file>
+    <file>icons/clear.svg</file>
   </qresource>
 </RCC>

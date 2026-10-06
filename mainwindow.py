@@ -175,6 +175,7 @@ class MainWindow(QMainWindow):
         self.ui.SearchLayout.setSpacing(8)
         self.ui.SendButton.setProperty("primary", True)
         self.ui.SendButton.setIcon(QIcon(":/icons/send.svg"))
+        self.ui.ClearConsoleButton.setIcon(QIcon(":/icons/clear.svg"))
         self.ui.SendButton.style().unpolish(self.ui.SendButton)
         self.ui.SendButton.style().polish(self.ui.SendButton)
         self.ui.WorkspaceLayout.setContentsMargins(0, 0, 0, 0)
