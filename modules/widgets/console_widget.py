@@ -7,9 +7,9 @@ from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QPlainTextEdit
 
 
-RECEIVED_TEXT_COLOR = QColor("#c6d1da")
-SENT_TEXT_COLOR = QColor("#f9c74f")
-STATUS_TEXT_COLOR = QColor("#89b4fa")
+RECEIVED_TEXT_COLOR = QColor("#ffffff")
+SENT_TEXT_COLOR = QColor("#ffd782")
+STATUS_TEXT_COLOR = QColor("#a9ccff")
 MAX_CONSOLE_BLOCKS = 50_000
 CONSOLE_FLUSH_INTERVAL_MS = 50
 

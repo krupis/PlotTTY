@@ -28,7 +28,9 @@ QPushButton#ConnectButton[connected="true"]:hover { background: #3b474c; border-
 QPushButton#ConnectButton:disabled { color: #8b989f; background: #20292d; border-color: #3b454b; }
 QLabel#ConnectionTarget { font-weight: 600; }
 QLabel#ConnectionDetails { color: #a6b5bc; font-size: 9pt; }
-QLabel#ConnectionStatusDot { background: #8d9da5; border-radius: 4px; }
+QLabel#ConnectionStatus { color: #ffadb7; }
+QLabel#ConnectionStatus[connected="true"] { color: #85e0b4; }
+QLabel#ConnectionStatusDot { background: #ffadb7; border-radius: 4px; }
 QLabel#ConnectionStatusDot[connected="true"] { background: #85e0b4; }
 QPushButton:disabled, QToolButton:disabled { color: #8b989f; background: #20292d; border-color: #3b454b; }
 QLineEdit, QComboBox, QPlainTextEdit, QTableWidget {
@@ -45,6 +47,7 @@ QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTableWidget:focus { bor
 QComboBox QAbstractItemView { background: #20292d; selection-background-color: #41ccc3; selection-color: #102823; }
 QPlainTextEdit { padding: 8px; }
 QPlainTextEdit#ConsoleTextEdit, QPlainTextEdit#SampleOutput { font-family: "Consolas", "Menlo"; background: #0f1417; }
+QPlainTextEdit#ConsoleTextEdit { background: #080c0e; }
 QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #8d9da5; border-radius: 3px; background: #0f1417; }
 QCheckBox::indicator:checked { background: #41ccc3; border-color: #41ccc3; image: url(:/icons/check.svg); }
 QCheckBox::indicator:hover { border-color: #a1f2e3; }

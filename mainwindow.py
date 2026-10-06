@@ -509,9 +509,10 @@ class MainWindow(QMainWindow):
         self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
         self.ui.ConnectButton.style().polish(self.ui.ConnectButton)
         self.connection_status_label.setText("Connected" if connected else "Disconnected")
-        self.connection_status_dot.setProperty("connected", connected)
-        self.connection_status_dot.style().unpolish(self.connection_status_dot)
-        self.connection_status_dot.style().polish(self.connection_status_dot)
+        for widget in (self.connection_status_dot, self.connection_status_label):
+            widget.setProperty("connected", connected)
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
         self._update_connection_target()
         if connected:
             self.ui.ConnectButton.setEnabled(True)
