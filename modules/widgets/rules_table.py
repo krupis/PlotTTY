@@ -1,7 +1,7 @@
 """Plain Qt table for extraction-rule edits."""
 from PySide6.QtCore import QObject, QSignalBlocker, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
-from PySide6.QtWidgets import QColorDialog, QComboBox, QHeaderView, QMenu, QTableWidget, QTableWidgetItem, QToolButton
+from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QWidget, QColorDialog, QComboBox, QHeaderView, QMenu, QTableWidget, QTableWidgetItem, QToolButton
 
 from ..core.extraction import ExtractionRule
 from ..core.series_colors import default_series_color
@@ -78,11 +78,17 @@ class RulesTable(QObject):
             item = QTableWidgetItem(text)
             item.setToolTip(COLUMN_TOOLTIPS[column])
             self._table.setItem(row, column, item)
-        visibility = QTableWidgetItem()
-        visibility.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable)
-        visibility.setCheckState(Qt.CheckState.Checked if rule.visible else Qt.CheckState.Unchecked)
-        visibility.setToolTip("Show or hide this rule's plots after Apply rules. Hidden series keep collecting data.")
-        self._table.setItem(row, 6, visibility)
+        visibility = QWidget()
+        checkbox = QCheckBox()
+        checkbox.setObjectName("RuleVisibility")
+        checkbox.setChecked(rule.visible)
+        checkbox.setToolTip("Show or hide this rule's plots after Apply rules. Hidden series keep collecting data.")
+        checkbox.toggled.connect(self.changed)
+        layout = QHBoxLayout(visibility)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(checkbox)
+        self._table.setCellWidget(row, 6, visibility)
         self._table.item(row, 1).setData(Qt.ItemDataRole.UserRole, rule.unit)
         swatch = QToolButton()
         swatch.setObjectName("RuleColorButton")
@@ -137,7 +143,7 @@ class RulesTable(QObject):
                 delimiter=text[1].replace(r"\t", "\t") if method == "delimited_values" else ",",
                 unit=self._table.item(row, 1).data(Qt.ItemDataRole.UserRole) or "",
                 color=self._table.cellWidget(row, 5).property("color") or "",
-                visible=self._table.item(row, 6).checkState() == Qt.CheckState.Checked,
+                visible=self._table.cellWidget(row, 6).findChild(QCheckBox).isChecked(),
             ))
         return rules
 
@@ -157,12 +163,6 @@ class RulesTable(QObject):
 
     def _function_changed(self, combo):
         combo.setToolTip(RULE_FUNCTIONS[combo.currentData()][1])
-        for row in range(self._table.rowCount()):
-            if self._table.cellWidget(row, 0) is combo:
-                item = self._table.item(row, 6)
-                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
-                              if combo.currentData() == "plot" else Qt.ItemFlag.NoItemFlags)
-                break
         self._update_swatches()
         self.changed.emit()
 
@@ -190,6 +190,7 @@ class RulesTable(QObject):
             if swatch is None or function is None:
                 continue
             plotted = function.currentData() == "plot"
+            self._table.cellWidget(row, 6).findChild(QCheckBox).setVisible(plotted)
             swatch.setVisible(plotted)
             if not plotted:
                 continue
@@ -206,6 +207,7 @@ class RulesTable(QObject):
             swatch.setIcon(QIcon(pixmap))
             label = self._table.item(row, 1).text()
             swatch.setAccessibleName(f"Color for {label}")
+            self._table.cellWidget(row, 6).findChild(QCheckBox).setAccessibleName(f"Show plot: {label}")
             method = self._table.cellWidget(row, 2)
             hint = "Choose a color for all named series extracted by this rule." if method and method.currentData() == "named_values" else f"Choose color for {label}."
             swatch.setToolTip(hint + " Right-click to restore automatic colors.")

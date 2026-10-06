@@ -45,9 +45,11 @@ QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTableWidget:focus { bor
 QComboBox QAbstractItemView { background: #20292d; selection-background-color: #41ccc3; selection-color: #102823; }
 QPlainTextEdit { padding: 8px; }
 QPlainTextEdit#ConsoleTextEdit, QPlainTextEdit#SampleOutput { font-family: "Consolas", "Menlo"; background: #0f1417; }
-QCheckBox::indicator, QTableWidget::indicator { width: 14px; height: 14px; border: 1px solid #8d9da5; border-radius: 3px; background: #0f1417; }
-QCheckBox::indicator:checked, QTableWidget::indicator:checked { background: #41ccc3; border-color: #41ccc3; image: url(:/icons/check.svg); }
-QCheckBox::indicator:hover, QTableWidget::indicator:hover { border-color: #a1f2e3; }
+QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #8d9da5; border-radius: 3px; background: #0f1417; }
+QCheckBox::indicator:checked { background: #41ccc3; border-color: #41ccc3; image: url(:/icons/check.svg); }
+QCheckBox::indicator:hover { border-color: #a1f2e3; }
+QCheckBox#RuleVisibility::indicator { width: 16px; height: 16px; }
+QCheckBox#RuleVisibility:focus { background: #34434a; border-radius: 3px; }
 QTableWidget { background: #1c2427; alternate-background-color: #20292d; gridline-color: #35434a;
     selection-background-color: #34434a; selection-color: #f3f6f7; }
 QLabel#PlotHeader { background: transparent; font-weight: 600; }

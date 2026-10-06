@@ -11,7 +11,7 @@ from unittest.mock import patch
 from PySide6.QtCore import QPoint, QPointF, QSettings, Qt
 from PySide6.QtGui import QColor, QPalette, QWheelEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
+from PySide6.QtWidgets import QApplication, QCheckBox, QDialogButtonBox, QPushButton
 
 from mainwindow import MainWindow, apply_application_style
 from modules.controllers.capture_job import CaptureJob
@@ -601,15 +601,15 @@ class WorkspaceTest(unittest.TestCase):
         editor.apply_rules()
         self.window.plot.append_values([CapturedValue(0, "a", 1)])
         APP.processEvents()
-        editor.table.setCurrentCell(0, 6)
-        editor.table.setFocus()
-        QTest.keyClick(editor.table, Qt.Key.Key_Space)
+        checkbox = editor.table.cellWidget(0, 6).findChild(QCheckBox)
+        checkbox.setFocus()
+        QTest.keyClick(checkbox, Qt.Key.Key_Space)
         self.assertFalse(editor.rules_table.rules()[0].visible)
         self.assertTrue(editor.apply_button.isEnabled())
         self.assertTrue(self.window.plot.series_info()[0]["visible"])
         editor.apply_button.click()
         self.assertEqual(self.window.plot.graph._panels, {})
-        QTest.keyClick(editor.table, Qt.Key.Key_Space)
+        QTest.keyClick(checkbox, Qt.Key.Key_Space)
         editor.apply_button.click()
         self.assertTrue(self.window.plot.series_info()[0]["visible"])
         self.assertGreaterEqual(self.window.plot.graph._panels["a"].height(), 150)
@@ -625,8 +625,8 @@ class WorkspaceTest(unittest.TestCase):
         window.session.on_receive(None, b"a: 1 b: 2\n", 100)
         APP.processEvents()
         for row in range(2):
-            rect = editor.table.visualItemRect(editor.table.item(row, 6))
-            QTest.mouseClick(editor.table.viewport(), Qt.MouseButton.LeftButton, pos=QPoint(rect.left()+8, rect.center().y()))
+            checkbox = editor.table.cellWidget(row, 6).findChild(QCheckBox)
+            QTest.mouseClick(checkbox, Qt.MouseButton.LeftButton)
         editor.apply_button.click()
         self.assertEqual(window.plot._curves, {})
         self.assertEqual(window.plot.graph._panels, {})
@@ -636,8 +636,7 @@ class WorkspaceTest(unittest.TestCase):
         path = Path(self.temp.name) / "visibility.json"
         save_profile(AppProfile("hidden", window.applied_rules), path)
         self.assertTrue(all(not rule.visible for rule in load_profile(path).rules))
-        item = editor.table.item(0, 6)
-        item.setCheckState(Qt.CheckState.Checked)
+        editor.table.cellWidget(0, 6).findChild(QCheckBox).setChecked(True)
         editor.apply_button.click()
         window.plot.on_refresh_pending_data()
         self.assertEqual(set(window.plot._curves), {"a"})
@@ -658,28 +657,29 @@ class WorkspaceTest(unittest.TestCase):
         window.session.on_receive(None, b"c: 3\n", 101)
         self.assertEqual(window.plot._curves, {})
         self.assertEqual(set(window.plot._series), {"a", "b", "c"})
-        editor.table.item(0, 6).setCheckState(Qt.CheckState.Checked)
+        editor.table.cellWidget(0, 6).findChild(QCheckBox).setChecked(True)
         editor.apply_button.click()
         self.assertEqual(set(window.plot._curves), {"a", "b", "c"})
-        editor.table.item(0, 6).setCheckState(Qt.CheckState.Unchecked)
+        editor.table.cellWidget(0, 6).findChild(QCheckBox).setChecked(False)
         editor.apply_button.click()
         from modules.core.plotter import Plotter
         store = Plotter()
         store.add_sample(0, 5)
         window.plot.replace_series({"loaded": store}, 0)
         self.assertEqual(window.plot._curves, {})
-        editor.table.item(0, 6).setCheckState(Qt.CheckState.Checked)
+        editor.table.cellWidget(0, 6).findChild(QCheckBox).setChecked(True)
         editor.apply_button.click()
         self.assertEqual(set(window.plot._curves), {"loaded"})
 
     def test_time_row_has_no_active_visibility_checkbox(self):
         editor = self.window.rules_editor
         editor.rules_table.set_rules([ExtractionRule("Time", "first_number", is_time=True)])
-        item = editor.table.item(0, 6)
-        self.assertEqual(item.flags(), Qt.ItemFlag.NoItemFlags)
+        checkbox = editor.table.cellWidget(0, 6).findChild(QCheckBox)
+        self.assertTrue(checkbox.isHidden())
+        self.assertTrue(editor.table.cellWidget(0, 5).isHidden())
         editor.table.cellWidget(0, 0).setCurrentIndex(0)
-        self.assertTrue(item.flags() & Qt.ItemFlag.ItemIsUserCheckable)
-        self.assertTrue(item.flags() & Qt.ItemFlag.ItemIsEnabled)
+        self.assertFalse(checkbox.isHidden())
+        self.assertFalse(editor.table.cellWidget(0, 5).isHidden())
 
     def test_receiving_text_requires_explicit_extraction_rules(self):
         window = self.window

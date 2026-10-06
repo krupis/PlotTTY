@@ -78,7 +78,7 @@ anchored at the bottom. Apply is disabled
 until the draft differs from the applied rules; reverting edits disables it again.
 
 The **Show** checkbox controls plot visibility and is saved in profiles.
-A Named values rule controls all its extracted series; Time rows have no active plot checkbox.
+A Named values rule controls all its extracted series; Time rows leave the visibility cell blank.
 Hidden series keep collecting data and take no space in the plot panel.
 
 Click a color dot beside a Plot rule to choose its trace color, then **Apply rules**.
