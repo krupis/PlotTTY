@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QPalette, QShortcut
-from PySide6.QtCore import QSettings, QTimer, Qt, Slot
+from PySide6.QtCore import QEvent, QSettings, QTimer, Qt, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -42,6 +42,7 @@ APP_NAME = "PlotTTY"
 APP_VERSION = "1.0.0"
 APP_DISPLAY_NAME = f"{APP_NAME} {APP_VERSION}"
 APP_ICON_RESOURCE = ":/icons/Plottty.png"
+MAX_COMMAND_HISTORY = 100
 
 
 def apply_application_style(app: QApplication) -> None:
@@ -92,6 +93,11 @@ class MainWindow(QMainWindow):
         self.session = ConnectionSession(self)
         self._connection_settings = ConnectionSettingsDialog(self.session.settings, self)
         self.profile_path = Path("profile.json")
+        self._command_history: list[str] = []
+        self._command_history_index = 0
+        self._command_draft = ""
+        self.ui.CommandEdit.installEventFilter(self)
+        self.ui.CommandEdit.setToolTip("Up/Down recalls sent commands. Down past the newest restores your draft.")
 
         self.plot = self.ui.Plot
         self.console = ConsoleWidget(self.ui.ConsoleTextEdit, self)
@@ -274,6 +280,7 @@ class MainWindow(QMainWindow):
         self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_connection_settings)
         self.ui.ClearConsoleButton.clicked.connect(self.console.clear)
         self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
+        self.ui.CommandEdit.textEdited.connect(self.on_command_edited)
         self.ui.SendButton.clicked.connect(self.on_send_command)
 
         self.ui.SearchEdit.textChanged.connect(self.on_console_search_changed)
@@ -497,7 +504,29 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(str(exc))
             return
 
+        if not self._command_history or self._command_history[-1] != command:
+            self._command_history.append(command)
+            del self._command_history[:-MAX_COMMAND_HISTORY]
+        self._command_history_index = len(self._command_history)
+        self._command_draft = ""
         self.ui.CommandEdit.clear()
+
+    @Slot(str)
+    def on_command_edited(self, _text: str) -> None:
+        self._command_history_index = len(self._command_history)
+
+    def eventFilter(self, watched, event):
+        if (watched is self.ui.CommandEdit and event.type() == QEvent.Type.KeyPress
+                and event.modifiers() == Qt.KeyboardModifier.NoModifier
+                and event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down) and self._command_history):
+            if self._command_history_index == len(self._command_history):
+                self._command_draft = self.ui.CommandEdit.text()
+            step = -1 if event.key() == Qt.Key.Key_Up else 1
+            self._command_history_index = max(0, min(len(self._command_history), self._command_history_index + step))
+            self.ui.CommandEdit.setText(self._command_history[self._command_history_index]
+                                       if self._command_history_index < len(self._command_history) else self._command_draft)
+            return True
+        return super().eventFilter(watched, event)
 
     @Slot(bool)
     def on_connected_changed(self, connected: bool) -> None:

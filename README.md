@@ -122,7 +122,11 @@ double-click it to reset. Larger stacks scroll vertically above a fixed time axi
 Drag the divider at the bottom of the plot upward to open the **Console**, or use
 **View → Console**. Drag it down to the bottom edge to collapse the console; the
 divider stays available for reopening. Ctrl+F also opens the console and focuses
-search. Send commands with Enter or Send. The console's **Clear** button
+search. Send commands with Enter or Send. In the command field, **Up/Down** recalls
+the last 100 successfully sent commands; consecutive duplicates are skipped.
+Down past the newest command restores the unsent draft. Editing a recalled command
+starts a new draft. History stays in memory until the app closes, including across
+disconnects and console clears. The console's **Clear** button
 only clears text; **File → Clear captured data** also clears plotted history,
 without deleting recordings. The **View** menu controls the console, sidebar,
 and diagnostics (point counts and downsampling). The console retains the latest

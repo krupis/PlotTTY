@@ -326,6 +326,64 @@ class WorkspaceTest(unittest.TestCase):
         window.ui.actionClearCapturedData.trigger()
         self.assertEqual(window.plot.series_info(), [])
 
+    def test_command_history_recall_boundaries_draft_and_resend(self):
+        window = self.window
+        window.on_connected_changed(True)
+        edit = window.ui.CommandEdit
+        edit.setText("draft")
+        QTest.keyClick(edit, Qt.Key.Key_Up)
+        self.assertEqual(edit.text(), "draft")
+        with patch.object(window.session, "send_command") as send:
+            for command in ("first", "second", "second"):
+                edit.setText(command)
+                window.on_send_command()
+            edit.setText("unsent draft")
+            for expected in ("second", "first", "first"):
+                QTest.keyClick(edit, Qt.Key.Key_Up)
+                self.assertEqual(edit.text(), expected)
+            for expected in ("second", "unsent draft", "unsent draft"):
+                QTest.keyClick(edit, Qt.Key.Key_Down)
+                self.assertEqual(edit.text(), expected)
+            QTest.keyClick(edit, Qt.Key.Key_Up)
+            QTest.keyClick(edit, Qt.Key.Key_Return)
+            self.assertEqual(send.call_args.args, ("second",))
+            self.assertEqual(edit.text(), "")
+            QTest.keyClick(edit, Qt.Key.Key_Up)
+            self.assertEqual(edit.text(), "second")
+
+    def test_command_history_edit_failure_limit_and_session_lifetime(self):
+        window = self.window
+        window.on_connected_changed(True)
+        edit = window.ui.CommandEdit
+        with patch.object(window.session, "send_command"):
+            for i in range(105):
+                edit.setText(f"cmd{i}")
+                window.on_send_command()
+        for _ in range(110):
+            QTest.keyClick(edit, Qt.Key.Key_Up)
+        self.assertEqual(edit.text(), "cmd5")
+        QTest.keyClicks(edit, " edited")
+        edited = edit.text()
+        QTest.keyClick(edit, Qt.Key.Key_Up)
+        self.assertEqual(edit.text(), "cmd104")
+        QTest.keyClick(edit, Qt.Key.Key_Down)
+        self.assertEqual(edit.text(), edited)
+        window.on_connected_changed(False)
+        edit.setText("failed")
+        with patch.object(window.session, "send_command", side_effect=RuntimeError("disconnected")):
+            window.on_send_command()
+        self.assertEqual(edit.text(), "failed")
+        window.console.clear()
+        window.on_connected_changed(True)
+        QTest.keyClick(edit, Qt.Key.Key_Up)
+        self.assertEqual(edit.text(), "cmd104")
+        QTest.keyClick(edit, Qt.Key.Key_Down)
+        self.assertEqual(edit.text(), "failed")
+        edit.clear()
+        with patch.object(window.session, "send_command") as send:
+            window.on_send_command()
+            send.assert_not_called()
+
     def test_console_drag_to_border_keeps_panel_and_title_visible(self):
         window = self.window
         splitter = window.ui.WorkspaceSplitter
@@ -535,6 +593,7 @@ class WorkspaceTest(unittest.TestCase):
         w = self.window
         session = w.session
         session.settings.transport.port = "TEST"
+        w._update_connection_target()
         session._serial_log.log_dir = Path(self.temp.name)
         session._plot_log.log_dir = Path(self.temp.name)
         with patch.dict(TRANSPORT_TYPES, {type(session.settings.transport): FakeTransport}):
