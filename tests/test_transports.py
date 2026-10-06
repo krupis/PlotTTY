@@ -194,6 +194,55 @@ class TransportTest(unittest.TestCase):
                 self.assertFalse(probe.is_open)
                 self.assertIn(("close",), probe.calls)
 
+    def test_rtt_cleanup_failure_preserves_error_and_allows_reconnect(self):
+        for operation in ("rtt_stop", "close"):
+            with self.subTest(operation=operation):
+                probe = FakeJLink()
+                pylink = SimpleNamespace(JLink=lambda: probe,
+                    enums=SimpleNamespace(JLinkInterfaces=SimpleNamespace(SWD=1, JTAG=2)))
+                session = ConnectionSession()
+                self.addCleanup(session.disconnect_device)
+                session.settings = ConnectionSettings(transport=RttSettings(target="test-device"), log_to_file=False)
+                errors, connected = [], []
+                session.errorOccurred.connect(errors.append)
+                session.connectedChanged.connect(connected.append)
+                with patch.dict("sys.modules", {"pylink": pylink}):
+                    session.connect_device()
+                    previous = session._connection
+                    with patch.object(probe, "rtt_stop", wraps=probe.rtt_stop) as stop, \
+                            patch.object(probe, "close", wraps=probe.close) as cleanup:
+                        (stop if operation == "rtt_stop" else cleanup).side_effect = RuntimeError("cleanup failed")
+                        session.on_transport_error(previous, "original RTT error")
+                        cleanup.assert_called_once()
+                    self.assertFalse(previous.is_open)
+                    self.assertIsNone(session._connection)
+                    self.assertFalse(session.is_connected)
+                    self.assertEqual(errors, ["original RTT error"])
+                    self.assertEqual(connected, [True, False])
+                    previous.close()
+                    session.connect_device()
+                    current = session._connection
+                    session.on_transport_error(previous, "stale error")
+                    self.assertIs(session._connection, current)
+                    self.assertTrue(session.is_connected)
+                    session.disconnect_device()
+                    self.assertEqual(errors, ["original RTT error"])
+
+    def test_rtt_failed_setup_cleanup_preserves_original_error(self):
+        probe = FakeJLink()
+        pylink = SimpleNamespace(JLink=lambda: probe,
+            enums=SimpleNamespace(JLinkInterfaces=SimpleNamespace(SWD=1, JTAG=2)))
+        transport = RttTransport(RttSettings(target="test-device"),
+                                 on_bytes_received=lambda *_: None, on_error=lambda *_: None)
+        self.addCleanup(transport.close)
+        with patch.dict("sys.modules", {"pylink": pylink}), \
+                patch.object(probe, "connect", side_effect=RuntimeError("original setup failure")), \
+                patch.object(probe, "close", side_effect=RuntimeError("secondary cleanup failure")) as cleanup:
+            with self.assertRaisesRegex(RuntimeError, "original setup failure"):
+                transport.open()
+            cleanup.assert_called_once()
+        self.assertFalse(transport.is_open)
+
     def test_session_uses_registered_backend_without_transport_specific_branches(self):
         class OtherTransport(Transport):
             connection_description = "Other device"

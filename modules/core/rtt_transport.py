@@ -55,8 +55,10 @@ class RttTransport(Transport):
             address = self.settings.control_block.strip()
             jlink.rtt_start(int(address, 0) if address else None)
         except Exception:
-            if jlink.opened():
+            try:
                 jlink.close()
+            except Exception:
+                pass  # Cleanup must not replace the original connection error.
             raise
         self._jlink = jlink
         self._thread = Thread(target=self._poll, name="PlotTTY-RTT", daemon=True)
@@ -94,8 +96,9 @@ class RttTransport(Transport):
                     try:
                         self._jlink.rtt_stop()
                     finally:
-                        if self._jlink.opened():
-                            self._jlink.close()
+                        self._jlink.close()
+            except Exception:
+                pass  # A failed probe must not prevent the session from disconnecting.
             finally:
                 self._jlink = None
 
