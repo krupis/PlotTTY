@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QProgressDialog,
     QSizePolicy,
+    QHBoxLayout,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -31,6 +33,7 @@ from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.rules_editor import RulesEditor
 from modules.widgets.connection_settings_dialog import ConnectionSettingsDialog
 from modules.core.rtt_transport import RttSettings
+from modules.core.serial_transport import SerialSettings
 import rc_resources  # noqa: F401
 
 
@@ -121,8 +124,36 @@ class MainWindow(QMainWindow):
         self.connection_type_combo.setObjectName("ConnectionTypeCombo")
         self.connection_type_combo.addItem("Serial", self.session.settings.transport)
         self.connection_type_combo.addItem("J-Link RTT", RttSettings())
-        self.ui.ConnectionSettingsButton.setText("Connection settings")
+        self.ui.ConnectionSettingsButton.setText("Settings")
+        self.ui.ConnectionSettingsButton.setIcon(QIcon(":/icons/settings.svg"))
+        self.ui.ConnectionSettingsButton.setAccessibleName("Connection settings")
         self.ui.ConnectionLayout.insertWidget(0, self.connection_type_combo)
+        self.connection_target = QWidget(self.connection_bar)
+        self.connection_target.setFixedWidth(220)
+        target_layout = QVBoxLayout(self.connection_target)
+        target_layout.setContentsMargins(0, 0, 0, 0)
+        target_layout.setSpacing(2)
+        self.connection_target_label = QLabel()
+        self.connection_target_label.setObjectName("ConnectionTarget")
+        self.connection_details_label = QLabel()
+        self.connection_details_label.setObjectName("ConnectionDetails")
+        for label in (self.connection_target_label, self.connection_details_label):
+            label.setTextFormat(Qt.TextFormat.PlainText)
+            target_layout.addWidget(label)
+        self.ui.ConnectionLayout.insertWidget(1, self.connection_target)
+        self.connection_status = QWidget(self.connection_bar)
+        self.connection_status.setFixedWidth(104)
+        status_layout = QHBoxLayout(self.connection_status)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(6)
+        self.connection_status_dot = QLabel()
+        self.connection_status_dot.setObjectName("ConnectionStatusDot")
+        self.connection_status_dot.setFixedSize(8, 8)
+        self.connection_status_label = QLabel("Disconnected")
+        self.connection_status_label.setObjectName("ConnectionStatus")
+        status_layout.addWidget(self.connection_status_dot)
+        status_layout.addWidget(self.connection_status_label)
+        self.ui.ConnectionLayout.insertWidget(2, self.connection_status)
         self.plot.controls_layout.setSpacing(8)
         self.ui.MainLayout.setContentsMargins(12, 10, 12, 10)
         self.ui.SeriesLayout.setContentsMargins(16, 14, 16, 14)
@@ -163,6 +194,31 @@ class MainWindow(QMainWindow):
         if self.session.is_connected:
             return
         self.session.settings.transport = self.connection_type_combo.itemData(index)
+        self._update_connection_target()
+
+    def _update_connection_target(self):
+        settings = self.session.settings.transport
+        if isinstance(settings, SerialSettings):
+            target = settings.port.strip()
+            title = target or "No port selected"
+            details = f"{settings.baudrate} baud" if target else "Choose a port in Settings"
+            ports = self._connection_settings.transport_widgets[SerialSettings].port_combo
+            index = ports.findData(settings.port)
+            if target and index >= 0:
+                description = ports.itemText(index).partition(" — ")[2]
+                if description:
+                    details += f" · {description}"
+        else:
+            target = settings.target.strip()
+            title = target or "No RTT target selected"
+            probe = f"Probe {settings.probe_serial.strip()}" if settings.probe_serial.strip() else "Automatic probe"
+            details = f"{probe} · {settings.interface} · RTT channel {settings.up_channel}" if target else "Choose a target in Settings"
+        self.connection_target_label.setToolTip(title)
+        self.connection_details_label.setToolTip(details)
+        self.connection_target.setToolTip(f"{title}\n{details}")
+        for label, text in ((self.connection_target_label, title), (self.connection_details_label, details)):
+            label.setText(label.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, 220))
+        self.ui.ConnectButton.setEnabled(bool(target) or self.session.is_connected)
 
     def focus_console_search(self):
         self.ui.actionConsole.setChecked(True)
@@ -398,6 +454,7 @@ class MainWindow(QMainWindow):
         self.session.settings = self._connection_settings.selected_settings()
         index = self.connection_type_combo.currentIndex()
         self.connection_type_combo.setItemData(index, self.session.settings.transport)
+        self._update_connection_target()
 
     @Slot()
     def on_toggle_connection(self) -> None:
@@ -448,11 +505,16 @@ class MainWindow(QMainWindow):
         self.ui.ConnectButton.setToolTip("Connected — click to disconnect" if connected else "Disconnected — click to connect")
         self.ui.ConnectionSettingsButton.setEnabled(not connected)
         self.connection_type_combo.setEnabled(not connected)
-        for button in (self.ui.ConnectButton, self.ui.ConnectionSettingsButton):
-            button.setProperty("connected", connected)
-            button.style().unpolish(button)
-            button.style().polish(button)
+        self.ui.ConnectButton.setProperty("connected", connected)
+        self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
+        self.ui.ConnectButton.style().polish(self.ui.ConnectButton)
+        self.connection_status_label.setText("Connected" if connected else "Disconnected")
+        self.connection_status_dot.setProperty("connected", connected)
+        self.connection_status_dot.style().unpolish(self.connection_status_dot)
+        self.connection_status_dot.style().polish(self.connection_status_dot)
+        self._update_connection_target()
         if connected:
+            self.ui.ConnectButton.setEnabled(True)
             self._connection_settings.reject()
         self.ui.CommandEdit.setEnabled(connected)
         self.ui.SendButton.setEnabled(connected)

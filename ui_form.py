@@ -188,7 +188,7 @@ class Ui_MainWindow(object):
         self.actionConsole.setText(QCoreApplication.translate("MainWindow", u"Console", None))
         self.actionSidebar.setText(QCoreApplication.translate("MainWindow", u"Extraction sidebar", None))
         self.actionDiagnostics.setText(QCoreApplication.translate("MainWindow", u"Diagnostics", None))
-        self.ConnectionSettingsButton.setText(QCoreApplication.translate("MainWindow", u"Select port", None))
+        self.ConnectionSettingsButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
 #if QT_CONFIG(tooltip)
         self.ConnectionSettingsButton.setToolTip(QCoreApplication.translate("MainWindow", u"Connection settings", None))
 #endif // QT_CONFIG(tooltip)

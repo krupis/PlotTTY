@@ -22,10 +22,12 @@ For rendering benchmarks and live-device diagnostics, see
 
 ## Plot workspace
 
-Click **Connection settings** in the top bar to choose a port and baud rate.
+Click **Settings** (the gear button) in the top bar to choose a port and baud rate.
 The port selector shows device descriptions beside port names when available
 (for example, **COM3 — USB Serial Port**).
 The same popover shows all serial settings, with expandable capture options.
+The top bar always shows the saved port or RTT target, its key settings, and a separate
+dot with **Connected** or **Disconnected** status. Hover over the target summary for full details.
 Choose **Save settings**, then **Connect**. Escape or clicking outside discards
 unsaved edits; connection settings are locked while connected. Use the **Show** checkbox
 in each extraction-table row, then **Apply rules**, to show or hide that rule’s traces. Hidden series continue recording

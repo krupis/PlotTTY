@@ -20,15 +20,16 @@ QPushButton[primary="true"], QPushButton#PlotModeButton:checked {
 QPushButton[primary="true"]:hover, QPushButton#PlotModeButton:checked:hover {
     background: #6edbd3; border-color: #6edbd3; }
 QPushButton[primary="true"]:pressed { background: #30afa7; }
-QPushButton#ConnectButton { background: #85e0b4; color: #10281c; border-color: #85e0b4; font-weight: 600; }
-QPushButton#ConnectButton:hover { background: #a1edc7; border-color: #a1edc7; }
-QPushButton#ConnectButton:pressed { background: #63c997; border-color: #63c997; }
-QPushButton#ConnectButton[connected="true"] { background: #f28b96; color: #301419; border-color: #f28b96; }
-QPushButton#ConnectButton[connected="true"]:hover { background: #ffa6af; border-color: #ffa6af; }
-QPushButton#ConnectButton[connected="true"]:pressed { background: #db7480; border-color: #db7480; }
-QPushButton#ConnectionSettingsButton[connected="false"] { background: #39262b; color: #ffadb7; border-color: #ae6570; }
-QPushButton#ConnectionSettingsButton[connected="false"]:hover { background: #4a3037; }
-QPushButton#ConnectionSettingsButton[connected="true"]:disabled { background: #203b30; color: #85e0b4; border-color: #568b78; }
+QPushButton#ConnectButton { background: #41ccc3; color: #102823; border-color: #41ccc3; font-weight: 600; }
+QPushButton#ConnectButton:hover { background: #6edbd3; border-color: #6edbd3; }
+QPushButton#ConnectButton:pressed { background: #30afa7; }
+QPushButton#ConnectButton[connected="true"] { background: #2b363b; color: #f3f6f7; border-color: #56636b; }
+QPushButton#ConnectButton[connected="true"]:hover { background: #3b474c; border-color: #8d9da5; }
+QPushButton#ConnectButton:disabled { color: #8b989f; background: #20292d; border-color: #3b454b; }
+QLabel#ConnectionTarget { font-weight: 600; }
+QLabel#ConnectionDetails { color: #a6b5bc; font-size: 9pt; }
+QLabel#ConnectionStatusDot { background: #8d9da5; border-radius: 4px; }
+QLabel#ConnectionStatusDot[connected="true"] { background: #85e0b4; }
 QPushButton:focus, QToolButton:focus { border: 2px solid #a1f2e3; padding: 4px 11px; }
 QPushButton:disabled, QToolButton:disabled { color: #8b989f; background: #20292d; border-color: #3b454b; }
 QLineEdit, QComboBox, QPlainTextEdit, QTableWidget {
