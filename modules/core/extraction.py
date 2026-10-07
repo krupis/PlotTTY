@@ -10,9 +10,10 @@ from typing import Literal
 
 
 NUMBER_PATTERN = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+# Skip a trailing token so it does not become part of the next pair's label.
 NAMED_VALUES_RE = re.compile(
     rf"([A-Za-z_][\w .\-/]*)\s*(?:=|:)\s*({NUMBER_PATTERN})\s*"
-    rf"((?![A-Za-z_][\w.\-/]*\s*(?:=|:))[^\s,;=:]*)?"
+    rf"(?:(?![A-Za-z_][\w.\-/]*\s*(?:=|:))[^\s,;=:]*)?"
 )
 FIRST_NUMBER_RE = re.compile(NUMBER_PATTERN)
 
@@ -24,7 +25,6 @@ class CapturedValue:
     timestamp: float
     label: str
     value: float
-    unit: str = ""
     raw_text: str = ""
 
 
@@ -35,7 +35,6 @@ class ExtractionRule:
     is_time: bool = False
     extra_setting: str = ""
     delimiter: str = ","
-    unit: str = ""
     color: str = ""
     visible: bool = True
 
@@ -99,20 +98,19 @@ def _extract_rule(
         for match in NAMED_VALUES_RE.finditer(text):
             label = match.group(1)
             value = float(match.group(2))
-            unit = (match.group(3) or rule.unit or "").strip()
-            captured_values.append(_captured_value(timestamp, label, value, unit, text))
+            captured_values.append(_captured_value(timestamp, label, value, text))
 
     elif rule.method == "first_number":
         match = FIRST_NUMBER_RE.search(text)
         if match:
             value = float(match.group(0))
-            captured_values.append(_captured_value(timestamp, rule.label, value, rule.unit, text))
+            captured_values.append(_captured_value(timestamp, rule.label, value, text))
 
     elif rule.method == "regex_pattern" and rule.extra_setting:
         for match in re.finditer(rule.extra_setting, text):
             if match.groups():
                 captured_values.append(
-                    _captured_value(timestamp, rule.label, float(match.group(1)), rule.unit, text)
+                    _captured_value(timestamp, rule.label, float(match.group(1)), text)
                 )
 
     elif rule.method == "delimited_values":
@@ -132,7 +130,7 @@ def _extract_rule(
             match = FIRST_NUMBER_RE.search(parts[column])
             if match:
                 captured_values.append(
-                    _captured_value(timestamp, rule.label, float(match.group(0)), rule.unit, text)
+                    _captured_value(timestamp, rule.label, float(match.group(0)), text)
                 )
 
     return captured_values
@@ -152,12 +150,11 @@ def _rule_timestamp(
     return None
 
 
-def _captured_value(timestamp: float, label: str, value: float, unit: str, raw_text: str) -> CapturedValue:
+def _captured_value(timestamp: float, label: str, value: float, raw_text: str) -> CapturedValue:
     return CapturedValue(
         timestamp=timestamp,
         label=clean_label(label),
         value=value,
-        unit=unit,
         raw_text=raw_text,
     )
 

@@ -38,8 +38,7 @@ def _named_values_suggestions(lines: list[str]) -> list[ExtractionRule]:
             seen_labels.add(label)
             regex_pattern = rf"{re.escape(label)}\s*(?:=|:)\s*({NUMBER_PATTERN})"
             suggestions.append(
-                ExtractionRule(label=label, method="regex_pattern", extra_setting=regex_pattern,
-                               unit=(match.group(3) or "").strip())
+                ExtractionRule(label=label, method="regex_pattern", extra_setting=regex_pattern)
             )
 
     return suggestions

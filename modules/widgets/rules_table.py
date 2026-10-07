@@ -89,7 +89,6 @@ class RulesTable(QObject):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(checkbox)
         self._table.setCellWidget(row, 6, visibility)
-        self._table.item(row, 1).setData(Qt.ItemDataRole.UserRole, rule.unit)
         swatch = QToolButton()
         swatch.setObjectName("RuleColorButton")
         swatch.setProperty("color", rule.color)
@@ -141,7 +140,6 @@ class RulesTable(QObject):
                 is_time=self._table.cellWidget(row, 0).currentData() == "time",
                 extra_setting=text[2] if method == "delimited_values" else text[1] if method == "regex_pattern" else "",
                 delimiter=text[1].replace(r"\t", "\t") if method == "delimited_values" else ",",
-                unit=self._table.item(row, 1).data(Qt.ItemDataRole.UserRole) or "",
                 color=self._table.cellWidget(row, 5).property("color") or "",
                 visible=self._table.cellWidget(row, 6).findChild(QCheckBox).isChecked(),
             ))

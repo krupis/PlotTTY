@@ -29,11 +29,11 @@ class CaptureFileTest(unittest.TestCase):
     def read(self):
         return [v for batch in iter_binary_capture(self.path, 3) for v in batch]
 
-    def test_round_trip_across_blocks_calls_and_metadata_changes(self):
-        values = [CapturedValue(1700000000 + i / 2000, label, value, unit, 'a,"b"\nĮrašas')
+    def test_round_trip_across_blocks_calls_and_labels(self):
+        values = [CapturedValue(1700000000 + i / 2000, label, value, 'a,"b"\nĮrašas')
                   for i in range(30)
-                  for label, value, unit in (("Voltage", 3.123456789012345, "V"), ("Current", -0.0, "µA"))]
-        values += [CapturedValue(1700000001, "Current", 25.0, "mA", "different")]
+                  for label, value in (("Voltage", 3.123456789012345), ("Current", -0.0))]
+        values += [CapturedValue(1700000001, "Current", 25.0, "different")]
         with patch("modules.core.binary_logging.BLOCK_TARGET", 160):
             with self.path.open("wb") as file:
                 writer = BinaryCaptureWriter(file)
@@ -59,7 +59,7 @@ class CaptureFileTest(unittest.TestCase):
             writer = BinaryCaptureWriter(file)
             writer.write_values([CapturedValue(0, str(i), i) for i in range(6)])
             writer.flush()
-            writer.write_values([CapturedValue(1, str(i), i, "", raw) for i in range(6)])
+            writer.write_values([CapturedValue(1, str(i), i, raw) for i in range(6)])
             writer.finish()
         data = self.path.read_bytes(); offset = len(MAGIC); decoded = b""
         while True:
@@ -79,7 +79,7 @@ class CaptureFileTest(unittest.TestCase):
         self.write([CapturedValue(1, "a", 2)])
         data = self.path.read_bytes()
         damaged = bytearray(data); damaged[len(MAGIC) + BLOCK_HEADER.size + 3] ^= 255
-        variants = [data[:-1], data[:-8], data[:12], data[:7] + b'\x02' + data[8:],
+        variants = [data[:-1], data[:-8], data[:12], data[:7] + b'\x01' + data[8:],
                     bytes(damaged), data + b'extra', MAGIC + BLOCK_HEADER.pack(MAX_BLOCK + 1, 10)]
         for value in variants:
             with self.subTest(value=value[:16]):
@@ -93,13 +93,15 @@ class CaptureFileTest(unittest.TestCase):
         with self.assertRaisesRegex(CaptureFormatError, "undefined series"): self.read()
 
     def test_csv_export_preserves_fields(self):
-        values = [CapturedValue(1.123456789, "Įtampa", -0.0, "V", 'a,\n"quoted"'), CapturedValue(2, 'b', 42)]
+        values = [CapturedValue(1.123456789, "Įtampa", -0.0, 'a,\n"quoted"'), CapturedValue(2, 'b', 42)]
         self.write(values)
         target = self.root / 'export.csv'
         self.assertEqual(export_capture_csv(self.path, target), 2)
         with target.open(newline='', encoding='utf-8') as file:
-            rows = list(csv.DictReader(file))
-        self.assertEqual([CapturedValue(float(r['timestamp']), r['label'], float(r['value']), r['unit'], r['raw_text'])
+            reader = csv.DictReader(file)
+            self.assertEqual(reader.fieldnames, ['timestamp', 'label', 'value', 'raw_text'])
+            rows = list(reader)
+        self.assertEqual([CapturedValue(float(r['timestamp']), r['label'], float(r['value']), r['raw_text'])
                           for r in rows], values)
 
     def test_failed_or_cancelled_export_keeps_destination(self):

@@ -94,10 +94,9 @@ class _PlotCanvas(QWidget):
                 header.setTextFormat(Qt.TextFormat.PlainText)
                 header.setObjectName("PlotHeader")
             self.set_header_color(header, entry["color"])
-            text = label + (f" ({entry['unit']})" if entry["unit"] else "")
-            header.setProperty("seriesTitle", text)
-            header.setAccessibleName(text)
-            header.setToolTip(text)
+            header.setProperty("seriesTitle", label)
+            header.setAccessibleName(label)
+            header.setToolTip(label)
             header.show()
             ordered[label] = header
         self.headers = ordered
@@ -468,9 +467,7 @@ class PlotWidget(QWidget):
                 self._series[captured.label] = Plotter()
                 added_series = True
             series = self._series[captured.label]
-            if captured.unit and captured.unit != series.unit:
-                added_series = True
-            series.add_sample(captured.timestamp - self._start_time, captured.value, captured.unit)
+            series.add_sample(captured.timestamp - self._start_time, captured.value)
             self._has_pending_refresh = True
         if added_series:
             self._rebuild_plots()
@@ -549,7 +546,7 @@ class PlotWidget(QWidget):
         self._set_time_range(start_time, end_time)
 
     def series_info(self):
-        return [{"label": label, "unit": series.unit, "color": self._series_color(label, row),
+        return [{"label": label, "color": self._series_color(label, row),
                  "visible": self._series_is_visible(label)}
                 for row, (label, series) in enumerate(self._series.items())]
 
@@ -622,7 +619,7 @@ class PlotWidget(QWidget):
         for label, curve in self._curves.items():
             series = self._series[label]
             latest = series.latest_value()
-            curve.latest = (_format_axis_value(latest) + (" " + series.unit if series.unit else "")) if latest is not None else "—"
+            curve.latest = _format_axis_value(latest) if latest is not None else "—"
             visible_samples, x_values, y_values = self._series[label].read_visible_samples(
                 start_time, end_time, self._bucket_count_for_series(label)
             )

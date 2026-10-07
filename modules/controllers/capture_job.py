@@ -48,7 +48,7 @@ class CaptureJob(QThread):
                     self.start_time = captured.timestamp
                 if captured.label not in self.series:
                     self.series[captured.label] = Plotter()
-                self.series[captured.label].add_sample(captured.timestamp - self.start_time, captured.value, captured.unit)
+                self.series[captured.label].add_sample(captured.timestamp - self.start_time, captured.value)
             self.row_count += len(batch)
             self._report(self.row_count)
         self._check_cancelled()

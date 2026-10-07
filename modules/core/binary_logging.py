@@ -17,7 +17,7 @@ from .extraction import CapturedValue
 from .serial_log import create_log_path
 
 
-MAGIC = b"PLOTTY\x00\x01"
+MAGIC = b"PLOTTY\x00\x02"
 BLOCK_HEADER = struct.Struct("<II")
 UINT = struct.Struct("<I")
 SAMPLE_HEADER = struct.Struct("<dII")  # timestamp, raw-text bytes, value count
@@ -38,7 +38,7 @@ class BinaryCaptureWriter:
     def __init__(self, file: BinaryIO):
         self.file = file
         self.file.write(MAGIC)
-        self._series: dict[tuple[str, str], int] = {}
+        self._series: dict[str, int] = {}
         self._block = bytearray()
         self._group_key: tuple[float, str] | None = None
         self._values = bytearray()
@@ -49,18 +49,15 @@ class BinaryCaptureWriter:
         if self._finished:
             raise ValueError("Capture is already finished")
         for captured in values:
-            metadata = (captured.label, captured.unit)
-            series_id = self._series.get(metadata)
+            series_id = self._series.get(captured.label)
             if series_id is None:
                 self._finish_group()
                 if len(self._series) >= MAX_METADATA:
                     raise ValueError("Too many series definitions")
                 series_id = len(self._series)
                 label = captured.label.encode("utf-8")
-                unit = captured.unit.encode("utf-8")
-                self._append_record(b"S" + UINT.pack(series_id) + UINT.pack(len(label)) + label
-                                    + UINT.pack(len(unit)) + unit)
-                self._series[metadata] = series_id
+                self._append_record(b"S" + UINT.pack(series_id) + UINT.pack(len(label)) + label)
+                self._series[captured.label] = series_id
             key = (captured.timestamp, captured.raw_text)
             if self._group_key != key or self._value_count >= MAX_GROUP_VALUES:
                 self._finish_group()
@@ -120,7 +117,7 @@ def _read_exact(file: BinaryIO, size: int) -> bytes:
 def iter_binary_capture(path: str | Path, batch_size: int = 1000) -> Iterator[list[CapturedValue]]:
     if batch_size < 1:
         raise ValueError("batch_size must be positive")
-    series: dict[int, tuple[str, str]] = {}
+    series: dict[int, str] = {}
     batch = []
     with Path(path).open("rb") as file:
         if _read_exact(file, len(MAGIC)) != MAGIC:
@@ -162,7 +159,7 @@ def iter_binary_capture(path: str | Path, batch_size: int = 1000) -> Iterator[li
                         series_id, = UINT.unpack(take(UINT.size))
                         if series_id != len(series) or len(series) >= MAX_METADATA:
                             raise CaptureFormatError("Invalid series definition")
-                        series[series_id] = (text(), text())
+                        series[series_id] = text()
                     elif tag == b"R":
                         timestamp, raw_length, count = SAMPLE_HEADER.unpack(take(SAMPLE_HEADER.size))
                         if not 0 < count <= MAX_GROUP_VALUES:
@@ -171,8 +168,7 @@ def iter_binary_capture(path: str | Path, batch_size: int = 1000) -> Iterator[li
                         for series_id, value in VALUE.iter_unpack(take(count * VALUE.size)):
                             if series_id not in series:
                                 raise CaptureFormatError("Sample refers to an undefined series")
-                            label, unit = series[series_id]
-                            batch.append(CapturedValue(timestamp, label, value, unit, raw_text))
+                            batch.append(CapturedValue(timestamp, series[series_id], value, raw_text))
                             if len(batch) >= batch_size:
                                 yield batch
                                 batch = []
@@ -240,11 +236,11 @@ def export_capture_csv(source, destination, progress=None, cancelled=None) -> in
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as file:
             writer = csv.writer(file)
-            writer.writerow(("timestamp", "label", "value", "unit", "raw_text"))
+            writer.writerow(("timestamp", "label", "value", "raw_text"))
             for batch in iter_binary_capture(source):
                 if cancelled is not None and cancelled():
                     raise CaptureCancelled()
-                writer.writerows((v.timestamp, v.label, v.value, v.unit, v.raw_text) for v in batch)
+                writer.writerows((v.timestamp, v.label, v.value, v.raw_text) for v in batch)
                 row_count += len(batch)
                 if progress is not None:
                     progress(row_count)

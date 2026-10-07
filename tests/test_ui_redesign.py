@@ -68,7 +68,7 @@ class WorkspaceTest(unittest.TestCase):
         return editor
 
     def test_applied_rules_are_copied_for_profiles(self):
-        rules = [ExtractionRule("original", "first_number", unit="V")]
+        rules = [ExtractionRule("original", "first_number")]
         self.window.apply_rules(rules)
         rules[0].label = "caller mutation"
         path = Path(self.temp.name) / "profile.json"
@@ -281,8 +281,8 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(plot._curves["B"].color, colors[1])
         self.assertEqual([row["color"] for row in plot.series_info()], colors)
 
-    def test_live_and_loaded_units_exact_latest_in_old_view(self):
-        values = [CapturedValue(100, "a", 1, "V"), CapturedValue(101, "a", 8.123456789, "mV"),
+    def test_live_and_loaded_exact_latest_in_old_view(self):
+        values = [CapturedValue(100, "a", 1), CapturedValue(101, "a", 8.123456789),
                   CapturedValue(102, "a", 3.987654321)]
         plot = self.window.plot
         plot.append_values(values)
@@ -295,13 +295,13 @@ class WorkspaceTest(unittest.TestCase):
         loader.run()
         self.assertIsNone(loader.error)
         series = loader.take_series()
-        self.assertEqual(series["a"].unit, plot._series["a"].unit)
+        self.assertEqual(series["a"].latest_value(), plot._series["a"].latest_value())
         self.assertEqual(series["a"].latest_value(), 3.987654321)
         plot.replace_series(series, loader.start_time)
         plot._set_time_range(0, .5)
         self.assertEqual(plot._series["a"].latest_value(), 3.987654321)
-        self.assertEqual(self.window.plot.graph.headers["a"].text(), "a (mV)")
-        self.assertIn("mV", plot._curves["a"].latest)
+        self.assertEqual(self.window.plot.graph.headers["a"].text(), "a")
+        self.assertEqual(plot._curves["a"].latest, "3.988")
 
     def test_console_collapse_clear_and_commands(self):
         self.window.apply_rules([ExtractionRule("Named values", "named_values")])
@@ -631,7 +631,7 @@ class WorkspaceTest(unittest.TestCase):
         source = Path(self.temp.name) / "capture.plotty"
         with source.open("wb") as file:
             writer = BinaryCaptureWriter(file)
-            writer.write_values([CapturedValue(1, "a", 1.23, "V")])
+            writer.write_values([CapturedValue(1, "a", 1.23)])
             writer.finish()
         self.window._start_capture_job(str(source))
         for _ in range(100):
@@ -640,7 +640,7 @@ class WorkspaceTest(unittest.TestCase):
             QTest.qWait(10)
         self.assertIsNone(self.window._capture_job)
         self.assertEqual(self.window.plot.capture_title.text(), "capture.plotty")
-        self.assertEqual(self.window.plot.graph.headers["a"].text(), "a (V)")
+        self.assertEqual(self.window.plot.graph.headers["a"].text(), "a")
         destination = source.with_suffix(".csv")
         self.window._start_capture_job(str(source), str(destination))
         for _ in range(100):
@@ -757,7 +757,7 @@ class WorkspaceTest(unittest.TestCase):
     def test_profile_file_actions_use_applied_rules_and_current_path(self):
         source = Path(self.temp.name) / "source.json"
         target = Path(self.temp.name) / "saved.json"
-        save_profile(AppProfile("source", [ExtractionRule("value", "first_number", unit="V")]), source)
+        save_profile(AppProfile("source", [ExtractionRule("value", "first_number")]), source)
         with patch("mainwindow.QFileDialog.getOpenFileName", return_value=(str(source), "")):
             self.window.on_open_profile()
         self.assertEqual(self.window.profile_path, source)
@@ -785,10 +785,13 @@ class WorkspaceTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             load_profile(path)
 
-    def test_generated_units_and_method_changes(self):
+    def test_generated_values_and_method_changes(self):
         rules = suggest_rules("Voltage: 3.31 V  Current: 0.14 A")
-        captured = ExtractionEngine(rules).extract("Voltage: 3.32 V  Current: 0.15 A")
-        self.assertEqual([v.unit for v in captured], ["V", "A"])
+        captured = ExtractionEngine(rules).extract("Voltage: 3.32 V  Current: 0.15 A", timestamp=1)
+        self.assertEqual([(v.label, v.value) for v in captured], [("Voltage", 3.32), ("Current", 0.15)])
+        named = ExtractionEngine([ExtractionRule("Named", "named_values")]).extract(
+            "Voltage: 3.32 V  Current: 0.15 A", timestamp=1)
+        self.assertEqual(named, captured)
         dialog = self.editor(rules)
         combo = dialog.table.cellWidget(0, 2)
         combo.setCurrentIndex(combo.findData("first_number"))

@@ -112,7 +112,7 @@ series retains its own color. The Connect/Disconnect button also indicates
 connection state; baud rate is shown only in connection settings. Auto-scroll
 state uses an explicit on/off label.
 
-Each plot header shows the latest captured value and unit, even when viewing
+Each plot header shows the latest captured value, even when viewing
 older history. **Fit capture** and **Auto scroll**, on the right of the shared
 connection toolbar, control the shared time range. The adjacent capture label
 appears only for loaded captures, showing the filename with its full path in a tooltip.
@@ -140,7 +140,7 @@ For redesign screenshots, tests, and benchmark results, see
 
 With **Log to file** enabled, PlotTTY saves extracted plot values to compressed
 `.plotty` files and serial console text to a separate `.log` file. Captures retain
-all numeric values, timestamps, labels, units, and raw serial text without
+all numeric values, timestamps, labels, and raw serial text without
 reducing numeric precision. Text and plot logs flush every second and on disconnect. Disconnect the device to finish the recording before
 opening or exporting it.
 
@@ -148,7 +148,9 @@ Use **File → Load capture…** to open a `.plotty` capture. Loading happens in
 background and can be cancelled. Use **File → Export capture as CSV...** to create
 a readable CSV for other tools; exporting also runs in the background. Cancelled
 or failed exports do not replace an existing destination file. CSV import is not
-supported.
+supported. CSV columns are `timestamp`, `label`, `value`, and `raw_text`.
+
+Recordings use format version 2. Earlier recording formats are rejected.
 
 The [capture format specification](docs/CAPTURE_FORMAT.md) describes the versioned
 binary format. No additional Python dependencies are required.

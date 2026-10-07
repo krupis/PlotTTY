@@ -6,48 +6,42 @@
       "method": "delimited_values",
       "is_time": true,
       "extra_setting": "0",
-      "delimiter": ",",
-      "unit": ""
+      "delimiter": ","
     },
     {
       "label": "Value 1",
       "method": "delimited_values",
       "is_time": false,
       "extra_setting": "1",
-      "delimiter": ",",
-      "unit": ""
+      "delimiter": ","
     },
     {
       "label": "Value 2",
       "method": "delimited_values",
       "is_time": false,
       "extra_setting": "2",
-      "delimiter": ",",
-      "unit": ""
+      "delimiter": ","
     },
     {
       "label": "Value 3",
       "method": "delimited_values",
       "is_time": false,
       "extra_setting": "3",
-      "delimiter": ",",
-      "unit": ""
+      "delimiter": ","
     },
     {
       "label": "Value 4",
       "method": "delimited_values",
       "is_time": false,
       "extra_setting": "4",
-      "delimiter": ",",
-      "unit": ""
+      "delimiter": ","
     },
     {
       "label": "Value 5",
       "method": "delimited_values",
       "is_time": false,
       "extra_setting": "5",
-      "delimiter": ",",
-      "unit": ""
+      "delimiter": ","
     }
   ]
 }
