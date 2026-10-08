@@ -16,6 +16,9 @@ Quick smoke check:
 python benchmarks/plot_benchmark.py --frames 5 --repeats 1 --raw-samples 10000 --output /tmp/plottty-smoke
 ```
 
+Use `--style lines` or `--style dots` to compare graph
+types with identical data and window dimensions.
+
 The benchmark uses five deterministic series in a 1000×900 logical-pixel window.
 It measures fixed-range refresh and changing-range navigation with the production
 QPainter canvas, Plotter storage, and bucket reduction. Each repeat includes ten

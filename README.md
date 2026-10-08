@@ -119,6 +119,13 @@ appears only for loaded captures, showing the filename with its full path in a t
 Wheel or drag plots to zoom/pan time; use the Y axis to adjust its range and
 double-click it to reset. Larger stacks scroll vertically above a fixed time axis.
 
+Each plot header has a graph-type dropdown: **Lines** or **Dots**.
+Changes take effect immediately and independently for each series. Dots show
+sample positions without connecting strokes. Wide views use representative
+samples for performance; zoom in to see every individual sample. Graph types
+are view settings for the current capture, retained when hiding or renaming
+series and reset when clearing data or loading another capture.
+
 Drag the divider at the bottom of the plot upward to open the **Console**, or use
 **View → Console**. Drag it down to the bottom edge to collapse the console; the
 divider stays available for reopening. Ctrl+F also opens the console and focuses

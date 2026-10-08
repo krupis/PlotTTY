@@ -36,6 +36,8 @@ def run(args, app):
             store.add_sample(i * .001, math.sin(i * .07 + j))
     build_seconds = perf_counter() - started
     widget.replace_series(series, 0.)
+    for label in series:
+        widget.set_series_style(label, args.style)
     widget.show()
     app.processEvents()
     latest = (args.raw_samples - 1) * .001
@@ -64,6 +66,7 @@ def run(args, app):
             _prepare_plot_arrays(x, y)
         timings.append((perf_counter_ns() - tick) / 1e6)
     result = {"backend": "current-widget", "build_seconds": build_seconds, "rows": rows,
+              "style": args.style,
               "storage_read_five_series": stats(timings),
               "environment": {"python": sys.version, "platform": platform.platform(), "qt": qVersion(),
                               "qt_platform": app.platformName(), "device_pixel_ratio": widget.devicePixelRatioF(),
@@ -78,6 +81,7 @@ def main():
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--raw-samples", type=int, default=1_000_000)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--style", choices=("lines", "dots"), default="lines")
     args = parser.parse_args()
     if min(args.frames, args.repeats) < 1 or args.raw_samples < 2:
         parser.error("frames/repeats must be positive and raw-samples must be at least 2")

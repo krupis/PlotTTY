@@ -6,9 +6,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 import math
 
-from PySide6.QtCore import QPoint, QRectF, QSize, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import QPoint, QPointF, QRectF, QSignalBlocker, QSize, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue, clean_label
 from ..core.plotter import Plotter
@@ -28,11 +28,13 @@ PLOT_TOP_MARGIN = 42
 PLOT_BOTTOM_MARGIN = 20
 AUTO_SCROLL_TOOLTIP = "Keep the plot view following the newest incoming data."
 FIT_CAPTURE_TOOLTIP = "Zoom the plot out to show all captured data."
+PLOT_STYLES = {"lines": "Lines", "dots": "Dots"}
 
 
 @dataclass(slots=True)
 class _CurveData:
     color: QColor
+    style: str = "lines"
     latest: str = ""
     xData: list[float] = field(default_factory=list)
     yData: list[float] = field(default_factory=list)
@@ -42,7 +44,7 @@ class _CurveData:
         self.xData = x_values
         self.yData = y_values
         path = QPainterPath()
-        if x_values:
+        if x_values and self.style != "dots":
             path.reserve(len(x_values))
             path.moveTo(x_values[0], y_values[0])
             for x_value, y_value in zip(x_values[1:], y_values[1:]):
@@ -54,6 +56,7 @@ class _PlotCanvas(QWidget):
     """Draw stacked time-series panels and handle horizontal navigation."""
 
     timeRangeChanged = Signal(float, float)
+    styleRequested = Signal(str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -68,6 +71,7 @@ class _PlotCanvas(QWidget):
         self.empty_message = "Waiting for series"
         self._curves: dict[str, _CurveData] = {}
         self.headers: dict[str, QLabel] = {}
+        self.style_selectors: dict[str, QComboBox] = {}
         self._panels: dict[str, QRectF] = {}
         self._y_ranges: dict[str, tuple[float, float]] = {}
         self._time_range = (0.0, 10.0)
@@ -85,6 +89,9 @@ class _PlotCanvas(QWidget):
                 header = self.headers.pop(label)
                 header.hide()
                 header.deleteLater()
+                selector = self.style_selectors.pop(label)
+                selector.hide()
+                selector.deleteLater()
         ordered = {}
         for entry in series_info:
             label = entry["label"]
@@ -93,6 +100,22 @@ class _PlotCanvas(QWidget):
                 header = QLabel(self)
                 header.setTextFormat(Qt.TextFormat.PlainText)
                 header.setObjectName("PlotHeader")
+                selector = QComboBox(self)
+                selector.setObjectName("PlotStyle")
+                selector.setAccessibleName(f"Graph type for {label}")
+                selector.setToolTip("Change this plot immediately. Dots have no connecting lines. "
+                                    "Zoom in to see every sample; wide views use representative samples.")
+                for key, text in PLOT_STYLES.items():
+                    selector.addItem(text, key)
+                selector.currentIndexChanged.connect(
+                    lambda _index, label=label, selector=selector:
+                    self.styleRequested.emit(label, selector.currentData()))
+                self.style_selectors[label] = selector
+            selector = self.style_selectors[label]
+            blocker = QSignalBlocker(selector)
+            selector.setCurrentIndex(selector.findData(entry["style"]))
+            blocker.unblock()
+            selector.show()
             self.set_header_color(header, entry["color"])
             header.setProperty("seriesTitle", label)
             header.setAccessibleName(label)
@@ -121,10 +144,11 @@ class _PlotCanvas(QWidget):
         for label, header in self.headers.items():
             height = expanded_height
             self._panels[label] = QRectF(0, top, self.width(), height)
-            width = max(30, int((self.width() - 28) * .45))
+            width = max(30, int(self.width() * .42) - 36)
             title = header.fontMetrics().elidedText(header.property("seriesTitle"), Qt.TextElideMode.ElideRight, width)
             header.setText(title)
             header.setGeometry(14, round(top + 7), width, 24)
+            self.style_selectors[label].setGeometry(round(self.width() * .42), round(top + 7), 124, 26)
             top += height
 
     def set_time_range(self, start_time: float, end_time: float) -> None:
@@ -188,7 +212,8 @@ class _PlotCanvas(QWidget):
         heading_font.setBold(True)
         painter.setFont(heading_font)
         header = QRectF(14, panel.top() + 7, self.width() - 28, 24)
-        value_width = min(header.width() * .55, painter.fontMetrics().horizontalAdvance(curve.latest) + 16)
+        value_width = min(max(24, self.width() - self.style_selectors[label].geometry().right() - 24),
+                          painter.fontMetrics().horizontalAdvance(curve.latest) + 16)
         painter.setPen(curve.color)
         value_rect = QRectF(header.right() - value_width, header.top(), value_width, header.height())
         painter.drawText(value_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
@@ -210,7 +235,7 @@ class _PlotCanvas(QWidget):
             painter.drawText(QRectF(0, y - 9, plot.left() - 8, 18),
                              Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                              _format_axis_value(minimum + fraction * (maximum - minimum)))
-        if curve.path.isEmpty():
+        if not curve.xData:
             return
         x_scale = plot.width() / (end_time - start_time)
         y_scale = plot.height() / (maximum - minimum)
@@ -221,11 +246,25 @@ class _PlotCanvas(QWidget):
         curve_pen.setWidth(1)
         curve_pen.setCosmetic(True)
         painter.save()
-        painter.setTransform(transform)
-        painter.setClipRect(QRectF(start_time, minimum, end_time - start_time, maximum - minimum))
-        painter.setPen(curve_pen)
-        painter.drawPath(curve.path)
+        if curve.style != "dots":
+            painter.setTransform(transform)
+            painter.setClipRect(QRectF(start_time, minimum, end_time - start_time, maximum - minimum))
+            painter.setPen(curve_pen)
+            painter.drawPath(curve.path)
         painter.restore()
+        if curve.style != "lines":
+            dot_color = QColor(curve.color)
+            dot_color.setAlpha(170)
+            painter.save()
+            painter.setClipRect(plot)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(dot_color)
+            for sample_x, sample_y in zip(curve.xData, curve.yData):
+                x = plot.left() + (sample_x - start_time) * x_scale
+                y = plot.bottom() - (sample_y - minimum) * y_scale
+                painter.drawEllipse(QPointF(x, y), 1.5, 1.5)
+            painter.restore()
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         selected = self._panel_at(event.position())
@@ -384,6 +423,7 @@ class PlotWidget(QWidget):
         self._last_time_range = (0.0, time_window)
         self._series: dict[str, Plotter] = {}
         self._series_colors: dict[str, str] = {}
+        self._series_styles: dict[str, str] = {}
         self._named_values_color = ""
         self._curves: dict[str, _CurveData] = {}
         self._rule_visibility: dict[str, bool] = {}
@@ -393,6 +433,7 @@ class PlotWidget(QWidget):
 
         self.graph = _PlotCanvas()
         self.graph.timeRangeChanged.connect(self.on_time_range_changed)
+        self.graph.styleRequested.connect(self.set_series_style)
         self.visible_points_label = QLabel("Points: 0")
         self.visible_points_label.setToolTip("Maximum number of data points currently visible in any shown series.")
         self.downsample_ratio_label = QLabel("Downsample: 1:1")
@@ -476,6 +517,7 @@ class PlotWidget(QWidget):
         for series in self._series.values():
             series.close()
         self._series.clear()
+        self._series_styles.clear()
         self._curves.clear()
         self._start_time = None
         self._has_pending_refresh = False
@@ -547,8 +589,25 @@ class PlotWidget(QWidget):
 
     def series_info(self):
         return [{"label": label, "color": self._series_color(label, row),
+                 "style": self._series_styles.get(label, "lines"),
                  "visible": self._series_is_visible(label)}
                 for row, (label, series) in enumerate(self._series.items())]
+
+    def set_series_style(self, label: str, style: str) -> None:
+        if style not in PLOT_STYLES:
+            raise ValueError(f"Unknown graph type: {style}")
+        if label not in self._series:
+            raise KeyError(label)
+        self._series_styles[label] = style
+        curve = self._curves.get(label)
+        if curve is not None:
+            curve.style = style
+            curve.set_data(curve.xData, curve.yData)
+            selector = self.graph.style_selectors[label]
+            blocker = QSignalBlocker(selector)
+            selector.setCurrentIndex(selector.findData(style))
+            blocker.unblock()
+            self.graph.update()
 
     def set_rules(self, rules):
         self._series_colors = {}
@@ -589,6 +648,7 @@ class PlotWidget(QWidget):
             if new_label not in renamed:
                 renamed[new_label] = series
         self._series = renamed
+        self._series_styles = {labels.get(label, label): style for label, style in self._series_styles.items()}
         self.graph._y_ranges = {
             labels.get(label, label): value for label, value in self.graph._y_ranges.items()
         }
@@ -597,7 +657,7 @@ class PlotWidget(QWidget):
 
     def _rebuild_plots(self) -> None:
         self._curves = {
-            label: _CurveData(self._series_color(label, row))
+            label: _CurveData(self._series_color(label, row), self._series_styles.get(label, "lines"))
             for row, label in enumerate(self._series) if self._series_is_visible(label)
         }
         self.graph.empty_message = "No series selected" if self._series else "Waiting for series"
