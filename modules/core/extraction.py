@@ -20,7 +20,7 @@ FIRST_NUMBER_RE = re.compile(NUMBER_PATTERN)
 ExtractionMethod = Literal["named_values", "first_number", "regex_pattern", "delimited_values"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CapturedValue:
     timestamp: float
     label: str
@@ -71,12 +71,15 @@ class ExtractionEngine:
 
     def __init__(self, rules: Iterable[ExtractionRule] | None = None):
         self.rules = list(rules) if rules is not None else []
+        self._requires_time = any(rule.is_time for rule in self.rules)
 
     def extract(self, text: str, timestamp: float | None = None) -> list[CapturedValue]:
         timestamp = timestamp if timestamp is not None else time()
         # Split once per delimiter, shared by Time and Plot rules for this line.
         fields: dict[str, list[str]] = {}
         rule_timestamp = _rule_timestamp(self.rules, text, fields)
+        if self._requires_time and rule_timestamp is None:
+            return []
         timestamp = rule_timestamp if rule_timestamp is not None else timestamp
         captured_values = []
 
