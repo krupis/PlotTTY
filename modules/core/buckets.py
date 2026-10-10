@@ -1,110 +1,88 @@
-"""Keep compact summaries of samples for drawing large captures.
+"""Compact first/last/min/max summaries of completed sample groups.
 
-A Bucket summarizes consecutive samples with their first, last, lowest and
-highest points. Buckets keeps a separate list for every target size. For each
-incoming sample, every list either adds it to its unfinished last bucket or
-starts a new bucket. For example, the size-4 list starts a new bucket after four
-samples, while the size-8 list starts one after eight samples.
-
-Reads choose an appropriate target size and return up to four representative
-points from each selected group. Raw samples remain available in Plotter for
-ranges that do not need downsampling.
-
-Samples must arrive in nondecreasing timestamp order for binary search to work.
-Boundary buckets can include points outside the requested range.
+Four-sample summaries are filled directly. Larger power-of-two summaries merge
+two completed children. Numeric arrays avoid tracking a Python object graph for
+every captured sample; only the unfinished four-sample group stays mutable.
+Reads reconstruct an unfinished tail from smaller completed groups. Timestamps
+must arrive in nondecreasing order, as required by Plotter's range lookup.
 """
-
-from __future__ import annotations
-
-from dataclasses import dataclass
+from array import array
 import math
-
 
 BUCKET_SIZES = (4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192)
 
-Point = tuple[float, float]
 
-
-@dataclass(slots=True)
-class Bucket:
-    """Summary of one consecutive group of samples."""
-
-    count: int
-    first: Point
-    last: Point
-    minimum_point: Point
-    maximum_point: Point
-
-    def add_point(self, point: Point) -> None:
-        """Include the next point in this bucket."""
-        self.count += 1
-        self.last = point
-        if point[1] < self.minimum_point[1]:
-            self.minimum_point = point
-        if point[1] > self.maximum_point[1]:
-            self.maximum_point = point
+def _merge(left, right):
+    minimum = right[4:6] if right[5] < left[5] else left[4:6]
+    maximum = right[6:8] if right[7] > left[7] else left[6:8]
+    return (left[0], left[1], right[2], right[3], minimum[0], minimum[1], maximum[0], maximum[1])
 
 
 class Buckets:
-    """Store bucket summaries at several target sizes."""
+    def __init__(self):
+        self._levels = {size: array('d') for size in BUCKET_SIZES}
+        self._count = 0
+        self._partial = None
 
-    def __init__(self) -> None:
-        """Create one initially empty list for each target size."""
+    def add_sample(self, timestamp, value):
+        if self._count % 4 == 0:
+            self._partial = [timestamp, value, timestamp, value, timestamp, value, timestamp, value]
+        else:
+            pending = self._partial
+            pending[2], pending[3] = timestamp, value
+            if value < pending[5]:
+                pending[4], pending[5] = timestamp, value
+            if value > pending[7]:
+                pending[6], pending[7] = timestamp, value
+        self._count += 1
+        if self._count % 4:
+            return
+        self._levels[4].extend(self._partial)
+        self._partial = None
+        for size in BUCKET_SIZES[1:]:
+            if self._count % size:
+                break
+            children = self._levels[size // 2]
+            self._levels[size].extend(_merge(children[-16:-8], children[-8:]))
 
-        self._levels = {}
-        for size in BUCKET_SIZES:
-            self._levels[size] = []
-
-    def add_sample(self, timestamp: float, value: float) -> None:
-        """Add a sample to the current bucket at every target size."""
-
-        point = (timestamp, value)
-        for target_size in BUCKET_SIZES:
-            level = self._levels[target_size]
-
-            if not level or level[-1].count == target_size:
-                # If the last bucket is full or there are no buckets, create a new bucket with the current point as first, last, minimum, and maximum.
-                level.append(Bucket(1, point, point, point, point))
+    def _tail(self, size):
+        cursor = self._count // size * size
+        summary = None
+        while cursor < self._count:
+            remaining = self._count - cursor
+            if remaining < 4:
+                part = self._partial
+                cursor = self._count
             else:
-                # If the last bucket is not full, add the current point to it.
-                level[-1].add_point(point)
+                child_size = next(s for s in reversed(BUCKET_SIZES) if s <= remaining and cursor % s == 0)
+                offset = cursor // child_size * 8
+                part = self._levels[child_size][offset:offset + 8]
+                cursor += child_size
+            summary = tuple(part) if summary is None else _merge(summary, part)
+        return summary
 
-    def read_samples(
-        self,
-        start_index: int,
-        stop_index: int,
-        max_buckets: int,
-    ) -> tuple[list[float], list[float]]:
-        """Reduce samples in [start_index, stop_index) to at most max_buckets groups."""
+    def read_samples(self, start_index, stop_index, max_buckets):
         if stop_index <= start_index:
             return [], []
-
         max_buckets = max(1, max_buckets)
         samples_per_bucket = (stop_index - start_index) / max_buckets
-        for size in BUCKET_SIZES:
-            if size >= samples_per_bucket:
-                break
-
-        # Each level groups consecutive samples into fixed-size buckets.
+        size = next((s for s in BUCKET_SIZES if s >= samples_per_bucket), BUCKET_SIZES[-1])
         first_bucket = start_index // size
-        stop_bucket = (stop_index + size - 1) // size
-        selected_buckets = self._levels[size][first_bucket:stop_bucket]
-        if not selected_buckets:
+        stop_bucket = min((stop_index + size - 1) // size, math.ceil(self._count / size))
+        if stop_bucket <= first_bucket:
             return [], []
-
-        # Boundary buckets and the largest level can still exceed the budget.
-        group_size = max(1, math.ceil(len(selected_buckets) / max_buckets))
-        x_values: list[float] = []
-        y_values: list[float] = []
-        for start in range(0, len(selected_buckets), group_size):
-            group = selected_buckets[start : start + group_size]
-            first = group[0].first
-            last = group[-1].last
-            minimum = min((bucket.minimum_point for bucket in group), key=lambda point: point[1])
-            maximum = max((bucket.maximum_point for bucket in group), key=lambda point: point[1])
-
-            for x_value, y_value in sorted({first, minimum, maximum, last}):
-                x_values.append(x_value)
-                y_values.append(y_value)
-
+        group_size = max(1, math.ceil((stop_bucket - first_bucket) / max_buckets))
+        data = self._levels[size]
+        completed = len(data) // 8
+        tail = self._tail(size) if self._count % size else None
+        x_values, y_values = [], []
+        for start in range(first_bucket, stop_bucket, group_size):
+            summary = None
+            for bucket in range(start, min(stop_bucket, start + group_size)):
+                part = data[bucket * 8:bucket * 8 + 8] if bucket < completed else tail
+                summary = tuple(part) if summary is None else _merge(summary, part)
+            points = {(summary[i], summary[i + 1]) for i in (0, 2, 4, 6)}
+            for x, y in sorted(points):
+                x_values.append(x)
+                y_values.append(y)
         return x_values, y_values
