@@ -20,6 +20,7 @@ files = [
     "modules/controllers/serial_session.py",
     "modules/core/__init__.py",
     "modules/core/buckets.py",
+    "modules/core/console_history.py",
     "modules/core/binary_logging.py",
     "modules/core/extraction.py",
     "modules/core/line_decoder.py",

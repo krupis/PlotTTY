@@ -1,5 +1,9 @@
 # Serial worker necessity and STM32 data rate — 2026-10-11
 
+For the subsequent small change that clears PC input during open, see
+[USB reconnect buffer clearing](USB_RECONNECT.md). The comparisons below
+describe the transport before that follow-up.
+
 The serial worker is **not required for the measured processing capacity**.
 Every tested implementation sustained approximately 10,000 records/s with the
 current file-backed console, compact summaries, logging and plotting.

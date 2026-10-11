@@ -498,14 +498,21 @@ class WorkspaceTest(unittest.TestCase):
         self.assertTrue(restored.ui.ConsoleTextEdit.isVisible())
 
     def test_console_search_selects_and_navigates_matches(self):
+        def wait_for_matches(expected):
+            for _ in range(200):
+                APP.processEvents()
+                if self.window.ui.SearchMatchLabel.text() == expected:
+                    break
+                QTest.qWait(5)
+            self.assertEqual(self.window.ui.SearchMatchLabel.text(), expected)
         self.window.console.append_received("alpha beta alpha")
         self.window.console.flush()
         self.window.ui.SearchEdit.setText("alpha")
-        self.assertEqual(self.window.ui.SearchMatchLabel.text(), "1/2")
+        wait_for_matches("1/2")
         self.window.ui.SearchNextButton.click()
-        self.assertEqual(self.window.ui.SearchMatchLabel.text(), "2/2")
+        wait_for_matches("2/2")
         self.window.ui.SearchPreviousButton.click()
-        self.assertEqual(self.window.ui.SearchMatchLabel.text(), "1/2")
+        wait_for_matches("1/2")
 
     def test_clear_plot_keeps_console_text(self):
         self.window.console.append_received("keep this")
@@ -802,12 +809,13 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(dialog.table.item(0, 4).text(), "0")
         self.assertTrue(dialog.apply_rules())
 
-    def test_console_fixed_limit_and_no_latency_monitor(self):
+    def test_console_full_file_history_and_no_latency_monitor(self):
         self.window.console.append_received("\n".join(str(i) for i in range(50_100)))
         self.window.console.flush()
         editor = self.window.ui.ConsoleTextEdit
-        self.assertEqual(editor.document().blockCount(), 50_000)
-        self.assertEqual(editor.document().firstBlock().text(), "100")
+        self.assertEqual(self.window.console._history.count, 50_100)
+        self.assertLessEqual(editor.document().blockCount(), 512)
+        self.assertEqual(self.window.console._history.read(0, 1)[0][0], "0")
         self.assertFalse(hasattr(self.window, "_latency_monitor"))
         self.assertFalse(hasattr(self.window.session.settings, "console_line_limit"))
 

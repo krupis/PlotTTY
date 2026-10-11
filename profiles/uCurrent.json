@@ -2,10 +2,10 @@
   "name": "uCurrent",
   "rules": [
     {
-      "label": "Value 0",
+      "label": "Device time (s)",
       "method": "delimited_values",
       "is_time": true,
-      "extra_setting": "0",
+      "extra_setting": "6",
       "delimiter": ","
     },
     {

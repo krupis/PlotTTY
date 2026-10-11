@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
 
         self.plot = self.ui.Plot
         self.console = ConsoleWidget(self.ui.ConsoleTextEdit, self)
+        self.console.searchFinished.connect(self.on_console_search_finished)
         self.applied_rules = []
 
         self._configure_workspace()
@@ -242,7 +243,10 @@ class MainWindow(QMainWindow):
         self._update_console_search(self.ui.SearchEdit.text(), backwards=True)
 
     def _update_console_search(self, text, *, backwards=False):
-        current, total = self.console.find_text(text, backwards=backwards)
+        self.ui.SearchMatchLabel.setText("…" if text else "")
+        self.console.find_text(text, backwards=backwards)
+
+    def on_console_search_finished(self, current, total):
         self.ui.SearchMatchLabel.setText(f"{current}/{total}" if total else "")
 
     def set_diagnostics_visible(self, visible):
@@ -579,9 +583,9 @@ class MainWindow(QMainWindow):
         settings.setValue("sidebarWidth", self.ui.MainSplitter.expanded_size)
         for name in ("Console", "Sidebar", "Diagnostics"):
             settings.setValue(name, getattr(self.ui, "action" + name).isChecked())
-        self.plot.clear_values()
-        self.console.flush()
         self.session.disconnect_device()
+        self.console.close()
+        self.plot.clear_values()
         super().closeEvent(event)
 
 

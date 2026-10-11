@@ -47,6 +47,11 @@ class _SerialReader(QObject):
         self.serial.setStopBits(_stop_bits(settings.stop_bits))
         self.is_open = self.serial.open(QSerialPort.OpenModeFlag.ReadWrite)
         if self.is_open:
+            # Drop bytes retained by the driver or an earlier USB transfer.
+            self.is_open = self.serial.clear(QSerialPort.Direction.Input)
+            if not self.is_open:
+                self.serial.close()
+        if self.is_open:
             self.timer.start()
         else:
             self.open_error = self.serial.errorString() or "Could not open serial port."

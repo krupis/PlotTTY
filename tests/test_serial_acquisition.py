@@ -18,13 +18,16 @@ class FakeSerial(QObject):
     errorOccurred = Signal(QSerialPort.SerialPortError)
     OpenModeFlag = QSerialPort.OpenModeFlag
     SerialPortError = QSerialPort.SerialPortError
+    Direction = QSerialPort.Direction
     DataBits, Parity, StopBits = QSerialPort.DataBits, QSerialPort.Parity, QSerialPort.StopBits
     fail_open = False
     fail_write = False
+    fail_clear = False
+    startup_data = b''
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.incoming = b''
+        self.incoming = self.startup_data
         self.writes = []
         self.opened = False
 
@@ -49,6 +52,11 @@ class FakeSerial(QObject):
         self.writes.append(bytes(data))
         return len(data)
     def flush(self): pass
+    def clear(self, directions):
+        assert QThread.currentThread() is self.thread()
+        assert directions == self.Direction.Input
+        self.incoming = b''
+        return not self.fail_clear
     def close(self): self.opened = False
 
 
@@ -86,6 +94,9 @@ class SerialAcquisitionTest(unittest.TestCase):
             with patch.object(FakeSerial, 'fail_open', True):
                 with self.assertRaisesRegex(RuntimeError, 'fake failure'):
                     backend.open()
+            with patch.object(FakeSerial, 'fail_clear', True):
+                with self.assertRaisesRegex(RuntimeError, 'fake failure'):
+                    backend.open()
             backend.open()
             serial = backend._reader.serial
             backend.write(b'CMD,ping\n')
@@ -105,3 +116,17 @@ class SerialAcquisitionTest(unittest.TestCase):
             APP.processEvents()
             self.assertEqual(deliveries, [b'reopened\n'])
             backend.close()
+
+    def test_open_discards_stale_input_and_preserves_new_input(self):
+        deliveries = []
+        with patch('modules.core.serial_transport.QSerialPort', FakeSerial), \
+                patch.object(FakeSerial, 'startup_data', b'old session\n'):
+            backend = SerialTransport(SerialSettings(port='FAKE'),
+                on_bytes_received=lambda _, data, __: deliveries.append(data),
+                on_error=lambda *_: None)
+            backend.open()
+            serial = backend._reader.serial
+            self.assertEqual(serial.incoming, b'')
+            serial.incoming = b'new session\n'
+            backend.close()
+            self.assertEqual(deliveries, [b'new session\n'])

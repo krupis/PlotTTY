@@ -136,14 +136,26 @@ starts a new draft. History stays in memory until the app closes, including acro
 disconnects and console clears. The console's **Clear** button
 only clears text; **File → Clear captured data** also clears plotted history,
 without deleting recordings. The **View** menu controls the console, sidebar,
-and diagnostics (point counts and downsampling). The console retains the latest
-50,000 lines; file logging preserves the full serial text when enabled. Window geometry and these layout choices are remembered
+and diagnostics (point counts and downsampling). The console keeps the complete
+session text in a temporary UTF-8 file and reads a small window as you scroll.
+Search scans the complete file in the background; its count reflects the file
+when that search started. Native selection, Ctrl+A and Copy apply to the loaded
+window. Clear empties the history, and closing the app deletes its temporary file;
+enable file logging to keep permanent recordings. See
+[console history implementation and measurements](benchmarks/CONSOLE_HISTORY.md).
+Window geometry and these layout choices are remembered
 separately from profiles; reopening does not reconnect or resume recording.
 
 For redesign screenshots, tests, and benchmark results, see
 [the verification notes](plan/verification.md).
 
 ## Recording and opening captures
+
+The current uCurrent USB CSV profile reads device seconds from field 6. Field 0
+is a sequence counter, not time. When a configured Time rule cannot match an
+incomplete/status line, that line stays in the console/raw log without adding
+plot values on a different clock. See [USB change review and benchmarks](benchmarks/USB_ABLATION.md)
+for the measured rate, loss counters and reproduction commands.
 
 With **Log to file** enabled, PlotTTY saves extracted plot values to compressed
 `.plotty` files and serial console text to a separate `.log` file. Captures retain
