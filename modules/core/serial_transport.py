@@ -1,8 +1,10 @@
 """Qt serial transport."""
 from __future__ import annotations
 from dataclasses import dataclass
+from collections import deque
+from threading import Lock
 from time import time
-from PySide6.QtCore import Slot
+from PySide6.QtCore import QObject, QThread, QTimer, QMetaObject, Qt, Signal, Slot
 from PySide6.QtSerialPort import QSerialPort
 from .transport import Transport
 
@@ -16,18 +18,90 @@ class SerialSettings:
     stop_bits: float = 1
 
 
+class _SerialReader(QObject):
+    dataAvailable = Signal()
+    writeRequested = Signal(bytes)
+
+    def __init__(self, transport):
+        super().__init__()
+        self.transport = transport
+        self.serial = QSerialPort(self)
+        self.serial.errorOccurred.connect(self.on_error)
+        self.is_open = False
+        self.open_error = ""
+        self.pending = deque()
+        self.lock = Lock()
+        self.timer = QTimer(self)
+        self.timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self.timer.setInterval(8)
+        self.timer.timeout.connect(self.read_pending)
+        self.writeRequested.connect(self.write_pending, Qt.ConnectionType.QueuedConnection)
+
+    @Slot()
+    def open(self):
+        settings = self.transport.settings
+        self.serial.setPortName(settings.port)
+        self.serial.setBaudRate(settings.baudrate)
+        self.serial.setDataBits(_data_bits(settings.data_bits))
+        self.serial.setParity(_parity(settings.parity))
+        self.serial.setStopBits(_stop_bits(settings.stop_bits))
+        self.is_open = self.serial.open(QSerialPort.OpenModeFlag.ReadWrite)
+        if self.is_open:
+            self.timer.start()
+        else:
+            self.open_error = self.serial.errorString() or "Could not open serial port."
+
+    @Slot()
+    def read_pending(self):
+        data = bytes(self.serial.readAll())
+        if data:
+            with self.lock:
+                self.pending.append((data, time()))
+            self.dataAvailable.emit()
+
+    def take_pending(self):
+        with self.lock:
+            pending = list(self.pending)
+            self.pending.clear()
+        return pending
+
+    @Slot(bytes)
+    def write_pending(self, data):
+        if self.serial.write(data) == -1:
+            self.transport.errorReceived.emit(self.transport, self.serial.errorString())
+            return
+        self.serial.flush()
+
+    @Slot()
+    def close(self):
+        self.timer.stop()
+        if self.is_open:
+            self.read_pending()
+            self.serial.close()
+        self.is_open = False
+
+    @Slot(QSerialPort.SerialPortError)
+    def on_error(self, error):
+        if error != QSerialPort.SerialPortError.NoError:
+            self.transport.errorReceived.emit(self.transport, self.serial.errorString())
+
+
 class SerialTransport(Transport):
     settings: SerialSettings
 
     def __init__(self, settings: SerialSettings, *, on_bytes_received, on_error, parent=None):
         super().__init__(settings, on_bytes_received=on_bytes_received, on_error=on_error, parent=parent)
-        self._serial = QSerialPort(self)
-        self._serial.readyRead.connect(self.on_ready_read)
-        self._serial.errorOccurred.connect(self.on_error)
+        # Worker notifications are queued to this GUI-owned facade. Delivering
+        # its byte signal there is synchronous, avoiding a second queue hop.
+        self.bytesReceived.disconnect(on_bytes_received)
+        self.bytesReceived.connect(on_bytes_received, Qt.ConnectionType.AutoConnection)
+        self._thread = None
+        self._reader = None
+        self._closing = False
 
     @property
     def is_open(self) -> bool:
-        return self._serial.isOpen()
+        return bool(self._reader and self._reader.is_open)
 
     @property
     def connection_description(self) -> str:
@@ -36,41 +110,48 @@ class SerialTransport(Transport):
     def open(self) -> None:
         if not self.settings.port:
             raise RuntimeError("Choose a serial port in connection settings first.")
-        self._serial.setPortName(self.settings.port)
-        self._serial.setBaudRate(self.settings.baudrate)
-        self._serial.setDataBits(_data_bits(self.settings.data_bits))
-        self._serial.setParity(_parity(self.settings.parity))
-        self._serial.setStopBits(_stop_bits(self.settings.stop_bits))
-
-        if not self._serial.open(QSerialPort.OpenModeFlag.ReadWrite):
-            message = self._serial.errorString() or "Could not open serial port."
+        if self.is_open:
+            return
+        self.blockSignals(False)
+        self._thread = QThread(self)
+        self._reader = _SerialReader(self)
+        self._reader.moveToThread(self._thread)
+        self._reader.dataAvailable.connect(self.deliver_pending, Qt.ConnectionType.QueuedConnection)
+        self._thread.finished.connect(self._reader.deleteLater)
+        self._thread.start()
+        QMetaObject.invokeMethod(self._reader, 'open', Qt.ConnectionType.BlockingQueuedConnection)
+        if not self.is_open:
+            message = self._reader.open_error
+            self.close()
             raise RuntimeError(message)
 
     def close(self) -> None:
-        super().close()
-        if self._serial.isOpen():
-            self._serial.close()
+        if self._closing:
+            return
+        self._closing = True
+        try:
+            if self._thread and self._thread.isRunning():
+                QMetaObject.invokeMethod(self._reader, 'close', Qt.ConnectionType.BlockingQueuedConnection)
+                self.deliver_pending()
+                self._thread.quit()
+                self._thread.wait()
+                self._thread.deleteLater()
+        finally:
+            self._thread = self._reader = None
+            super().close()
+            self._closing = False
 
     def write(self, data: bytes) -> None:
-        if not self._serial.isOpen():
+        if not self.is_open:
             raise RuntimeError("Serial port is not open.")
 
-        bytes_written = self._serial.write(data)
-        if bytes_written == -1:
-            message = self._serial.errorString() or "Could not write to serial port."
-            raise RuntimeError(message)
-        self._serial.flush()
+        self._reader.writeRequested.emit(bytes(data))
 
     @Slot()
-    def on_ready_read(self) -> None:
-        received_at = time()
-        data = bytes(self._serial.readAll())
-        self.bytesReceived.emit(self, data, received_at)
-
-    @Slot(QSerialPort.SerialPortError)
-    def on_error(self, error: QSerialPort.SerialPortError) -> None:
-        if error != QSerialPort.SerialPortError.NoError:
-            self.errorReceived.emit(self, self._serial.errorString())
+    def deliver_pending(self) -> None:
+        if self._reader is not None:
+            for data, received_at in self._reader.take_pending():
+                self.bytesReceived.emit(self, data, received_at)
 
 
 def _data_bits(value: int) -> QSerialPort.DataBits:
