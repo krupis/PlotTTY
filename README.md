@@ -25,7 +25,9 @@ For rendering benchmarks and live-device diagnostics, see
 Click **Settings** (the gear button) in the top bar to choose a port and baud rate.
 The port selector shows device descriptions beside port names when available
 (for example, **COM3 — USB Serial Port**).
-The same popover shows all serial settings, with expandable capture options.
+The same popover shows all serial settings, encoding, and line ending.
+Use **File → Log to file** before connecting to enable or disable saving connection
+text and extracted plot values. This option is locked while connected.
 The top bar always shows the saved port or RTT target, its key settings, and a separate
 dot with **Connected** or **Disconnected** status. Hover over the target summary for full details.
 Choose **Save settings**, then **Connect**. Escape or clicking outside discards
@@ -58,7 +60,7 @@ extraction, recording, and receive-rate pipeline.
 `ConnectionSettingsDialog` hosts the selected widget, shared options, and Save/Cancel.
 `SerialSettings` and `RttSettings` live with their respective transports;
 `ConnectionSettings` holds one selected transport's settings and shared encoding,
-line ending, and capture options. Backends exchange bytes; the session encodes
+line ending, and the logging choice. Backends exchange bytes; the session encodes
 console commands. Switching connection type keeps each backend's saved settings
 for the current app session.
 

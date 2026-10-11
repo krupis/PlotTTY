@@ -568,6 +568,7 @@ class WorkspaceTest(unittest.TestCase):
         from modules.core.rtt_transport import RttSettings
         from modules.core.connection_settings import ConnectionSettings
         w = self.window
+        w._log_to_file_action.setChecked(False)
         w._connection_settings.set_settings(ConnectionSettings(
             transport=SerialSettings(port="COM123", baudrate=230400),
             encoding="latin-1", line_ending="\r\n", log_to_file=False,
@@ -596,7 +597,7 @@ class WorkspaceTest(unittest.TestCase):
         dialog.reject()
         self.assertEqual(w.session.settings.transport.target, "test-target")
 
-    def test_connection_recording_raw_mode_and_error_status(self):
+    def test_connection_recording_and_error_status(self):
         w = self.window
         session = w.session
         session.settings.transport.port = "TEST"
@@ -622,7 +623,6 @@ class WorkspaceTest(unittest.TestCase):
             w.ui.ConnectButton.click()
             self.assertFalse(session.is_connected)
             self.assertEqual(w._recording_label.text(), "Not recording")
-            session.settings.raw_capture_mode = True
             w.ui.ConnectButton.click()
             session._connection.bytesReceived.emit(session._connection, b"Voltage: 9 V\n", 101)
             APP.processEvents()
@@ -933,10 +933,8 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(dialog.transport_widget.port_combo.currentIndex(), -1)
         self.assertEqual(dialog.transport_widget.port_combo.placeholderText(), "Select port")
         self.assertTrue(dialog.transport_widget.parity_combo.isVisible())
-        dialog.capture_toggle.click()
         dialog.transport_widget.baud_combo.setCurrentText("230400")
         dialog.transport_widget.parity_combo.setCurrentIndex(dialog.transport_widget.parity_combo.findData("E"))
-        dialog.log_to_file_checkbox.setChecked(False)
         QTest.keyClick(dialog, Qt.Key.Key_Escape)
         self.assertFalse(dialog.isVisible())
         self.assertEqual(w.session.settings.transport.baudrate, 115200)
@@ -952,10 +950,49 @@ class WorkspaceTest(unittest.TestCase):
         dialog.transport_widget.baud_combo.hidePopup()
         self.assertTrue(dialog.isVisible())
         dialog.transport_widget.parity_combo.setCurrentIndex(dialog.transport_widget.parity_combo.findData("E"))
-        dialog.log_to_file_checkbox.setChecked(False)
         dialog.buttons.button(QDialogButtonBox.StandardButton.Save).click()
         self.assertEqual(w.session.settings.transport.parity, "E")
-        self.assertFalse(w.session.settings.log_to_file)
+        self.assertTrue(w.session.settings.log_to_file)
+
+    def test_file_logging_choice_survives_connection_settings_and_controls_recording(self):
+        w = self.window
+        session = w.session
+        action = w._log_to_file_action
+        self.assertIn(action, w.ui.menuFile.actions())
+        self.assertEqual(action.text(), "Log to file")
+        self.assertTrue(action.isChecked())
+        action.trigger()
+        self.assertFalse(session.settings.log_to_file)
+        session.settings.transport.port = "TEST"
+        w.on_open_connection_settings()
+        w._connection_settings.buttons.button(QDialogButtonBox.StandardButton.Save).click()
+        self.assertFalse(session.settings.log_to_file)
+        session._serial_log.log_dir = Path(self.temp.name)
+        session._plot_log.log_dir = Path(self.temp.name)
+        w.apply_rules([ExtractionRule("Voltage", "first_number")])
+        with patch.dict(TRANSPORT_TYPES, {type(session.settings.transport): FakeTransport}):
+            w.ui.ConnectButton.click()
+            self.assertTrue(session.is_connected)
+            self.assertFalse(action.isEnabled())
+            action.trigger()
+            self.assertFalse(session.settings.log_to_file)
+            self.assertEqual(session.recording_paths, ())
+            session._connection.bytesReceived.emit(session._connection, b"Voltage: 3.3 V\n", 100)
+            APP.processEvents()
+            w.console.flush()
+            self.assertIn("Voltage: 3.3 V", w.ui.ConsoleTextEdit.toPlainText())
+            self.assertEqual(w.plot._series["Voltage"].sample_count(), 1)
+            w.ui.ConnectButton.click()
+            self.assertTrue(action.isEnabled())
+            action.trigger()
+            self.assertTrue(session.settings.log_to_file)
+            w.ui.ConnectButton.click()
+            self.assertFalse(action.isEnabled())
+            self.assertEqual(len(session.recording_paths), 2)
+            self.assertTrue(all(path.exists() for path in session.recording_paths))
+            self.assertIn("Recording", w._recording_label.text())
+            w.ui.ConnectButton.click()
+            self.assertTrue(action.isEnabled())
 
 
 if __name__ == "__main__":

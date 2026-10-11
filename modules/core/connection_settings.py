@@ -10,4 +10,3 @@ class ConnectionSettings:
     encoding: str = "utf-8"
     line_ending: str = "\n"
     log_to_file: bool = True
-    raw_capture_mode: bool = False

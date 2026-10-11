@@ -107,6 +107,12 @@ class MainWindow(QMainWindow):
         self._configure_workspace()
         self._export_csv_action = QAction("Export capture as CSV...", self)
         self.ui.menuFile.addAction(self._export_csv_action)
+        self.ui.menuFile.addSeparator()
+        self._log_to_file_action = QAction("Log to file", self)
+        self._log_to_file_action.setCheckable(True)
+        self._log_to_file_action.setChecked(self.session.settings.log_to_file)
+        self._log_to_file_action.setToolTip("Save connection text and extracted plot values to files when connecting.")
+        self.ui.menuFile.addAction(self._log_to_file_action)
         self._connect_signals()
         self.apply_rules([])
         self.statusBar().addPermanentWidget(self.plot.visible_points_label)
@@ -302,6 +308,7 @@ class MainWindow(QMainWindow):
         self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
         self.ui.actionLoad_log.triggered.connect(self.on_load_log)
         self._export_csv_action.triggered.connect(self.on_export_csv)
+        self._log_to_file_action.toggled.connect(self.on_log_to_file_toggled)
 
         self.session.connectedChanged.connect(self.on_connected_changed)
         self.session.receivedText.connect(self.console.append_received)
@@ -459,11 +466,19 @@ class MainWindow(QMainWindow):
             self._connection_settings.set_settings(self.session.settings)
             self._connection_settings.show_below(self.ui.ConnectionSettingsButton)
 
+    @Slot(bool)
+    def on_log_to_file_toggled(self, enabled: bool) -> None:
+        if not self.session.is_connected:
+            self.session.settings.log_to_file = enabled
+
     @Slot()
     def on_save_connection_settings(self) -> None:
         if self.session.is_connected:
             return
-        self.session.settings = self._connection_settings.selected_settings()
+        self.session.settings = replace(
+            self._connection_settings.selected_settings(),
+            log_to_file=self.session.settings.log_to_file,
+        )
         index = self.connection_type_combo.currentIndex()
         self.connection_type_combo.setItemData(index, self.session.settings.transport)
         self._update_connection_target()
@@ -538,6 +553,8 @@ class MainWindow(QMainWindow):
         self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
         self.ui.ConnectButton.setToolTip("Connected — click to disconnect" if connected else "Disconnected — click to connect")
         self.ui.ConnectionSettingsButton.setEnabled(not connected)
+        self._log_to_file_action.setChecked(self.session.settings.log_to_file)
+        self._log_to_file_action.setEnabled(not connected)
         self.connection_type_combo.setEnabled(not connected)
         self.ui.ConnectButton.setProperty("connected", connected)
         self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)

@@ -155,9 +155,6 @@ class ConnectionSession(QObject):
                 self._handle_log_error(exc)
                 return
         self.receivedText.emit(data.decode(self._line_decoder.encoding, errors="replace"))
-        if self.settings.raw_capture_mode:
-            return
-
         captured_values: list[CapturedValue] = []
         for line in self._line_decoder.feed(data):
             captured_values.extend(self._engine.extract(line, timestamp=received_at))
