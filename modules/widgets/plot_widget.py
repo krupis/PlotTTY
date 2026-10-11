@@ -6,13 +6,14 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 import math
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, QSignalBlocker, QSize, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue, clean_label
 from ..core.plotter import Plotter
 from ..core.series_colors import default_series_color
+from .plot_mode_button import PLOT_STYLES, PlotModeButton
 
 
 PLOT_REFRESH_INTERVAL_MS = 33
@@ -28,7 +29,6 @@ PLOT_TOP_MARGIN = 42
 PLOT_BOTTOM_MARGIN = 20
 AUTO_SCROLL_TOOLTIP = "Keep the plot view following the newest incoming data."
 FIT_CAPTURE_TOOLTIP = "Zoom the plot out to show all captured data."
-PLOT_STYLES = {"lines": "Lines", "dots": "Dots"}
 
 
 @dataclass(slots=True)
@@ -45,10 +45,18 @@ class _CurveData:
         self.yData = y_values
         path = QPainterPath()
         if x_values and self.style != "dots":
-            path.reserve(len(x_values))
+            path.reserve(len(x_values) * (2 if self.style == "digital" else 1))
             path.moveTo(x_values[0], y_values[0])
-            for x_value, y_value in zip(x_values[1:], y_values[1:]):
-                path.lineTo(x_value, y_value)
+            if self.style == "digital":
+                previous_y = y_values[0]
+                for x_value, y_value in zip(x_values[1:], y_values[1:]):
+                    path.lineTo(x_value, previous_y)
+                    if y_value != previous_y:
+                        path.lineTo(x_value, y_value)
+                    previous_y = y_value
+            else:
+                for x_value, y_value in zip(x_values[1:], y_values[1:]):
+                    path.lineTo(x_value, y_value)
         self.path = path
 
 
@@ -71,7 +79,7 @@ class _PlotCanvas(QWidget):
         self.empty_message = "Waiting for series"
         self._curves: dict[str, _CurveData] = {}
         self.headers: dict[str, QLabel] = {}
-        self.style_selectors: dict[str, QComboBox] = {}
+        self.mode_buttons: dict[str, PlotModeButton] = {}
         self._panels: dict[str, QRectF] = {}
         self._y_ranges: dict[str, tuple[float, float]] = {}
         self._time_range = (0.0, 10.0)
@@ -89,9 +97,10 @@ class _PlotCanvas(QWidget):
                 header = self.headers.pop(label)
                 header.hide()
                 header.deleteLater()
-                selector = self.style_selectors.pop(label)
-                selector.hide()
-                selector.deleteLater()
+                button = self.mode_buttons.pop(label)
+                button.picker.hide()
+                button.hide()
+                button.deleteLater()
         ordered = {}
         for entry in series_info:
             label = entry["label"]
@@ -100,22 +109,12 @@ class _PlotCanvas(QWidget):
                 header = QLabel(self)
                 header.setTextFormat(Qt.TextFormat.PlainText)
                 header.setObjectName("PlotHeader")
-                selector = QComboBox(self)
-                selector.setObjectName("PlotStyle")
-                selector.setAccessibleName(f"Graph type for {label}")
-                selector.setToolTip("Change this plot immediately. Dots have no connecting lines. "
-                                    "Zoom in to see every sample; wide views use representative samples.")
-                for key, text in PLOT_STYLES.items():
-                    selector.addItem(text, key)
-                selector.currentIndexChanged.connect(
-                    lambda _index, label=label, selector=selector:
-                    self.styleRequested.emit(label, selector.currentData()))
-                self.style_selectors[label] = selector
-            selector = self.style_selectors[label]
-            blocker = QSignalBlocker(selector)
-            selector.setCurrentIndex(selector.findData(entry["style"]))
-            blocker.unblock()
-            selector.show()
+                button = PlotModeButton(label, self)
+                button.modeSelected.connect(lambda mode, label=label: self.styleRequested.emit(label, mode))
+                self.mode_buttons[label] = button
+            button = self.mode_buttons[label]
+            button.set_mode(entry["style"])
+            button.show()
             self.set_header_color(header, entry["color"])
             header.setProperty("seriesTitle", label)
             header.setAccessibleName(label)
@@ -144,11 +143,17 @@ class _PlotCanvas(QWidget):
         for label, header in self.headers.items():
             height = expanded_height
             self._panels[label] = QRectF(0, top, self.width(), height)
-            width = max(30, int(self.width() * .42) - 36)
+            button = self.mode_buttons[label]
+            button_width = button.sizeHint().width()
+            width = max(20, min(
+                header.fontMetrics().horizontalAdvance(header.property("seriesTitle")) + 2,
+                int(self.width() * .42) - 26,
+                self.width() - button_width - 96,
+            ))
             title = header.fontMetrics().elidedText(header.property("seriesTitle"), Qt.TextElideMode.ElideRight, width)
             header.setText(title)
             header.setGeometry(14, round(top + 7), width, 24)
-            self.style_selectors[label].setGeometry(round(self.width() * .42), round(top + 7), 124, 26)
+            button.setGeometry(14 + width + 10, round(top + 7), button_width, 26)
             top += height
 
     def set_time_range(self, start_time: float, end_time: float) -> None:
@@ -212,7 +217,7 @@ class _PlotCanvas(QWidget):
         heading_font.setBold(True)
         painter.setFont(heading_font)
         header = QRectF(14, panel.top() + 7, self.width() - 28, 24)
-        value_width = min(max(24, self.width() - self.style_selectors[label].geometry().right() - 24),
+        value_width = min(max(24, self.width() - self.mode_buttons[label].geometry().right() - 24),
                           painter.fontMetrics().horizontalAdvance(curve.latest) + 16)
         painter.setPen(curve.color)
         value_rect = QRectF(header.right() - value_width, header.top(), value_width, header.height())
@@ -252,7 +257,7 @@ class _PlotCanvas(QWidget):
             painter.setPen(curve_pen)
             painter.drawPath(curve.path)
         painter.restore()
-        if curve.style != "lines":
+        if curve.style == "dots" or (curve.style == "digital" and len(curve.xData) == 1):
             dot_color = QColor(curve.color)
             dot_color.setAlpha(170)
             painter.save()
@@ -601,12 +606,14 @@ class PlotWidget(QWidget):
         self._series_styles[label] = style
         curve = self._curves.get(label)
         if curve is not None:
+            previous_style = curve.style
             curve.style = style
-            curve.set_data(curve.xData, curve.yData)
-            selector = self.graph.style_selectors[label]
-            blocker = QSignalBlocker(selector)
-            selector.setCurrentIndex(selector.findData(style))
-            blocker.unblock()
+            if "digital" in (previous_style, style):
+                self._read_curve_data(label, *self._time_range())
+            else:
+                curve.set_data(curve.xData, curve.yData)
+            self.graph.mode_buttons[label].set_mode(style)
+            self.graph._layout_panels()
             self.graph.update()
 
     def set_rules(self, rules):
@@ -680,18 +687,23 @@ class PlotWidget(QWidget):
             series = self._series[label]
             latest = series.latest_value()
             curve.latest = _format_axis_value(latest) if latest is not None else "—"
-            visible_samples, x_values, y_values = self._series[label].read_visible_samples(
-                start_time, end_time, self._bucket_count_for_series(label)
-            )
-            x_values, y_values = _prepare_plot_arrays(x_values, y_values)
-            curve.set_data(x_values, y_values)
+            visible_samples = self._read_curve_data(label, start_time, end_time)
             visible_counts.append(visible_samples)
-            downsample_ratios.append(_downsample_ratio(visible_samples, len(x_values)))
+            downsample_ratios.append(_downsample_ratio(visible_samples, len(curve.xData)))
         self.visible_points_label.setText(f"Points: {max(visible_counts, default=0):,}")
         self.downsample_ratio_label.setText(
             f"Downsample: {_format_downsample_ratio(max(downsample_ratios, default=1.0))}"
         )
         self.graph.update()
+
+    def _read_curve_data(self, label: str, start_time: float, end_time: float) -> int:
+        curve = self._curves[label]
+        visible_samples, x_values, y_values = self._series[label].read_visible_samples(
+            start_time, end_time, self._bucket_count_for_series(label),
+            include_neighbors=curve.style == "digital",
+        )
+        curve.set_data(*_prepare_plot_arrays(x_values, y_values))
+        return visible_samples
 
     def _bucket_count_for_series(self, _label: str) -> int:
         return max(1, self.graph.plot_width() // 4)

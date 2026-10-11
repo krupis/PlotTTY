@@ -36,14 +36,21 @@ class Plotter:
         self._latest_timestamp = timestamp
         self._buckets.add_sample(timestamp, value)
 
-    def read_visible_samples(self, start_time: float, end_time: float, buckets: int) -> tuple[int, list[float], list[float]]:
+    def read_visible_samples(
+        self, start_time: float, end_time: float, buckets: int, *, include_neighbors: bool = False,
+    ) -> tuple[int, list[float], list[float]]:
+        """Read a display-sized range, optionally including neighbors for step edges."""
         start_index, stop_index = self._sample_indexes_for_range(start_time, end_time)
+        visible_samples = stop_index - start_index
+        if (include_neighbors and self._sample_count and start_time <= end_time
+                and end_time >= self._first_timestamp and start_time <= self._latest_timestamp):
+            start_index = max(0, start_index - 1)
+            stop_index = min(self._sample_count, stop_index + 1)
         if stop_index <= start_index:
             return 0, [], []
 
-        visible_samples = stop_index - start_index
         bucket_count = max(1, buckets)
-        if visible_samples <= bucket_count:
+        if stop_index - start_index <= bucket_count:
             x_values, y_values = self._read_raw_samples_by_index(start_index, stop_index)
             return visible_samples, x_values, y_values
 

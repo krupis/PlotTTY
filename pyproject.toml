@@ -33,6 +33,7 @@ files = [
     "modules/widgets/__init__.py",
     "modules/widgets/console_widget.py",
     "modules/widgets/plot_widget.py",
+    "modules/widgets/plot_mode_button.py",
     "modules/widgets/panel_splitter.py",
     "modules/widgets/rules_table.py",
     "modules/widgets/rules_editor.py",

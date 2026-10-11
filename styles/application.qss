@@ -55,7 +55,19 @@ QCheckBox#RuleVisibility:focus { background: #34434a; border-radius: 3px; }
 QTableWidget { background: #1c2427; alternate-background-color: #20292d; gridline-color: #35434a;
     selection-background-color: #34434a; selection-color: #f3f6f7; }
 QLabel#PlotHeader { background: transparent; font-weight: 600; }
-QComboBox#PlotStyle { padding: 0 20px 0 6px; min-height: 0; font-size: 9pt; }
+QToolButton#PlotModeBadge { color: #85c6c4; background: #203337; border: 1px solid transparent;
+    padding: 2px 20px 2px 8px; min-height: 0; font-size: 9pt; }
+QToolButton#PlotModeBadge:hover { background: #2d484b; }
+QToolButton#PlotModeBadge:focus { border-color: #41ccc3; }
+QDialog#PlotModePicker { background: #243137; border: 1px solid #63777f; }
+QLabel#PlotModePickerHeading { color: #a4b3bc; font-size: 9pt; }
+QPushButton#PlotModeOption { background: transparent; border: 1px solid transparent; padding: 0; min-height: 58px; }
+QPushButton#PlotModeOption:hover { background: #304347; }
+QPushButton#PlotModeOption:checked { background: #304b4d; }
+QPushButton#PlotModeOption:focus { border-color: #41ccc3; }
+QLabel#PlotModeOptionTitle { color: #edf3f5; }
+QLabel#PlotModeOptionTitle[selected="true"] { color: #41ccc3; }
+QLabel#PlotModeDescription { color: #a4b3bc; font-size: 9pt; }
 QTableWidget QComboBox { margin: 2px; padding: 0 20px 0 5px; min-height: 26px; background: #20292d; }
 QToolButton#RuleColorButton { border: 1px solid transparent; background: transparent; padding: 0; min-height: 26px; }
 QToolButton#RuleColorButton:hover { background: #2b363b; border-color: #56636b; }

@@ -3,6 +3,7 @@
     <file>icons/Plottty.png</file>
     <file>icons/combo-chevron.svg</file>
     <file>icons/check.svg</file>
+    <file>icons/check-teal.svg</file>
     <file>icons/plus.svg</file>
     <file>icons/minus.svg</file>
     <file>icons/send.svg</file>
@@ -12,5 +13,8 @@
     <file>icons/auto-scroll.svg</file>
     <file>icons/auto-scroll-active.svg</file>
     <file>icons/clear.svg</file>
+    <file>icons/waveform-analog.svg</file>
+    <file>icons/waveform-digital.svg</file>
+    <file>icons/waveform-dots.svg</file>
   </qresource>
 </RCC>

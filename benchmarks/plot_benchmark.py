@@ -81,7 +81,7 @@ def main():
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--raw-samples", type=int, default=1_000_000)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--style", choices=("lines", "dots"), default="lines")
+    parser.add_argument("--style", choices=("lines", "digital", "dots"), default="lines")
     args = parser.parse_args()
     if min(args.frames, args.repeats) < 1 or args.raw_samples < 2:
         parser.error("frames/repeats must be positive and raw-samples must be at least 2")

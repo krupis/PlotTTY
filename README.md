@@ -121,7 +121,13 @@ appears only for loaded captures, showing the filename with its full path in a t
 Wheel or drag plots to zoom/pan time; use the Y axis to adjust its range and
 double-click it to reset. Larger stacks scroll vertically above a fixed time axis.
 
-Each plot header has a graph-type dropdown: **Lines** or **Dots**.
+Each plot header has a compact waveform badge beside its signal name. Click
+**Mode: Analog**, **Mode: Digital**, or **Mode: Dots** to open the visual rendering
+picker, with waveform icons and a short explanation of each choice. Choose with
+the mouse or arrow keys and Enter; Escape closes the picker without changing mode.
+Analog connects samples with straight lines. Digital holds the previous value
+until the next sample timestamp, then draws a vertical edge, suitable for 0/1
+signals and other discrete levels. Modes change only the drawing, not recorded values.
 Changes take effect immediately and independently for each series. Dots show
 sample positions without connecting strokes. Wide views use representative
 samples for performance; zoom in to see every individual sample. Graph types
