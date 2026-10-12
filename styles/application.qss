@@ -94,4 +94,6 @@ QScrollBar::handle:hover { background: #8d9da5; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
 QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
 QToolTip { background: #2b363b; border: 1px solid #8d9da5; padding: 6px 8px; }
+QLabel#PlotHoverTooltip { color: #f3f6f7; background: #2b363b;
+    border: 1px solid #8d9da5; border-radius: 4px; padding: 6px 8px; }
 QDialogButtonBox QPushButton { min-width: 72px; }

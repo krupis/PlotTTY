@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from html import escape
 import math
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QColor, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
+from PySide6.QtGui import QColor, QGuiApplication, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue, clean_label
@@ -71,11 +72,19 @@ class _PlotCanvas(QWidget):
         self.setObjectName("PlotCanvas")
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setToolTip(
-            "Headers show the latest captured sample, including when viewing older history. "
-            "Wheel or drag the plot to zoom or pan time. "
-            "Wheel or drag a Y axis to adjust its range; double-click it to restore automatic range."
-        )
+        self.setMouseTracking(True)
+        self._hover_position: QPointF | None = None
+        self._hover_text = ""
+        self._hover_tip = QLabel(self, Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint
+                                 | Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowTransparentForInput)
+        self._hover_tip.setObjectName("PlotHoverTooltip")
+        self._hover_tip.setTextFormat(Qt.TextFormat.RichText)
+        self._hover_tip.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self._hover_tip.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._hover_tip.setMinimumWidth(170)
+        self._hover_timer = QTimer(self)
+        self._hover_timer.setInterval(PLOT_REFRESH_INTERVAL_MS)
+        self._hover_timer.timeout.connect(self._update_hover_tooltip)
         self.empty_message = "Waiting for series"
         self._curves: dict[str, _CurveData] = {}
         self.headers: dict[str, QLabel] = {}
@@ -109,7 +118,9 @@ class _PlotCanvas(QWidget):
                 header = QLabel(self)
                 header.setTextFormat(Qt.TextFormat.PlainText)
                 header.setObjectName("PlotHeader")
+                header.installEventFilter(self)
                 button = PlotModeButton(label, self)
+                button.installEventFilter(self)
                 button.modeSelected.connect(lambda mode, label=label: self.styleRequested.emit(label, mode))
                 self.mode_buttons[label] = button
             button = self.mode_buttons[label]
@@ -302,6 +313,7 @@ class _PlotCanvas(QWidget):
         self.timeRangeChanged.emit(*_nonnegative_time_range(left, left + span))
 
     def begin_drag(self, position, adjust_y=False) -> None:
+        self._clear_hover()
         self._drag_position = position.toPoint()
         selected = self._panel_at(position) if adjust_y else None
         self._drag_label = selected[0] if selected and position.x() < selected[2].left() else None
@@ -337,8 +349,79 @@ class _PlotCanvas(QWidget):
             event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        self.drag_to(event.position())
+        if self._drag_position is not None:
+            self.drag_to(event.position())
+        else:
+            self._hover_position = event.position()
+            selected = self._panel_at(self._hover_position)
+            if selected is None or not selected[2].contains(self._hover_position):
+                self._clear_hover()
+            elif not self._hover_timer.isActive():
+                self._update_hover_tooltip()
+                if self._hover_position is not None:
+                    self._hover_timer.start()
         event.accept()
+
+    def _hover_coordinates(self, position):
+        """Map the cursor through the current axes; never read captured samples."""
+        selected = self._panel_at(position)
+        if selected is None:
+            return None
+        label, _panel, plot = selected
+        if not plot.contains(position) or not self._curves[label].xData:
+            return None
+        start, end = self._time_range
+        minimum, maximum = self._y_range(label)
+        x = start + (position.x()-plot.left()) / plot.width() * (end-start)
+        y = maximum - (position.y()-plot.top()) / plot.height() * (maximum-minimum)
+        return label, x, y, plot
+
+    def _update_hover_tooltip(self):
+        if self._hover_position is None or not self.isVisible():
+            self._clear_hover()
+            return
+        coordinates = self._hover_coordinates(self._hover_position)
+        if coordinates is None:
+            self._clear_hover()
+            return
+        label, x, y, _plot = coordinates
+        text = f"<b>{escape(label)}</b><br>X: {x:.6f} s<br>Y: {y:.8g}"
+        if text != self._hover_text:
+            self._hover_text = text
+            self._hover_tip.setText(text)
+            self._hover_tip.adjustSize()
+        cursor = self.mapToGlobal(self._hover_position.toPoint())
+        available = (QGuiApplication.screenAt(cursor) or self.screen()).availableGeometry()
+        x = cursor.x() + 16
+        y = cursor.y() + 16
+        if x + self._hover_tip.width() > available.right() + 1:
+            x = cursor.x() - self._hover_tip.width() - 16
+        if y + self._hover_tip.height() > available.bottom() + 1:
+            y = cursor.y() - self._hover_tip.height() - 16
+        x = max(available.left(), min(x, available.right() - self._hover_tip.width() + 1))
+        y = max(available.top(), min(y, available.bottom() - self._hover_tip.height() + 1))
+        self._hover_tip.move(x, y)
+        if not self._hover_tip.isVisible():
+            self._hover_tip.show()
+
+    def _clear_hover(self):
+        self._hover_timer.stop()
+        self._hover_position = None
+        self._hover_tip.hide()
+        self._hover_text = ""
+
+    def leaveEvent(self, event):
+        self._clear_hover()
+        super().leaveEvent(event)
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.Enter:
+            self._clear_hover()
+        return super().eventFilter(watched, event)
+
+    def hideEvent(self, event):
+        self._clear_hover()
+        super().hideEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:

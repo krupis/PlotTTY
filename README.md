@@ -125,6 +125,9 @@ Each plot header has a compact waveform badge beside its signal name. Click
 **Mode: Analog**, **Mode: Digital**, or **Mode: Dots** to open the visual rendering
 picker, with waveform icons and a short explanation of each choice. Choose with
 the mouse or arrow keys and Enter; Escape closes the picker without changing mode.
+Hover inside a populated plot to see the cursor's X coordinate in elapsed seconds
+and Y coordinate on that signal's current axis. The tooltip follows live axis
+changes and stays hidden while dragging or outside the plot area.
 Analog connects samples with straight lines. Digital holds the previous value
 until the next sample timestamp, then draws a vertical edge, suitable for 0/1
 signals and other discrete levels. Modes change only the drawing, not recorded values.
