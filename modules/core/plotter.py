@@ -5,6 +5,8 @@ from __future__ import annotations
 import struct
 import tempfile
 
+import numpy as np
+
 from .buckets import Buckets
 
 
@@ -38,7 +40,7 @@ class Plotter:
 
     def read_visible_samples(
         self, start_time: float, end_time: float, buckets: int, *, include_neighbors: bool = False,
-    ) -> tuple[int, list[float], list[float]]:
+    ) -> tuple[int, np.ndarray, np.ndarray]:
         """Read a display-sized range, optionally including neighbors for step edges."""
         start_index, stop_index = self._sample_indexes_for_range(start_time, end_time)
         visible_samples = stop_index - start_index
@@ -47,7 +49,7 @@ class Plotter:
             start_index = max(0, start_index - 1)
             stop_index = min(self._sample_count, stop_index + 1)
         if stop_index <= start_index:
-            return 0, [], []
+            return 0, np.empty(0), np.empty(0)
 
         bucket_count = max(1, buckets)
         if stop_index - start_index <= bucket_count:
@@ -57,7 +59,7 @@ class Plotter:
         x_values, y_values = self._buckets.read_samples(
             start_index, stop_index, bucket_count
         )
-        return visible_samples, x_values, y_values
+        return visible_samples, np.asarray(x_values, dtype=np.float64), np.asarray(y_values, dtype=np.float64)
 
     def latest_value(self) -> float | None:
         """Exact latest captured value, independent of the viewed range."""
@@ -84,20 +86,14 @@ class Plotter:
         self._write_pending_samples_to_file()
         self._file.flush()
 
-    def _read_raw_samples_by_index(self, start_index: int, stop_index: int) -> tuple[list[float], list[float]]:
-        """Flush only when raw data is actually needed, then read the range."""
+    def _read_raw_samples_by_index(self, start_index: int, stop_index: int) -> tuple[np.ndarray, np.ndarray]:
+        """Read raw records into contiguous numeric buffers for each axis."""
         self._flush_samples_to_file()
-        x_values: list[float] = []
-        y_values: list[float] = []
         self._file.seek(start_index * RAW_SAMPLE_STRUCT.size)
         byte_count = (stop_index - start_index) * RAW_SAMPLE_STRUCT.size
         data = self._file.read(byte_count)
-
-        for x_value, y_value in RAW_SAMPLE_STRUCT.iter_unpack(data):
-            x_values.append(x_value)
-            y_values.append(y_value)
-
-        return x_values, y_values
+        points = np.frombuffer(data, dtype="<f8").reshape(-1, 2).T.copy()
+        return points[0], points[1]
 
     def _sample_indexes_for_range(self, start_time: float, end_time: float) -> tuple[int, int]:
         """Return an index slice including samples at both requested times."""

@@ -3,6 +3,8 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
+
+import numpy as np
 from unittest.mock import patch
 
 from PySide6.QtCore import Qt
@@ -11,12 +13,27 @@ from PySide6.QtWidgets import QApplication
 
 from modules.core.extraction import ExtractionRule
 from modules.core.plotter import Plotter
-from modules.widgets.plot_widget import PlotWidget
+from modules.widgets.plot_widget import PlotWidget, _prepare_plot_arrays
 
 APP = QApplication.instance() or QApplication([])
 
 
 class PlotStylesTest(unittest.TestCase):
+    def test_numeric_preparation_keeps_pairs_filters_nonfinite_and_handles_views(self):
+        x = np.arange(12, dtype=float)[::2]
+        y = np.arange(12, dtype=float)[1::2]
+        actual_x, actual_y = _prepare_plot_arrays(x, y)
+        np.testing.assert_array_equal(actual_x, x)
+        np.testing.assert_array_equal(actual_y, y)
+        self.assertTrue(actual_x.flags.c_contiguous and actual_y.flags.c_contiguous)
+        actual_x, actual_y = _prepare_plot_arrays([0, np.nan, 2, 3, 4], [5, 6, np.inf, 8])
+        np.testing.assert_array_equal(actual_x, [0, 3])
+        np.testing.assert_array_equal(actual_y, [5, 8])
+        for x, y in [([], []), ([np.nan], [0]), ([0], [])]:
+            actual_x, actual_y = _prepare_plot_arrays(x, y)
+            self.assertEqual(len(actual_x), 0)
+            self.assertEqual(len(actual_y), 0)
+
     def choose_mode(self, label, mode):
         button = self.plot.graph.mode_buttons[label]
         QTest.mouseClick(button, Qt.MouseButton.LeftButton)
@@ -133,7 +150,7 @@ class PlotStylesTest(unittest.TestCase):
         self.assertTrue(self.has_curve_color(self.plot.graph.grab().toImage(), self.sample_pixel(4)))
         # Switching inside a gap must also fetch the bounding samples.
         self.plot.set_series_style('a', 'lines')
-        self.assertEqual(self.plot._curves['a'].xData, [])
+        self.assertEqual(len(self.plot._curves['a'].xData), 0)
         self.plot.set_series_style('a', 'digital')
         self.assertTrue(self.has_curve_color(self.plot.graph.grab().toImage(), self.sample_pixel(4)))
 

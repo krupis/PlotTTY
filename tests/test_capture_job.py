@@ -32,7 +32,8 @@ class CaptureJobTest(unittest.TestCase):
         for store in stores.values():
             self.addCleanup(store.close)
         self.assertEqual(loader.series, {})
-        self.assertEqual(stores["a"].read_visible_samples(0, 2, 10), (2, [0, 1], [1, 3]))
+        count, x, y = stores["a"].read_visible_samples(0, 2, 10)
+        self.assertEqual((count, x.tolist(), y.tolist()), (2, [0, 1], [1, 3]))
         self.assertEqual(stores["b"].sample_count(), 1)
 
     def test_cancel_discards_partial_stores(self):

@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from html import escape
 import math
 
+import numpy as np
+
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QGuiApplication, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
@@ -37,15 +39,17 @@ class _CurveData:
     color: QColor
     style: str = "lines"
     latest: str = ""
-    xData: list[float] = field(default_factory=list)
-    yData: list[float] = field(default_factory=list)
+    xData: np.ndarray = field(default_factory=lambda: np.empty(0))
+    yData: np.ndarray = field(default_factory=lambda: np.empty(0))
     path: QPainterPath = field(default_factory=QPainterPath)
 
-    def set_data(self, x_values: list[float], y_values: list[float]) -> None:
+    def set_data(self, x_values: np.ndarray, y_values: np.ndarray) -> None:
         self.xData = x_values
         self.yData = y_values
         path = QPainterPath()
-        if x_values and self.style != "dots":
+        if len(x_values) and self.style != "dots":
+            # Scalar Qt calls consume Python floats; keep the stored data numeric.
+            x_values, y_values = x_values.tolist(), y_values.tolist()
             path.reserve(len(x_values) * (2 if self.style == "digital" else 1))
             path.moveTo(x_values[0], y_values[0])
             if self.style == "digital":
@@ -251,7 +255,7 @@ class _PlotCanvas(QWidget):
             painter.drawText(QRectF(0, y - 9, plot.left() - 8, 18),
                              Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                              _format_axis_value(minimum + fraction * (maximum - minimum)))
-        if not curve.xData:
+        if not len(curve.xData):
             return
         x_scale = plot.width() / (end_time - start_time)
         y_scale = plot.height() / (maximum - minimum)
@@ -276,7 +280,7 @@ class _PlotCanvas(QWidget):
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(dot_color)
-            for sample_x, sample_y in zip(curve.xData, curve.yData):
+            for sample_x, sample_y in zip(curve.xData.tolist(), curve.yData.tolist()):
                 x = plot.left() + (sample_x - start_time) * x_scale
                 y = plot.bottom() - (sample_y - minimum) * y_scale
                 painter.drawEllipse(QPointF(x, y), 1.5, 1.5)
@@ -368,7 +372,7 @@ class _PlotCanvas(QWidget):
         if selected is None:
             return None
         label, _panel, plot = selected
-        if not plot.contains(position) or not self._curves[label].xData:
+        if not plot.contains(position) or not len(self._curves[label].xData):
             return None
         start, end = self._time_range
         minimum, maximum = self._y_range(label)
@@ -803,10 +807,10 @@ class PlotWidget(QWidget):
         super().closeEvent(event)
 
 
-def _value_range(values: list[float]) -> tuple[float, float]:
-    if not values:
+def _value_range(values: np.ndarray) -> tuple[float, float]:
+    if not len(values):
         return -1.0, 1.0
-    minimum, maximum = min(values), max(values)
+    minimum, maximum = float(values.min()), float(values.max())
     padding = max(0.5, abs(minimum) * 0.05) if minimum == maximum else (maximum - minimum) * 0.05
     return minimum - padding, maximum + padding
 
@@ -846,12 +850,14 @@ def _format_time_value(value: float, visible_span: float) -> str:
 
 
 
-def _prepare_plot_arrays(x_values: list[float], y_values: list[float]) -> tuple[list[float], list[float]]:
-    points = [(x, y) for x, y in zip(x_values, y_values) if math.isfinite(x) and math.isfinite(y)]
-    if not points:
-        return [], []
-    finite_x, finite_y = zip(*points)
-    return list(finite_x), list(finite_y)
+def _prepare_plot_arrays(x_values, y_values) -> tuple[np.ndarray, np.ndarray]:
+    count = min(len(x_values), len(y_values))
+    x = np.asarray(x_values, dtype=np.float64)[:count]
+    y = np.asarray(y_values, dtype=np.float64)[:count]
+    finite = np.isfinite(x) & np.isfinite(y)
+    if not finite.all():
+        x, y = x[finite], y[finite]
+    return np.ascontiguousarray(x), np.ascontiguousarray(y)
 
 
 def _downsample_ratio(raw_point_count: int, plotted_point_count: int) -> float:
