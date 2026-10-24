@@ -18,6 +18,8 @@ separately by Plotter. Timestamps must arrive in nondecreasing order.
 from array import array
 import math
 
+import numpy as np
+
 BUCKET_SIZES = (4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192)
 
 
@@ -119,15 +121,15 @@ class Buckets:
         Budgets below one are treated as one.
 
         Each output group contributes up to four distinct first/last/min/max
-        points, sorted by timestamp and then value. Return two parallel lists:
-        timestamps and values. An empty range produces two empty lists.
+        points, sorted by timestamp and then value. Return two parallel contiguous
+        NumPy arrays: timestamps and values. Empty ranges produce empty arrays.
 
         Boundary buckets can include readings outside the requested range.
         This is a downsampled view, not an exact raw-sample slice; Plotter reads
         raw samples separately when enough detail can be drawn without buckets.
         """
         if stop_index <= start_index:
-            return [], []
+            return np.empty(0), np.empty(0)
         max_buckets = max(1, max_buckets)
         samples_per_bucket = (stop_index - start_index) / max_buckets
         size = next((s for s in BUCKET_SIZES if s >= samples_per_bucket), BUCKET_SIZES[-1])
@@ -135,22 +137,36 @@ class Buckets:
         first_bucket = start_index // size
         stop_bucket = min((stop_index + size - 1) // size, math.ceil(self._count / size))
         if stop_bucket <= first_bucket:
-            return [], []
+            return np.empty(0), np.empty(0)
         # Boundary buckets or the size-8192 limit can still exceed the budget.
         group_size = max(1, math.ceil((stop_bucket - first_bucket) / max_buckets))
         data = self._levels[size]
         completed = len(data) // 8
-        tail = self._tail(size) if self._count % size else None
-        x_values, y_values = [], []
-        for start in range(first_bucket, stop_bucket, group_size):
-            summary = None
-            for bucket in range(start, min(stop_bucket, start + group_size)):
-                # Only the final unfinished bucket is absent from the array.
-                part = data[bucket * 8:bucket * 8 + 8] if bucket < completed else tail
-                summary = tuple(part) if summary is None else _merge(summary, part)
-            # One point may serve several roles; draw it only once per group.
-            points = {(summary[i], summary[i + 1]) for i in (0, 2, 4, 6)}
-            for x, y in sorted(points):
-                x_values.append(x)
-                y_values.append(y)
-        return x_values, y_values
+        summaries = np.frombuffer(data, dtype=np.float64).reshape(-1, 8)[first_bucket:stop_bucket]
+        if stop_bucket > completed:
+            summaries = np.vstack((summaries, self._tail(size)))
+        if group_size > 1:
+            starts = np.arange(0, len(summaries), group_size)
+            ends = np.minimum(starts + group_size, len(summaries)) - 1
+            lengths = ends - starts + 1
+            minima = np.fmin.reduceat(summaries[:, 5], starts)
+            maxima = np.fmax.reduceat(summaries[:, 7], starts)
+            indexes = np.arange(len(summaries))
+            # Equal extrema keep the earliest child, as in incremental _merge.
+            low = np.minimum.reduceat(np.where(
+                summaries[:, 5] == np.repeat(minima, lengths), indexes, len(summaries)), starts)
+            high = np.minimum.reduceat(np.where(
+                summaries[:, 7] == np.repeat(maxima, lengths), indexes, len(summaries)), starts)
+            # A NaN first extremum stays selected; later NaNs cannot replace it.
+            low = np.where(np.isnan(summaries[starts, 5]), starts, low)
+            high = np.where(np.isnan(summaries[starts, 7]), starts, high)
+            summaries = np.column_stack((summaries[starts, :2], summaries[ends, 2:4],
+                                         summaries[low, 4:6], summaries[high, 6:8]))
+        points = summaries.reshape(-1, 4, 2)
+        order = np.lexsort((points[:, :, 1], points[:, :, 0]), axis=1)
+        points = np.take_along_axis(points, order[:, :, None], axis=1)
+        distinct = np.ones(points.shape[:2], dtype=bool)
+        distinct[:, 1:] = np.any(points[:, 1:] != points[:, :-1], axis=2)
+        points = points[distinct]
+        # Detach returned buffers so the packed levels can grow after this read.
+        return points[:, 0].copy(), points[:, 1].copy()

@@ -59,7 +59,7 @@ class Plotter:
         x_values, y_values = self._buckets.read_samples(
             start_index, stop_index, bucket_count
         )
-        return visible_samples, np.asarray(x_values, dtype=np.float64), np.asarray(y_values, dtype=np.float64)
+        return visible_samples, x_values, y_values
 
     def latest_value(self) -> float | None:
         """Exact latest captured value, independent of the viewed range."""
