@@ -8,6 +8,7 @@ from html import escape
 import math
 
 import numpy as np
+from pyqtgraph.functions import create_qpolygonf, ndarray_from_qpolygonf
 
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QGuiApplication, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
@@ -48,20 +49,18 @@ class _CurveData:
         self.yData = y_values
         path = QPainterPath()
         if len(x_values) and self.style != "dots":
-            # Scalar Qt calls consume Python floats; keep the stored data numeric.
-            x_values, y_values = x_values.tolist(), y_values.tolist()
-            path.reserve(len(x_values) * (2 if self.style == "digital" else 1))
-            path.moveTo(x_values[0], y_values[0])
             if self.style == "digital":
-                previous_y = y_values[0]
-                for x_value, y_value in zip(x_values[1:], y_values[1:]):
-                    path.lineTo(x_value, previous_y)
-                    if y_value != previous_y:
-                        path.lineTo(x_value, y_value)
-                    previous_y = y_value
+                x_values = np.repeat(x_values, 2)[1:]
+                y_values = np.repeat(y_values, 2)[:-1]
+                keep = np.r_[True, (x_values[1:] != x_values[:-1]) | (y_values[1:] != y_values[:-1])]
+                x_values, y_values = x_values[keep], y_values[keep]
+            if len(x_values) == 1:
+                path.moveTo(x_values[0], y_values[0])
             else:
-                for x_value, y_value in zip(x_values[1:], y_values[1:]):
-                    path.lineTo(x_value, y_value)
+                points = create_qpolygonf(len(x_values))
+                coordinates = ndarray_from_qpolygonf(points)
+                coordinates[:, 0], coordinates[:, 1] = x_values, y_values
+                path.addPolygon(points)
         self.path = path
 
 
@@ -278,12 +277,15 @@ class _PlotCanvas(QWidget):
             painter.save()
             painter.setClipRect(plot)
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(dot_color)
-            for sample_x, sample_y in zip(curve.xData.tolist(), curve.yData.tolist()):
-                x = plot.left() + (sample_x - start_time) * x_scale
-                y = plot.bottom() - (sample_y - minimum) * y_scale
-                painter.drawEllipse(QPointF(x, y), 1.5, 1.5)
+            dot_pen = QPen(dot_color)
+            dot_pen.setWidthF(3)
+            dot_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(dot_pen)
+            points = create_qpolygonf(len(curve.xData))
+            coordinates = ndarray_from_qpolygonf(points)
+            coordinates[:, 0] = plot.left() + (curve.xData - start_time) * x_scale
+            coordinates[:, 1] = plot.bottom() - (curve.yData - minimum) * y_scale
+            painter.drawPoints(points)
             painter.restore()
 
     def wheelEvent(self, event: QWheelEvent) -> None:

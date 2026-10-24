@@ -1,8 +1,8 @@
 # PlotTTY performance checks
 
-These tools use the application's dependencies (PySide6 and NumPy) and the
-Python standard library. Run from the repository root with the application
-Python environment and requirements installed.
+These tools use the application's dependencies (PySide6, NumPy and PyQtGraph)
+and the Python standard library. Run from the repository root with the
+application Python environment and requirements installed.
 
 ## Plot and storage benchmark
 

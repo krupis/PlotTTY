@@ -8,17 +8,63 @@ import numpy as np
 from unittest.mock import patch
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from modules.core.extraction import ExtractionRule
 from modules.core.plotter import Plotter
-from modules.widgets.plot_widget import PlotWidget, _prepare_plot_arrays
+from modules.widgets.plot_widget import PlotWidget, _CurveData, _prepare_plot_arrays
 
 APP = QApplication.instance() or QApplication([])
 
 
 class PlotStylesTest(unittest.TestCase):
+    def test_bulk_analog_and_digital_paths_keep_chunk_boundary_spikes_and_edges(self):
+        x = np.arange(25_001, dtype=float) * .001
+        for style in ('lines', 'digital'):
+            y = np.sin(x) if style == 'lines' else np.arange(len(x)) % 2
+            if style == 'lines':
+                y[[9_999, 10_000, 19_999, 20_000, 25_000]] = [5, -5, 7, -7, 1]
+            curve = _CurveData(QColor('green'), style)
+            curve.set_data(x, y)
+            self.assertEqual(curve.path.elementCount(), len(x) if style == 'lines' else 2 * len(x) - 1)
+            for i in (0, 9_999, 10_000, 19_999, 20_000, 25_000):
+                index = i if style == 'lines' else 2 * i
+                element = curve.path.elementAt(index)
+                self.assertEqual((element.x, element.y), (x[i], y[i]))
+                if style == 'digital' and i:
+                    before = curve.path.elementAt(index - 1)
+                    self.assertEqual((before.x, before.y), (x[i], y[i - 1]))
+            np.testing.assert_array_equal(curve.xData, x)
+            np.testing.assert_array_equal(curve.yData, y)
+
+    def test_bulk_digital_paths_handle_empty_single_flat_and_duplicate_times(self):
+        cases = [([], [], []), ([0], [1], [(0, 1)]),
+                 ([0, 1, 2], [3, 3, 3], [(0, 3), (1, 3), (2, 3)]),
+                 ([0, 0, 1], [0, 1, 1], [(0, 0), (0, 1), (1, 1)]),
+                 ([0, 4, 8], [0, 1, 0], [(0, 0), (4, 0), (4, 1), (8, 1), (8, 0)])]
+        for x, y, expected in cases:
+            with self.subTest(x=x, y=y):
+                curve = _CurveData(QColor('green'), 'digital')
+                curve.set_data(np.asarray(x, dtype=float), np.asarray(y, dtype=float))
+                actual = [(curve.path.elementAt(i).x, curve.path.elementAt(i).y)
+                          for i in range(curve.path.elementCount())]
+                self.assertEqual(actual, expected)
+
+    def test_bulk_dots_draw_interior_samples_without_connecting_lines(self):
+        store = Plotter()
+        for timestamp in (0, 4, 8):
+            store.add_sample(timestamp, 1)
+        self.plot.replace_series({'a': store}, 0.)
+        self.plot.set_series_style('a', 'dots')
+        self.plot._set_time_range(0, 10)
+        image = self.plot.graph.grab().toImage()
+        for timestamp in (0, 4, 8):
+            self.assertTrue(self.has_curve_color(image, self.sample_pixel(timestamp)))
+        for timestamp in (2, 6):
+            self.assertFalse(self.has_curve_color(image, self.sample_pixel(timestamp)))
+
     def test_numeric_preparation_keeps_pairs_filters_nonfinite_and_handles_views(self):
         x = np.arange(12, dtype=float)[::2]
         y = np.arange(12, dtype=float)[1::2]
