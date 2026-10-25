@@ -80,6 +80,8 @@ __pycache__/
 .coverage
 htmlcov/
 dist/
+/release/
+/release-stage/
 /deployment/
 
 # Binaries

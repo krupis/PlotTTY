@@ -185,62 +185,53 @@ Recordings use format version 2. Earlier recording formats are rejected.
 The [capture format specification](docs/CAPTURE_FORMAT.md) describes the versioned
 binary format. No additional Python dependencies are required.
 
-## Windows standalone build
+## Builds and releases
 
-Use Python 3.13 x64, the application dependencies in `.venv`, and Visual Studio
-2022 C++ build tools. Qt's deployment tool reads `pysidedeploy.spec` and runs
-Nuitka internally:
+The release workflow in `.github/workflows/release.yml` uses **PyInstaller**
+with `PlotTTY.spec`. It creates portable application folders: Windows x64,
+Linux x64, macOS Intel, and macOS Apple Silicon. Windows and macOS releases are
+ZIPs; Linux releases are tar.gz archives. Each archive has a SHA-256 checksum.
+Recipients do not need Python installed. Keep the extracted application and its
+supporting files together.
+
+Push a version tag matching `[project].version` in `pyproject.toml` to build and
+publish a GitHub release. For example, for version 1.0.0:
 
 ```powershell
+git tag 1.0.0
+git push origin 1.0.0
+```
+
+Run **Build release** manually in GitHub Actions to produce build artifacts
+without publishing a release.
+
+To reproduce the Windows build locally with Python 3.13:
+
+```powershell
+.venv\Scripts\python.exe -m pip install -r requirements.txt PyInstaller==6.22.3
 .venv\Scripts\pyside6-rcc.exe resources.qrc -o rc_resources.py
-.venv\Scripts\pyside6-deploy.exe -c pysidedeploy.spec --force
+.venv\Scripts\python.exe -m unittest discover -s tests
+.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --distpath dist --workpath build/pyinstaller PlotTTY.spec
 ```
 
-`--force` accepts the deployment tool's setup prompts. It installs the Nuitka
-version specified in the configuration if needed. Run these commands from the
-project root. Qt may update the spec's detected paths/modules during deployment.
-The icon resource is generated as `rc_resources.py`, following Qt's naming convention.
+Run `dist/PlotTTY/PlotTTY.exe` and distribute the complete `dist/PlotTTY` folder,
+including `app/`. macOS builds also produce `dist/PlotTTY.app`. Build each
+platform on its matching operating system, as the CI matrix does.
 
-Run `dist/PlotTTY.dist/PlotTTY.exe`; Python is not needed on the recipient's machine.
-The DLLs, plugin folders and stylesheet must remain beside the executable.
-Qt uses `deployment/` for temporary build files. Start from a fresh
-`dist/PlotTTY.dist` folder when changing dependencies: Qt overlays that directory
-and does not remove obsolete files from previous builds.
+## Project files
 
-To prepare a distributable release:
-
-```powershell
-.venv\Scripts\python.exe package_windows.py
-```
-
-This small packaging helper collects notices into flat text files and creates:
-
-- `dist/PlotTTY-1.0.0-windows-x64.zip`: the application and license notices.
-- `dist/PlotTTY-1.0.0-sources.zip`: matching library sources and application source.
-
-The application ZIP has a portable launcher layout:
-
-```text
-PlotTTY/
-    PlotTTY.exe
-    app/
-```
-
-Run the top-level `PlotTTY.exe`. The `app` folder contains the actual application,
-DLLs, styles, and license notices; keep it beside the launcher. The packaging
-helper compiles `launcher.c` with the same Visual Studio C++ tools used for the
-application and embeds the PlotTTY icon. No separate Python installation is
-needed. Launch arguments are forwarded to the application.
-
-Publish both ZIPs together on the same release page, or send both when sharing
-privately. Only the application ZIP needs extracting to run the app. Recordings
-are written under `logs` beside the launcher, and any default relative profile
-path is also resolved there, even when launching from another directory. Use a
-writable folder. These data files/folders may appear after using the application.
-The executable is unsigned. Source downloads are cached in `build/release-sources`.
-See [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) for library replacement and
-source-distribution instructions. The helper covers the current dependencies;
-review the build report and update it when dependencies change.
+- `mainwindow.py` starts the application; `modules/` contains its implementation.
+- `form.ui` is the editable Qt Designer form; `ui_form.py` is its generated Python
+  code, imported by the application. After editing the form, regenerate it with
+  `pyside6-uic form.ui -o ui_form.py`.
+- `resources.qrc` lists embedded icons; `rc_resources.py` is the generated Python
+  resource module. Regenerate it with `pyside6-rcc resources.qrc -o rc_resources.py`.
+- `requirements.txt` lists runtime dependencies; `pyproject.toml` holds project
+  metadata and the Qt project file list; `PlotTTY.spec` configures packaging.
+- `tests/` contains correctness tests; local performance tools are in `benchmarks/`.
+  Temporary measurement outputs belong in ignored `tmp/`.
+- `docs/` holds technical documentation; `web/` contains the project website;
+  `profiles/` contains example extraction profiles.
 
 ## Code naming
 
@@ -265,10 +256,10 @@ separately include their own license texts:
 
 - [PySide6 and Qt](https://doc.qt.io/qtforpython-6/licenses.html): community
   LGPLv3/GPL options, with module-specific and bundled-component terms.
-Optional benchmarks use [pyqtgraph](https://github.com/pyqtgraph/pyqtgraph),
-[NumPy](https://numpy.org/), [Matplotlib](https://matplotlib.org/stable/project/license.html),
-[VisPy](https://github.com/vispy/vispy/blob/main/LICENSE.txt), and
-[PyOpenGL](https://github.com/mcfletch/pyopengl), under their respective licenses.
+- [NumPy](https://numpy.org/), [PyQtGraph](https://github.com/pyqtgraph/pyqtgraph),
+  and [PyLink](https://github.com/square/pylink): runtime dependencies with their
+  own license texts.
+- [PyInstaller](https://github.com/pyinstaller/pyinstaller): the release build tool.
 
 ### Artwork attribution
 
@@ -288,5 +279,5 @@ their required license texts and notices. Under the LGPL route, also provide
 compliant access to corresponding library source and a working way to replace
 or relink the libraries and run the modified application. See
 [Qt's LGPL guidance](https://www.qt.io/development/open-source-lgpl-obligations).
-Verify these requirements against the actual package, including Nuitka
-`onefile` builds; this README alone does not fulfill them.
+Verify these requirements against the actual PyInstaller package; this README
+alone does not fulfill them.

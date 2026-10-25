@@ -1,36 +1,37 @@
 PlotTTY third-party notices
 
-In the portable release, this file, the license texts, and the runtime libraries
-are under app/. The top-level PlotTTY.exe is a launcher for app/PlotTTY.exe.
+Releases are built with PyInstaller using PlotTTY.spec. On Windows, run
+PlotTTY.exe and keep the app/ support directory beside it. Linux uses the same
+folder layout with a PlotTTY executable; macOS uses a PlotTTY.app bundle.
 
 PlotTTY's original code and icon are MIT licensed; see LICENSE.
-Dependency versions are recorded in VERSIONS.json in the executable release.
-Full license texts and upstream notices are collected in licenses/:
+Runtime dependencies are listed in requirements.txt:
 
-  Qt-PySide.txt  Qt, PySide6 and Shiboken: LGPLv3; bundled components have
-                additional terms, preserved with their original attribution.
-  Python.txt    CPython and its bundled components, including libffi.
-  OpenSSL.txt   OpenSSL: Apache-2.0.
-  nuitka.txt    Nuitka runtime: AGPLv3 with its runtime linking exception.
-  pylink-square.txt  PyLink: Apache-2.0.
+  PySide6, Shiboken and Qt: https://doc.qt.io/qtforpython-6/licenses.html
+  NumPy: https://github.com/numpy/numpy
+  PyQtGraph: https://github.com/pyqtgraph/pyqtgraph
+  PyLink: https://github.com/square/pylink
 
-The Qt notice collection covers the upstream modules used in this build.
-It also preserves their bundled-component notices; some apply only to other
-platforms or optional features. It does not change PlotTTY's MIT license.
+The packaged Python runtime and bundled components retain their own notices.
+PyInstaller's bootloader license is described in its distribution:
+https://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt
+
+The release workflow does not generate VERSIONS.json, a consolidated licenses/
+directory, or a corresponding-library-source ZIP. Before distributing a build,
+inventory the bundled components and include their required license texts,
+notices, and matching source distribution as applicable. See README.md.
 
 Corresponding source and library replacement
 
-Distribute the matching PlotTTY-<version>-sources.zip alongside the application
-ZIP. For a download release, place both files on the same release page with
-equally accessible download links. When sharing privately, send both ZIPs.
-The source ZIP contains the unmodified corresponding Qt/PySide/Shiboken sources,
-their upstream build instructions, and PlotTTY's source and deployment recipe.
-Sources do not need to be extracted to run PlotTTY.
+When providing a corresponding-source archive alongside the application,
+include the matching Qt/PySide/Shiboken sources, their upstream build
+instructions, and PlotTTY's source and build recipe. Sources do not need to
+be extracted to run PlotTTY.
 
 You may modify or replace the LGPL libraries and reverse-engineer the application
 to debug those modifications. Replace DLLs/extensions in their existing locations under app/
-with Windows x64 builds compatible with the recorded Python and Qt versions.
+with builds compatible with the application's platform, Python and Qt versions.
 No signature check prevents running with modified libraries. For changes needing
-a rebuild, follow README.md in the application source, install the versions in
-VERSIONS.json (substituting your rebuilt libraries), and run pyside6-deploy.
+a rebuild, follow README.md in the application source, install the matching
+dependency versions (substituting your rebuilt libraries), and run PyInstaller.
 These instructions do not restrict any rights granted by the dependency licenses.
