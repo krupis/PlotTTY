@@ -15,7 +15,7 @@ from PySide6.QtGui import QColor, QGuiApplication, QIcon, QMouseEvent, QPainter,
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue, clean_label
-from ..core.plotter import Plotter
+from ..core.series_store import SeriesStore
 from ..core.series_colors import default_series_color
 from .plot_mode_button import PLOT_STYLES, PlotModeButton
 
@@ -516,7 +516,7 @@ class PlotWidget(QWidget):
         self._time_window = time_window
         self.raw_point_limits = {"lines": 32_000, "digital": 16_000, "dots": 2_000}
         self._last_time_range = (0.0, time_window)
-        self._series: dict[str, Plotter] = {}
+        self._series: dict[str, SeriesStore] = {}
         self._series_colors: dict[str, str] = {}
         self._series_styles: dict[str, str] = {}
         self._named_values_color = ""
@@ -600,7 +600,7 @@ class PlotWidget(QWidget):
             if self._start_time is None:
                 self._start_time = captured.timestamp
             if captured.label not in self._series:
-                self._series[captured.label] = Plotter()
+                self._series[captured.label] = SeriesStore()
                 added_series = True
             series = self._series[captured.label]
             series.add_sample(captured.timestamp - self._start_time, captured.value)
@@ -626,7 +626,7 @@ class PlotWidget(QWidget):
         self.downsample_ratio_label.setText("Downsample: 1:1")
         self.on_toggle_auto_scroll(True)
 
-    def replace_series(self, series: dict[str, Plotter], start_time: float | None) -> None:
+    def replace_series(self, series: dict[str, SeriesStore], start_time: float | None) -> None:
         self.clear_values()
         self._series = series
         self._start_time = start_time

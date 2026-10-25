@@ -14,7 +14,7 @@ An additional size-100 cache supplies the intermediate display sizes cheaply.
 Completed summaries are packed consecutively into numeric arrays. Only the
 unfinished size-4 summary stays mutable. Reads also reconstruct unfinished
 larger groups so their newest readings remain visible. Raw samples are stored
-separately by Plotter. Timestamps must arrive in nondecreasing order.
+separately by SeriesStore. Timestamps must arrive in nondecreasing order.
 """
 from array import array
 import math
@@ -136,7 +136,7 @@ class Buckets:
         NumPy arrays: timestamps and values. Empty ranges produce empty arrays.
 
         Boundary buckets can include readings outside the requested range.
-        This is a downsampled view, not an exact raw-sample slice; Plotter reads
+        This is a downsampled view, not an exact raw-sample slice; SeriesStore reads
         raw samples separately when enough detail can be drawn without buckets.
         """
         if stop_index <= start_index:

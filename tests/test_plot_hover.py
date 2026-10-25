@@ -9,7 +9,7 @@ from PySide6.QtCore import QEvent, QObject, QPointF, QRect, Qt
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QApplication
 
-from modules.core.plotter import Plotter
+from modules.core.series_store import SeriesStore
 from modules.widgets.plot_widget import PlotWidget
 
 APP = QApplication.instance() or QApplication([])
@@ -35,7 +35,7 @@ class PlotHoverTest(unittest.TestCase):
         self.addCleanup(self.widget.close)
         stores = {}
         for label, values in [('a', (0, 10)), ('b', (-10, 10))]:
-            store = stores[label] = Plotter()
+            store = stores[label] = SeriesStore()
             for timestamp, value in zip((0, 10), values):
                 store.add_sample(timestamp, value)
         self.widget.replace_series(stores, 0.)

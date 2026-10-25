@@ -42,7 +42,7 @@ class ConnectionSession(QObject):
         self.settings = ConnectionSettings()
         self._connection: Transport | None = None
         self._line_decoder = LineDecoder()
-        self._engine = ExtractionEngine()
+        self._extraction_engine = ExtractionEngine()
         self._serial_log = SerialSessionLog()
         self._plot_log = PlotSessionLog()
         self._receive_rate_samples: deque[tuple[float, int]] = deque()
@@ -70,7 +70,7 @@ class ConnectionSession(QObject):
         return tuple(path for path in (self._serial_log.path, self._plot_log.path) if path is not None)
 
     def set_rules(self, rules: list[ExtractionRule]) -> None:
-        self._engine = ExtractionEngine(rules)
+        self._extraction_engine = ExtractionEngine(rules)
 
     def connect_device(self) -> None:
         if self.is_connected:
@@ -157,7 +157,7 @@ class ConnectionSession(QObject):
         self.receivedText.emit(data.decode(self._line_decoder.encoding, errors="replace"))
         captured_values: list[CapturedValue] = []
         for line in self._line_decoder.feed(data):
-            captured_values.extend(self._engine.extract(line, timestamp=received_at))
+            captured_values.extend(self._extraction_engine.extract(line, timestamp=received_at))
 
         if captured_values:
             if self.settings.log_to_file:

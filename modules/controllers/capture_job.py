@@ -6,7 +6,7 @@ from time import monotonic
 from PySide6.QtCore import QThread, Signal
 
 from ..core.binary_logging import CaptureCancelled, export_capture_csv, iter_binary_capture
-from ..core.plotter import Plotter
+from ..core.series_store import SeriesStore
 
 
 class CaptureJob(QThread):
@@ -16,7 +16,7 @@ class CaptureJob(QThread):
         super().__init__(parent)
         self.path = Path(path)
         self.destination = Path(destination) if destination is not None else None
-        self.series: dict[str, Plotter] = {}
+        self.series: dict[str, SeriesStore] = {}
         self.start_time: float | None = None
         self.row_count = 0
         self.error: str | None = None
@@ -47,7 +47,7 @@ class CaptureJob(QThread):
                 if self.start_time is None:
                     self.start_time = captured.timestamp
                 if captured.label not in self.series:
-                    self.series[captured.label] = Plotter()
+                    self.series[captured.label] = SeriesStore()
                 self.series[captured.label].add_sample(captured.timestamp - self.start_time, captured.value)
             self.row_count += len(batch)
             self._report(self.row_count)
@@ -63,7 +63,7 @@ class CaptureJob(QThread):
             self.progress.emit(count)
             self._last_progress = now
 
-    def take_series(self) -> dict[str, Plotter]:
+    def take_series(self) -> dict[str, SeriesStore]:
         """Transfer the completed stores to the GUI thread."""
         if self.isRunning():
             raise RuntimeError("Capture job is still running")

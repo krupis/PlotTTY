@@ -7,7 +7,7 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtTest import QSignalSpy, QTest
 from PySide6.QtWidgets import QApplication, QPlainTextEdit, QVBoxLayout, QWidget
 from modules.core.extraction import ExtractionEngine, ExtractionRule
-from modules.widgets.console_widget import ConsoleWidget, STATUS_TEXT_COLOR, SENT_TEXT_COLOR
+from modules.controllers.console_controller import ConsoleController, STATUS_TEXT_COLOR, SENT_TEXT_COLOR
 
 APP = QApplication.instance() or QApplication([])
 
@@ -18,20 +18,20 @@ class ConsoleThroughputTest(unittest.TestCase):
         layout = QVBoxLayout(self.panel)
         self.editor = QPlainTextEdit()
         layout.addWidget(self.editor)
-        self.console = ConsoleWidget(self.editor, self.panel)
+        self.console_controller = ConsoleController(self.editor, self.panel)
         self.panel.resize(900, 300)
         self.panel.show()
         APP.processEvents()
         self.addCleanup(self.panel.close)
-        self.addCleanup(self.console.close)
+        self.addCleanup(self.console_controller.close)
 
     def fill(self, count):
-        self.console.append_received('\n'.join(f'row-{i:05d}' for i in range(count)) + '\n')
-        self.console.flush()
+        self.console_controller.append_received('\n'.join(f'row-{i:05d}' for i in range(count)) + '\n')
+        self.console_controller.flush()
 
     def search(self, text, *, backwards=False):
-        spy = QSignalSpy(self.console.searchFinished)
-        self.console.find_text(text, backwards=backwards)
+        spy = QSignalSpy(self.console_controller.searchFinished)
+        self.console_controller.find_text(text, backwards=backwards)
         if not spy.count():
             self.assertTrue(spy.wait(3000))
         return tuple(spy.at(0))
@@ -48,28 +48,28 @@ class ConsoleThroughputTest(unittest.TestCase):
 
     def test_full_history_survives_beyond_the_previous_50000_line_limit(self):
         self.fill(100000)
-        self.assertEqual(self.console._history.count, 100001)
-        self.assertEqual(self.console._history.path.read_text(encoding='utf-8').splitlines()[0], 'row-00000')
-        self.assertLess(len(self.console._history.offsets), 200)
-        self.console.scroll_bar.setValue(0)
+        self.assertEqual(self.console_controller._history.count, 100001)
+        self.assertEqual(self.console_controller._history.path.read_text(encoding='utf-8').splitlines()[0], 'row-00000')
+        self.assertLess(len(self.console_controller._history.offsets), 200)
+        self.console_controller.scroll_bar.setValue(0)
         self.assertIn('row-00000', self.editor.toPlainText())
         self.assertEqual(self.search('row-99999'), (1, 1))
 
     def test_frozen_history_view_does_not_follow_new_data(self):
         self.fill(6000)
-        self.console.scroll_bar.setValue(1000)
+        self.console_controller.scroll_bar.setValue(1000)
         before = self.editor.toPlainText()
-        self.console.append_received('newest\n')
-        self.console.flush()
+        self.console_controller.append_received('newest\n')
+        self.console_controller.flush()
         self.assertEqual(self.editor.toPlainText(), before)
-        self.console.scroll_bar.setValue(self.console.scroll_bar.maximum())
+        self.console_controller.scroll_bar.setValue(self.console_controller.scroll_bar.maximum())
         self.assertIn('newest', self.editor.toPlainText())
 
     def test_split_crlf_unicode_and_colors_preserve_plain_text(self):
-        self.console.append_status('status: ')
-        self.console.append_sent('ready\r')
-        self.console.append_received('\nvoltage 🦊 į: 3.3\n')
-        self.console.flush()
+        self.console_controller.append_status('status: ')
+        self.console_controller.append_sent('ready\r')
+        self.console_controller.append_received('\nvoltage 🦊 į: 3.3\n')
+        self.console_controller.flush()
         self.editor.selectAll()
         self.editor.copy()
         self.assertEqual(APP.clipboard().text(), 'status: ready\nvoltage 🦊 į: 3.3\n')
@@ -83,14 +83,14 @@ class ConsoleThroughputTest(unittest.TestCase):
 
     def test_clear_and_close_cancel_search_and_remove_the_temporary_file(self):
         self.fill(60000)
-        path = self.console._history.path
-        self.console.find_text('row')
-        self.console.clear()
+        path = self.console_controller._history.path
+        self.console_controller.find_text('row')
+        self.console_controller.clear()
         APP.processEvents()
         self.assertEqual(path.read_bytes(), b'')
         self.assertEqual(self.editor.toPlainText(), '')
-        self.console.close()
-        self.console.close()
+        self.console_controller.close()
+        self.console_controller.close()
         self.assertFalse(path.exists())
 
 

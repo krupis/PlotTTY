@@ -14,7 +14,7 @@ CONSOLE_VIEW_BLOCKS = 512
 CONSOLE_FLUSH_INTERVAL_MS = 50
 
 
-class ConsoleWidget(QObject):
+class ConsoleController(QObject):
     searchFinished = Signal(int, int)
 
     def __init__(self, editor: QPlainTextEdit, parent: QObject | None = None) -> None:

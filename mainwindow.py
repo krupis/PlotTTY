@@ -30,7 +30,7 @@ from modules.core.profiles import AppProfile, load_profile, save_profile
 from modules.controllers.connection_session import ConnectionSession
 from modules.core.extraction import clean_label, validate_rules
 from modules.controllers.capture_job import CaptureJob
-from modules.widgets.console_widget import ConsoleWidget
+from modules.controllers.console_controller import ConsoleController
 from modules.widgets.rules_editor import RulesEditor
 from modules.widgets.connection_settings_dialog import ConnectionSettingsDialog
 from modules.widgets.plot_mode_button import PLOT_STYLES
@@ -102,8 +102,8 @@ class MainWindow(QMainWindow):
         self.ui.CommandEdit.setToolTip("Up/Down recalls sent commands. Down past the newest restores your draft.")
 
         self.plot = self.ui.Plot
-        self.console = ConsoleWidget(self.ui.ConsoleTextEdit, self)
-        self.console.searchFinished.connect(self.on_console_search_finished)
+        self.console_controller = ConsoleController(self.ui.ConsoleTextEdit, self)
+        self.console_controller.searchFinished.connect(self.on_console_search_finished)
         self.applied_rules = []
 
         self._configure_workspace()
@@ -259,7 +259,7 @@ class MainWindow(QMainWindow):
 
     def _update_console_search(self, text, *, backwards=False):
         self.ui.SearchMatchLabel.setText("…" if text else "")
-        self.console.find_text(text, backwards=backwards)
+        self.console_controller.find_text(text, backwards=backwards)
 
     def on_console_search_finished(self, current, total):
         self.ui.SearchMatchLabel.setText(f"{current}/{total}" if total else "")
@@ -310,7 +310,7 @@ class MainWindow(QMainWindow):
         self._connection_settings.accepted.connect(self.on_save_connection_settings)
         self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
         self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_connection_settings)
-        self.ui.ClearConsoleButton.clicked.connect(self.console.clear)
+        self.ui.ClearConsoleButton.clicked.connect(self.console_controller.clear)
         self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
         self.ui.CommandEdit.textEdited.connect(self.on_command_edited)
         self.ui.SendButton.clicked.connect(self.on_send_command)
@@ -332,9 +332,9 @@ class MainWindow(QMainWindow):
         self._log_to_file_action.toggled.connect(self.on_log_to_file_toggled)
 
         self.session.connectedChanged.connect(self.on_connected_changed)
-        self.session.receivedText.connect(self.console.append_received)
-        self.session.sentText.connect(self.console.append_sent)
-        self.session.consoleText.connect(self.console.append_status)
+        self.session.receivedText.connect(self.console_controller.append_received)
+        self.session.sentText.connect(self.console_controller.append_sent)
+        self.session.consoleText.connect(self.console_controller.append_status)
         self.session.valuesCaptured.connect(self.plot.append_values)
         self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
         self.session.errorOccurred.connect(self.on_transport_error)
@@ -464,8 +464,8 @@ class MainWindow(QMainWindow):
                 self.plot.capture_title.setText(job.path.name)
                 self.plot.capture_title.setToolTip(str(job.path))
                 self.plot.capture_title.show()
-                self.console.clear()
-                self.console.append_status(f"[loaded plot data from {job.path.name}]\n")
+                self.console_controller.clear()
+                self.console_controller.append_status(f"[loaded plot data from {job.path.name}]\n")
                 self.statusBar().showMessage(f"Loaded {job.path.name}: {job.row_count:,} values")
         except Exception as exc:
             self.statusBar().showMessage(f"{operation} failed")
@@ -522,7 +522,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_clear_console_and_plot(self) -> None:
-        self.console.clear()
+        self.console_controller.clear()
         self.on_clear_plot()
         self.statusBar().showMessage("Cleared console and plot data")
 
@@ -624,7 +624,7 @@ class MainWindow(QMainWindow):
         for name in ("Console", "Sidebar", "Diagnostics"):
             settings.setValue(name, getattr(self.ui, "action" + name).isChecked())
         self.session.disconnect_device()
-        self.console.close()
+        self.console_controller.close()
         self.plot.clear_values()
         super().closeEvent(event)
 

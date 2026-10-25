@@ -242,6 +242,21 @@ See [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) for library replacement a
 source-distribution instructions. The helper covers the current dependencies;
 review the build report and update it when dependencies change.
 
+## Code naming
+
+Use `snake_case` for modules, methods, and instances, and `PascalCase` for classes.
+Name objects for their responsibility: `extraction_engine`, `console_controller`,
+and `series_store`. Add type annotations to parameters and return values so their
+types remain clear away from construction. Keep Qt override names such as
+`paintEvent` unchanged.
+
+Keep each module focused on one responsibility. Related data classes and small
+private helpers can live beside the main class; separate substantial components
+when that makes their responsibilities easier to navigate. Core modules handle
+data, controllers coordinate behavior, and widget modules contain UI components.
+For example, `SeriesStore` stores plot samples, `ConsoleController` manages an
+existing text editor, and `PlotWidget` owns the plot UI.
+
 ## License
 
 PlotTTY's original source code is licensed under the [MIT License](LICENSE).

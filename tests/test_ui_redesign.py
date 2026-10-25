@@ -280,7 +280,7 @@ class WorkspaceTest(unittest.TestCase):
         dialog = self.editor([ExtractionRule("time", "delimited_values", is_time=True, extra_setting="0"),
                               ExtractionRule("voltage", "delimited_values", extra_setting="1")])
         self.assertTrue(dialog.apply_rules())
-        captured = self.window.session._engine.extract("12,3.3")
+        captured = self.window.session._extraction_engine.extract("12,3.3")
         self.assertEqual((captured[0].timestamp, captured[0].value), (12, 3.3))
         dialog.table.selectRow(1)
         dialog.rules_table.remove_selected_rules()
@@ -328,7 +328,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertFalse(window.ui.actionConsole.isChecked())
         window.session.settings.log_to_file = False
         window.session.on_receive(None, b"Voltage: 3 V\n", 100)
-        window.console.flush()
+        window.console_controller.flush()
         self.assertIn("Voltage", window.ui.ConsoleTextEdit.toPlainText())
         window.ui.actionConsole.setChecked(True)
         window.ui.ClearConsoleButton.click()
@@ -392,7 +392,7 @@ class WorkspaceTest(unittest.TestCase):
         with patch.object(window.session, "send_command", side_effect=RuntimeError("disconnected")):
             window.on_send_command()
         self.assertEqual(edit.text(), "failed")
-        window.console.clear()
+        window.console_controller.clear()
         window.on_connected_changed(True)
         QTest.keyClick(edit, Qt.Key.Key_Up)
         self.assertEqual(edit.text(), "cmd104")
@@ -524,8 +524,8 @@ class WorkspaceTest(unittest.TestCase):
                     break
                 QTest.qWait(5)
             self.assertEqual(self.window.ui.SearchMatchLabel.text(), expected)
-        self.window.console.append_received("alpha beta alpha")
-        self.window.console.flush()
+        self.window.console_controller.append_received("alpha beta alpha")
+        self.window.console_controller.flush()
         self.window.ui.SearchEdit.setText("alpha")
         wait_for_matches("1/2")
         self.window.ui.SearchNextButton.click()
@@ -534,8 +534,8 @@ class WorkspaceTest(unittest.TestCase):
         wait_for_matches("1/2")
 
     def test_clear_plot_keeps_console_text(self):
-        self.window.console.append_received("keep this")
-        self.window.console.flush()
+        self.window.console_controller.append_received("keep this")
+        self.window.console_controller.flush()
         self.window.plot.append_values([CapturedValue(1, "value", 3.3)])
         self.window.plot.clear_plot_button.click()
         self.assertEqual(self.window.plot.series_info(), [])
@@ -747,8 +747,8 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(set(window.plot._curves), {"a", "b", "c"})
         editor.table.cellWidget(0, 6).findChild(QCheckBox).setChecked(False)
         editor.apply_button.click()
-        from modules.core.plotter import Plotter
-        store = Plotter()
+        from modules.core.series_store import SeriesStore
+        store = SeriesStore()
         store.add_sample(0, 5)
         window.plot.replace_series({"loaded": store}, 0)
         self.assertEqual(window.plot._curves, {})
@@ -772,7 +772,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(window.applied_rules, [])
         self.assertEqual(window.rules_editor.rules_table.rules(), [])
         window.session.on_receive(None, b"[Initialize:123] Voltage: 3 V\n", 100)
-        window.console.flush()
+        window.console_controller.flush()
         self.assertIn("Initialize", window.ui.ConsoleTextEdit.toPlainText())
         self.assertEqual(window.plot.series_info(), [])
         window.rules_editor.rules_table.set_rules([ExtractionRule("Voltage", "regex_pattern", extra_setting=r"Voltage: (\d+)")])
@@ -829,12 +829,12 @@ class WorkspaceTest(unittest.TestCase):
         self.assertTrue(dialog.apply_rules())
 
     def test_console_full_file_history_and_no_latency_monitor(self):
-        self.window.console.append_received("\n".join(str(i) for i in range(50_100)))
-        self.window.console.flush()
+        self.window.console_controller.append_received("\n".join(str(i) for i in range(50_100)))
+        self.window.console_controller.flush()
         editor = self.window.ui.ConsoleTextEdit
-        self.assertEqual(self.window.console._history.count, 50_100)
+        self.assertEqual(self.window.console_controller._history.count, 50_100)
         self.assertLessEqual(editor.document().blockCount(), 512)
-        self.assertEqual(self.window.console._history.read(0, 1)[0][0], "0")
+        self.assertEqual(self.window.console_controller._history.read(0, 1)[0][0], "0")
         self.assertFalse(hasattr(self.window, "_latency_monitor"))
         self.assertFalse(hasattr(self.window.session.settings, "console_line_limit"))
 
@@ -998,7 +998,7 @@ class WorkspaceTest(unittest.TestCase):
             self.assertEqual(session.recording_paths, ())
             session._connection.bytesReceived.emit(session._connection, b"Voltage: 3.3 V\n", 100)
             APP.processEvents()
-            w.console.flush()
+            w.console_controller.flush()
             self.assertIn("Voltage: 3.3 V", w.ui.ConsoleTextEdit.toPlainText())
             self.assertEqual(w.plot._series["Voltage"].sample_count(), 1)
             w.ui.ConnectButton.click()

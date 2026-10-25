@@ -3,41 +3,41 @@ from unittest.mock import patch
 
 import numpy as np
 
-from modules.core.plotter import Plotter
+from modules.core.series_store import SeriesStore
 
 
-class PlotterRangesTest(unittest.TestCase):
+class SeriesStoreRangesTest(unittest.TestCase):
     def setUp(self):
-        self.plotter = Plotter()
-        self.addCleanup(self.plotter.close)
+        self.series_store = SeriesStore()
+        self.addCleanup(self.series_store.close)
 
     def read_samples(self, *args, **kwargs):
-        count, x, y = self.plotter.read_visible_samples(*args, **kwargs)
+        count, x, y = self.series_store.read_visible_samples(*args, **kwargs)
         return count, x.tolist(), y.tolist()
 
     def test_raw_summary_and_empty_reads_return_contiguous_numeric_arrays(self):
         for i in range(100):
-            self.plotter.add_sample(i, -i)
+            self.series_store.add_sample(i, -i)
         for start, end, budget in [(20, 80, 100), (0, 99, 5), (101, 102, 100)]:
             with self.subTest(start=start, end=end, budget=budget):
-                count, x, y = self.plotter.read_visible_samples(start, end, budget)
+                count, x, y = self.series_store.read_visible_samples(start, end, budget)
                 self.assertEqual(x.dtype, np.float64)
                 self.assertEqual(y.dtype, np.float64)
                 self.assertTrue(x.flags.c_contiguous and y.flags.c_contiguous)
                 self.assertEqual(x.ndim, 1)
                 self.assertEqual(y.ndim, 1)
                 np.testing.assert_array_equal(y, -x)
-        _, x, y = self.plotter.read_visible_samples(20, 80, 100)
+        _, x, y = self.series_store.read_visible_samples(20, 80, 100)
         for i in range(100, 200):
-            self.plotter.add_sample(i, -i)
-        self.plotter.close()
+            self.series_store.add_sample(i, -i)
+        self.series_store.close()
         np.testing.assert_array_equal(x, np.arange(19, 82))
         np.testing.assert_array_equal(y, -np.arange(19, 82))
 
     def test_all_history_summary_does_not_flush_or_search(self):
         for i in range(1000):
-            self.plotter.add_sample(i / 1000, float(i))
-        with patch.object(self.plotter, '_flush_samples_to_file', side_effect=AssertionError('unnecessary disk access')):
+            self.series_store.add_sample(i / 1000, float(i))
+        with patch.object(self.series_store, '_flush_samples_to_file', side_effect=AssertionError('unnecessary disk access')):
             count, x, y = self.read_samples(0, 1, 100)
         self.assertEqual(count, 1000)
         self.assertEqual((x[0], x[-1]), (0, .999))
@@ -45,42 +45,42 @@ class PlotterRangesTest(unittest.TestCase):
 
     def test_raw_allowance_preserves_every_point_through_its_boundary(self):
         for i in range(65):
-            self.plotter.add_sample(i, (-1) ** i * i)
-        with patch.object(self.plotter._buckets, 'read_samples',
+            self.series_store.add_sample(i, (-1) ** i * i)
+        with patch.object(self.series_store._buckets, 'read_samples',
                           side_effect=AssertionError('affordable window was reduced')):
-            count, x, y = self.plotter.read_visible_samples(0, 31, 2, raw_point_limit=32)
+            count, x, y = self.series_store.read_visible_samples(0, 31, 2, raw_point_limit=32)
         self.assertEqual(count, 32)
         np.testing.assert_array_equal(x, np.arange(33))
         np.testing.assert_array_equal(y, [(-1) ** i * i for i in range(33)])
-        with patch.object(self.plotter._buckets, 'read_samples',
-                          wraps=self.plotter._buckets.read_samples) as summary:
-            count, x, y = self.plotter.read_visible_samples(0, 32, 2, raw_point_limit=32)
+        with patch.object(self.series_store._buckets, 'read_samples',
+                          wraps=self.series_store._buckets.read_samples) as summary:
+            count, x, y = self.series_store.read_visible_samples(0, 32, 2, raw_point_limit=32)
         summary.assert_called_once_with(0, 34, 2)
         self.assertEqual(count, 33)
         self.assertLess(len(x), count)
 
     def test_extra_raw_allowance_keeps_summary_budget_and_boundary_neighbors(self):
         for i in range(100):
-            self.plotter.add_sample(i, i % 7)
-        _, x, y = self.plotter.read_visible_samples(0, 99, 3, raw_point_limit=32)
-        expected_x, expected_y = self.plotter._buckets.read_samples(0, 100, 3)
+            self.series_store.add_sample(i, i % 7)
+        _, x, y = self.series_store.read_visible_samples(0, 99, 3, raw_point_limit=32)
+        expected_x, expected_y = self.series_store._buckets.read_samples(0, 100, 3)
         np.testing.assert_array_equal(x, expected_x)
         np.testing.assert_array_equal(y, expected_y)
-        count, x, y = self.plotter.read_visible_samples(10, 25, 2, 16)
+        count, x, y = self.series_store.read_visible_samples(10, 25, 2, 16)
         self.assertEqual(count, 16)
         np.testing.assert_array_equal(x, np.arange(9, 27))
         np.testing.assert_array_equal(y, np.arange(9, 27) % 7)
 
     def test_raw_reads_include_buffered_samples(self):
-        self.plotter.add_sample(1, 42)
+        self.series_store.add_sample(1, 42)
         self.assertEqual(self.read_samples(0, 2, 100), (1, [1], [42]))
-        self.plotter.add_sample(2, 43)
+        self.series_store.add_sample(2, 43)
         self.assertEqual(self.read_samples(0, 2, 100), (2, [1, 2], [42, 43]))
 
     def test_duplicate_timestamps_and_exact_boundaries(self):
         times = [0, 0, 1, 2, 2]
         for i, t in enumerate(times):
-            self.plotter.add_sample(t, i)
+            self.series_store.add_sample(t, i)
         for start, end in [(-1, 3), (0, 0), (2, 2), (.5, 1.5), (-2, -1), (3, 4), (2, 1)]:
             inside = [(t, i) for i, t in enumerate(times) if start <= t <= end]
             expected = list(inside)
@@ -97,7 +97,7 @@ class PlotterRangesTest(unittest.TestCase):
 
     def test_neighbors_span_sparse_gaps_without_changing_visible_count(self):
         for timestamp, value in [(0, 0), (4, 1), (8, 0)]:
-            self.plotter.add_sample(timestamp, value)
+            self.series_store.add_sample(timestamp, value)
         self.assertEqual(self.read_samples(1, 3, 100),
                          (0, [0, 4], [0, 1]))
         self.assertEqual(self.read_samples(4, 4, 100),
@@ -107,20 +107,20 @@ class PlotterRangesTest(unittest.TestCase):
 
     def test_full_history_keeps_bucketed_reads_without_disk_access(self):
         for i in range(10000):
-            self.plotter.add_sample(i*.001, (i//31)%2)
-        with patch.object(self.plotter, '_flush_samples_to_file', side_effect=AssertionError('unnecessary disk access')):
+            self.series_store.add_sample(i*.001, (i//31)%2)
+        with patch.object(self.series_store, '_flush_samples_to_file', side_effect=AssertionError('unnecessary disk access')):
             count, x, y = self.read_samples(0, 10, 100)
         self.assertEqual(count, 10000)
         self.assertLessEqual(len(x), 400)
         self.assertEqual(set(y), {0, 1})
 
     def test_disposal_discards_pending_samples_and_is_repeatable(self):
-        self.plotter.add_sample(1, 42)
-        with patch.object(self.plotter, "_write_pending_samples_to_file", side_effect=AssertionError("discarded data")):
-            self.plotter.close()
-            self.plotter.close()
-        self.assertTrue(self.plotter._file.closed)
-        self.assertEqual(self.plotter._pending_sample_bytes, b"")
+        self.series_store.add_sample(1, 42)
+        with patch.object(self.series_store, "_write_pending_samples_to_file", side_effect=AssertionError("discarded data")):
+            self.series_store.close()
+            self.series_store.close()
+        self.assertTrue(self.series_store._file.closed)
+        self.assertEqual(self.series_store._pending_sample_bytes, b"")
 
 
 if __name__ == '__main__':

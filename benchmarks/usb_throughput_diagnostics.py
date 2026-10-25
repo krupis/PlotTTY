@@ -17,7 +17,7 @@ from mainwindow import MainWindow, apply_application_style
 from modules.controllers.connection_session import ConnectionSession
 from modules.core.extraction import ExtractionRule
 from modules.core.line_decoder import LineDecoder
-from modules.widgets.console_widget import ConsoleWidget
+from modules.controllers.console_controller import ConsoleController
 from modules.widgets.plot_widget import PlotWidget
 from plot_benchmark import stats
 from ui_latency import EventLoopLatencyMonitor
@@ -106,7 +106,7 @@ def instrument(cls, method):
             timings[method].append((perf_counter() - tick) * 1000)
     setattr(cls, method, timed)
 
-for cls, method in ((ConnectionSession, 'on_receive'), (ConsoleWidget, 'flush'),
+for cls, method in ((ConnectionSession, 'on_receive'), (ConsoleController, 'flush'),
                     (PlotWidget, 'append_values'), (PlotWidget, '_update_visible_curve_data')):
     instrument(cls, method)
 
@@ -162,20 +162,20 @@ else:
         def search_finished(*_):
             if active and console_search_started is not None:
                 console_interactions['search_complete'].append((perf_counter() - console_search_started) * 1000)
-        if hasattr(window.console, 'searchFinished'):
-            window.console.searchFinished.connect(search_finished)
+        if hasattr(window.console_controller, 'searchFinished'):
+            window.console_controller.searchFinished.connect(search_finished)
         def use_console():
             global console_search_started
             if not active:
                 return
             tick = perf_counter()
             console_search_started = tick
-            result = window.console.find_text('3.30')
+            result = window.console_controller.find_text('3.30')
             console_interactions['search_dispatch'].append((perf_counter() - tick) * 1000)
             if result is not None:
                 search_finished()
             tick = perf_counter()
-            bar = getattr(window.console, 'scroll_bar', window.ui.ConsoleTextEdit.verticalScrollBar())
+            bar = getattr(window.console_controller, 'scroll_bar', window.ui.ConsoleTextEdit.verticalScrollBar())
             bar.setValue(bar.maximum() // 2)
             bar.setValue(bar.maximum())
             console_interactions['scroll'].append((perf_counter() - tick) * 1000)
@@ -224,7 +224,7 @@ def finish():
             p95=ordered[int((len(ordered)-1)*.95)], minimum=ordered[0], maximum=ordered[-1])
         result['device_overflows_during_capture'] = (overflow_last - overflow_first) & 0xFFFFFFFF
     if window:
-        history = window.console._history
+        history = window.console_controller._history
         if hasattr(history, 'size'):
             result['console_history'] = dict(rows=history.count, bytes=history.size,
                                             line_index_bytes=len(history.offsets) * history.offsets.itemsize)

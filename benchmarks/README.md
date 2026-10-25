@@ -21,7 +21,7 @@ types with identical data and window dimensions.
 
 The benchmark uses five deterministic series in a 1000×900 logical-pixel window.
 It measures fixed-range refresh and changing-range navigation with the production
-QPainter canvas, Plotter storage, and bucket reduction. Each repeat includes ten
+QPainter canvas, SeriesStore storage, and bucket reduction. Each repeat includes ten
 warmups followed by the requested measured frames. Default settings are 40 frames,
 three repeats, and one million raw samples per series.
 

@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QApplication
 from mainwindow import MainWindow, apply_application_style
 from modules.core.extraction import ExtractionRule
 from modules.controllers.connection_session import ConnectionSession
-from modules.widgets.console_widget import ConsoleWidget
+from modules.controllers.console_controller import ConsoleController
 from modules.widgets.plot_widget import PlotWidget
 from plot_benchmark import stats
 from ui_latency import EventLoopLatencyMonitor
@@ -52,7 +52,7 @@ def main():
                 timings[method].append((perf_counter() - tick) * 1000)
         setattr(cls, method, timed)
 
-    for cls, method in ((ConnectionSession, "on_receive"), (ConsoleWidget, "flush"),
+    for cls, method in ((ConnectionSession, "on_receive"), (ConsoleController, "flush"),
                         (PlotWidget, "append_values"), (PlotWidget, "_update_visible_curve_data")):
         instrument(cls, method)
     # Avoid modal errors during unattended device measurements.

@@ -14,7 +14,7 @@ RAW_SAMPLE_STRUCT = struct.Struct("<dd")
 PENDING_BYTES_LIMIT = 1024 * 1024
 
 
-class Plotter:
+class SeriesStore:
     """Store raw samples and read display-sized buckets for the visible time range."""
 
     def __init__(self):

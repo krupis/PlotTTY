@@ -13,7 +13,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from modules.core.extraction import ExtractionRule
-from modules.core.plotter import Plotter
+from modules.core.series_store import SeriesStore
 from modules.widgets.plot_widget import PlotWidget, _CurveData, _prepare_plot_arrays
 
 APP = QApplication.instance() or QApplication([])
@@ -22,7 +22,7 @@ APP = QApplication.instance() or QApplication([])
 class PlotStylesTest(unittest.TestCase):
     def test_short_device_window_retains_raw_points_in_every_style(self):
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         for i in range(2000):
             store.add_sample(i / 10000, (-1) ** i * i)
         self.plot.replace_series({'a': store}, 0.)
@@ -36,7 +36,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def test_each_style_has_its_own_limit_regardless_of_series_count(self):
         for i in range(1, 10):
-            store = self.plot._series[str(i)] = Plotter()
+            store = self.plot._series[str(i)] = SeriesStore()
             store.add_sample(0, i)
         self.plot._rebuild_plots()
         limits = {'lines': 12345, 'digital': 6789, 'dots': 2345}
@@ -56,7 +56,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def test_changing_raw_limit_refreshes_existing_data_without_new_samples(self):
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         for i in range(2000):
             store.add_sample(i / 10000, (-1) ** i * i)
         self.plot.replace_series({'a': store}, 0.)
@@ -72,7 +72,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def test_mode_switch_applies_its_limit_and_updates_diagnostics_immediately(self):
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         for i in range(4000):
             store.add_sample(i / 10000, i % 13)
         self.plot.replace_series({'a': store}, 0.)
@@ -119,7 +119,7 @@ class PlotStylesTest(unittest.TestCase):
                 self.assertEqual(actual, expected)
 
     def test_bulk_dots_draw_interior_samples_without_connecting_lines(self):
-        store = Plotter()
+        store = SeriesStore()
         for timestamp in (0, 4, 8):
             store.add_sample(timestamp, 1)
         self.plot.replace_series({'a': store}, 0.)
@@ -156,7 +156,7 @@ class PlotStylesTest(unittest.TestCase):
         self.addCleanup(self.plot.close)
         self.plot._timer.stop()
         self.plot.resize(800, 500)
-        store = Plotter()
+        store = SeriesStore()
         store.add_sample(0, 1)
         store.add_sample(8, 1)
         self.plot.replace_series({'a': store}, 0.)
@@ -207,7 +207,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def test_single_sample_is_visible_in_dot_modes(self):
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         store.add_sample(0, 1)
         self.plot.replace_series({'a': store}, 0.)
         self.plot._set_time_range(0, 10)
@@ -217,7 +217,7 @@ class PlotStylesTest(unittest.TestCase):
     def test_switch_is_per_series_and_uses_cached_data(self):
         self.plot.set_raw_point_limit('dots', self.plot.raw_point_limits['lines'])
         self.plot.set_raw_point_limit('digital', self.plot.raw_point_limits['lines'])
-        self.plot._series['b'] = Plotter()
+        self.plot._series['b'] = SeriesStore()
         self.plot._series['b'].add_sample(9, 2)
         self.plot._rebuild_plots()
         self.plot._set_time_range(0, 10)
@@ -238,7 +238,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def test_digital_holds_previous_value_and_changes_at_sample_time(self):
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         for timestamp, value in [(0, 0), (4, 1), (8, 0)]:
             store.add_sample(timestamp, value)
         self.plot.replace_series({'a': store}, 0.)
@@ -271,7 +271,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def test_boundary_context_connects_analog_and_digital_but_does_not_invent_dots(self):
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         for timestamp, value in [(0, 0), (4, 1), (8, 0)]:
             store.add_sample(timestamp, value)
         self.plot.replace_series({'a': store}, 0.)
@@ -288,7 +288,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def test_digital_single_sample_remains_visible(self):
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         store.add_sample(0, 1)
         self.plot.replace_series({'a': store}, 0.)
         self.plot._set_time_range(0, 10)
@@ -297,7 +297,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def test_digital_steps_support_multilevel_values_and_equal_timestamps(self):
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         for timestamp, value in [(0, 2), (4, 5), (4, 3), (8, -1)]:
             store.add_sample(timestamp, value)
         self.plot.replace_series({'a': store}, 0.)
@@ -326,7 +326,7 @@ class PlotStylesTest(unittest.TestCase):
         self.assertEqual(self.plot.graph.mode_buttons['renamed'].mode, 'dots')
         self.assertEqual(self.plot._series['renamed'].sample_count(), 3)
         self.plot.clear_values()
-        store = Plotter()
+        store = SeriesStore()
         store.add_sample(0, 3)
         self.plot.replace_series({'renamed': store}, 0.)
         self.assertEqual(self.plot.graph.mode_buttons['renamed'].mode, 'lines')
@@ -334,7 +334,7 @@ class PlotStylesTest(unittest.TestCase):
 
 
     def test_picker_keyboard_selection_and_escape_preserve_other_series(self):
-        self.plot._series['b'] = Plotter()
+        self.plot._series['b'] = SeriesStore()
         self.plot._series['b'].add_sample(9, 2)
         self.plot._rebuild_plots()
         button = self.plot.graph.mode_buttons['a']

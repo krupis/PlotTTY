@@ -11,7 +11,7 @@ from time import perf_counter, perf_counter_ns
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtCore import qVersion
 from PySide6.QtWidgets import QApplication
-from modules.core.plotter import Plotter
+from modules.core.series_store import SeriesStore
 from modules.widgets.plot_widget import PlotWidget, _prepare_plot_arrays
 
 
@@ -31,7 +31,7 @@ def run(args, app):
     started = perf_counter()
     series = {}
     for j in range(5):
-        store = series[f"Value {j + 1}"] = Plotter()
+        store = series[f"Value {j + 1}"] = SeriesStore()
         for i in range(args.raw_samples):
             store.add_sample(i * .001, math.sin(i * .07 + j))
     build_seconds = perf_counter() - started
