@@ -3,6 +3,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
+import gc
 
 import numpy as np
 from unittest.mock import patch
@@ -14,12 +15,23 @@ from PySide6.QtWidgets import QApplication
 
 from modules.core.extraction import ExtractionRule
 from modules.core.series_store import SeriesStore
-from modules.widgets.plot_widget import PlotWidget, _CurveData, _prepare_plot_arrays
+from modules.widgets.plot_widget import PlotWidget, _CurveData, _create_polygon, _prepare_plot_arrays
 
 APP = QApplication.instance() or QApplication([])
 
 
 class PlotStylesTest(unittest.TestCase):
+    def test_polygon_owns_coordinates_after_source_arrays_are_released(self):
+        for count in (0, 1, 25_001):
+            with self.subTest(count=count):
+                x = np.arange(count * 2, dtype='>f8')[::2]
+                y = -x[::-1]
+                expected = list(zip(x.tolist(), y.tolist()))
+                polygon = _create_polygon(x, y)
+                del x, y
+                gc.collect()
+                self.assertEqual([(point.x(), point.y()) for point in polygon], expected)
+
     def test_short_device_window_retains_raw_points_in_every_style(self):
         self.plot.clear_values()
         store = SeriesStore()

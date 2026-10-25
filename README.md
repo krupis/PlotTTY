@@ -256,9 +256,8 @@ separately include their own license texts:
 
 - [PySide6 and Qt](https://doc.qt.io/qtforpython-6/licenses.html): community
   LGPLv3/GPL options, with module-specific and bundled-component terms.
-- [NumPy](https://numpy.org/), [PyQtGraph](https://github.com/pyqtgraph/pyqtgraph),
-  and [PyLink](https://github.com/square/pylink): runtime dependencies with their
-  own license texts.
+- [NumPy](https://numpy.org/) and [PyLink](https://github.com/square/pylink):
+  runtime dependencies with their own license texts.
 - [PyInstaller](https://github.com/pyinstaller/pyinstaller): the release build tool.
 
 ### Artwork attribution

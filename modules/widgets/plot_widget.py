@@ -8,10 +8,9 @@ from html import escape
 import math
 
 import numpy as np
-from pyqtgraph.functions import create_qpolygonf, ndarray_from_qpolygonf
 
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QColor, QGuiApplication, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QTransform, QWheelEvent
+from PySide6.QtCore import QByteArray, QDataStream, QEvent, QIODevice, QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
+from PySide6.QtGui import QColor, QGuiApplication, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QPolygonF, QTransform, QWheelEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue, clean_label
@@ -57,10 +56,7 @@ class _CurveData:
             if len(x_values) == 1:
                 path.moveTo(x_values[0], y_values[0])
             else:
-                points = create_qpolygonf(len(x_values))
-                coordinates = ndarray_from_qpolygonf(points)
-                coordinates[:, 0], coordinates[:, 1] = x_values, y_values
-                path.addPolygon(points)
+                path.addPolygon(_create_polygon(x_values, y_values))
         self.path = path
 
 
@@ -281,10 +277,10 @@ class _PlotCanvas(QWidget):
             dot_pen.setWidthF(3)
             dot_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             painter.setPen(dot_pen)
-            points = create_qpolygonf(len(curve.xData))
-            coordinates = ndarray_from_qpolygonf(points)
-            coordinates[:, 0] = plot.left() + (curve.xData - start_time) * x_scale
-            coordinates[:, 1] = plot.bottom() - (curve.yData - minimum) * y_scale
+            points = _create_polygon(
+                plot.left() + (curve.xData - start_time) * x_scale,
+                plot.bottom() - (curve.yData - minimum) * y_scale,
+            )
             painter.drawPoints(points)
             painter.restore()
 
@@ -855,6 +851,21 @@ def _format_time_value(value: float, visible_span: float) -> str:
     return "0" if text in ("-0", "-0.0") else text
 
 
+
+
+def _create_polygon(x_values: np.ndarray, y_values: np.ndarray) -> QPolygonF:
+    """Build a Qt-owned polygon through Qt's binary stream format."""
+    # Qt's polygon stream encodes a count, then big-endian float64 (x, y) pairs.
+    coordinates = np.empty((len(x_values), 2), dtype='>f8')
+    coordinates[:, 0], coordinates[:, 1] = x_values, y_values
+    data = QByteArray()
+    stream = QDataStream(data, QIODevice.OpenModeFlag.ReadWrite)
+    stream.writeUInt32(len(x_values))
+    stream.writeRawData(coordinates.tobytes())
+    stream.device().seek(0)
+    points = QPolygonF()
+    stream >> points
+    return points
 
 
 def _prepare_plot_arrays(x_values, y_values) -> tuple[np.ndarray, np.ndarray]:

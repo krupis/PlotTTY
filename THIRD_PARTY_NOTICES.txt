@@ -9,7 +9,6 @@ Runtime dependencies are listed in requirements.txt:
 
   PySide6, Shiboken and Qt: https://doc.qt.io/qtforpython-6/licenses.html
   NumPy: https://github.com/numpy/numpy
-  PyQtGraph: https://github.com/pyqtgraph/pyqtgraph
   PyLink: https://github.com/square/pylink
 
 The packaged Python runtime and bundled components retain their own notices.
