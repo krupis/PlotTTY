@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QFileDialog,
+    QInputDialog,
     QLabel,
     QMessageBox,
     QMainWindow,
@@ -32,6 +33,7 @@ from modules.controllers.capture_job import CaptureJob
 from modules.widgets.console_widget import ConsoleWidget
 from modules.widgets.rules_editor import RulesEditor
 from modules.widgets.connection_settings_dialog import ConnectionSettingsDialog
+from modules.widgets.plot_mode_button import PLOT_STYLES
 from modules.core.rtt_transport import RttSettings
 from modules.core.serial_transport import SerialSettings
 import rc_resources  # noqa: F401
@@ -113,6 +115,13 @@ class MainWindow(QMainWindow):
         self._log_to_file_action.setChecked(self.session.settings.log_to_file)
         self._log_to_file_action.setToolTip("Save connection text and extracted plot values to files when connecting.")
         self.ui.menuFile.addAction(self._log_to_file_action)
+        self.ui.menuView.addSeparator()
+        raw_limits_menu = self.ui.menuView.addMenu("Raw point limits")
+        self._raw_point_limit_actions = {}
+        for style, label in PLOT_STYLES.items():
+            action = raw_limits_menu.addAction(label + "...")
+            action.triggered.connect(lambda checked=False, style=style: self.on_set_raw_point_limit(style))
+            self._raw_point_limit_actions[style] = action
         self._connect_signals()
         self.apply_rules([])
         self.statusBar().addPermanentWidget(self.plot.visible_points_label)
@@ -259,9 +268,21 @@ class MainWindow(QMainWindow):
         self.plot.visible_points_label.setVisible(visible)
         self.plot.downsample_ratio_label.setVisible(visible)
 
+    def on_set_raw_point_limit(self, style):
+        limit, accepted = QInputDialog.getInt(
+            self, f"{PLOT_STYLES[style]} raw point limit",
+            f"Raw points per {PLOT_STYLES[style]} series before downsampling:\n"
+            "Higher values keep more detail but can slow updates.",
+            self.plot.raw_point_limits[style], 1, 2_147_483_647,
+        )
+        if accepted:
+            self.plot.set_raw_point_limit(style, limit)
+
     def restore_layout(self):
         settings = self._preferences
         try:
+            for style, default in self.plot.raw_point_limits.items():
+                self.plot.set_raw_point_limit(style, settings.value(f"rawPointLimits/{style}", default, type=int))
             geometry = settings.value("geometry")
             if geometry:
                 self.restoreGeometry(geometry)
@@ -593,6 +614,8 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         settings = self._preferences
+        for style, limit in self.plot.raw_point_limits.items():
+            settings.setValue(f"rawPointLimits/{style}", limit)
         settings.setValue("geometry", self.saveGeometry())
         for name in ("MainSplitter", "WorkspaceSplitter"):
             settings.setValue(name, getattr(self.ui, name).saveState())

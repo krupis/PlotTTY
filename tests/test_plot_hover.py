@@ -87,6 +87,7 @@ class PlotHoverTest(unittest.TestCase):
         self.assertIn('Y: 20', self.graph._hover_tip.text())
 
     def test_no_tooltip_on_axes_headers_or_empty_plot(self):
+        self.widget._set_time_range(11, 12)
         _, plot = self.graph.panel_geometry(0)
         for position in [QPointF(10, plot.center().y()), QPointF(plot.center().x(), 10), plot.center()]:
             self.move(position)

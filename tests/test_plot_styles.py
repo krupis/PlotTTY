@@ -20,6 +20,72 @@ APP = QApplication.instance() or QApplication([])
 
 
 class PlotStylesTest(unittest.TestCase):
+    def test_short_device_window_retains_raw_points_in_every_style(self):
+        self.plot.clear_values()
+        store = Plotter()
+        for i in range(2000):
+            store.add_sample(i / 10000, (-1) ** i * i)
+        self.plot.replace_series({'a': store}, 0.)
+        for style in ('lines', 'digital', 'dots'):
+            self.plot.set_series_style('a', style)
+            self.plot._set_time_range(0, 1999 / 10000)
+            curve = self.plot._curves['a']
+            np.testing.assert_array_equal(curve.xData, np.arange(2000) / 10000)
+            np.testing.assert_array_equal(curve.yData, [(-1) ** i * i for i in range(2000)])
+            self.assertEqual(self.plot.downsample_ratio_label.text(), 'Downsample: 1:1')
+
+    def test_each_style_has_its_own_limit_regardless_of_series_count(self):
+        for i in range(1, 10):
+            store = self.plot._series[str(i)] = Plotter()
+            store.add_sample(0, i)
+        self.plot._rebuild_plots()
+        limits = {'lines': 12345, 'digital': 6789, 'dots': 2345}
+        for style, limit in limits.items():
+            self.plot.set_raw_point_limit(style, limit)
+        for style, limit in limits.items():
+            self.plot.set_series_style('a', style)
+            with patch.object(self.plot._series['a'], 'read_visible_samples',
+                              wraps=self.plot._series['a'].read_visible_samples) as read:
+                self.plot._set_time_range(0, 10)
+            self.assertEqual(read.call_args.kwargs['raw_point_limit'], limit)
+        self.plot.set_rules([ExtractionRule(str(i), 'first_number', visible=False) for i in range(1, 10)])
+        with patch.object(self.plot._series['a'], 'read_visible_samples',
+                          wraps=self.plot._series['a'].read_visible_samples) as read:
+            self.plot._set_time_range(0, 10)
+        self.assertEqual(read.call_args.kwargs['raw_point_limit'], limits['dots'])
+
+    def test_changing_raw_limit_refreshes_existing_data_without_new_samples(self):
+        self.plot.clear_values()
+        store = Plotter()
+        for i in range(2000):
+            store.add_sample(i / 10000, (-1) ** i * i)
+        self.plot.replace_series({'a': store}, 0.)
+        self.plot._set_time_range(0, 1999 / 10000)
+        self.plot.set_raw_point_limit('lines', 500)
+        self.assertTrue(self.plot._has_pending_refresh)
+        self.plot.on_refresh_pending_data()
+        self.assertLess(len(self.plot._curves['a'].xData), 2000)
+        self.plot.set_raw_point_limit('lines', 2000)
+        self.plot.on_refresh_pending_data()
+        np.testing.assert_array_equal(self.plot._curves['a'].xData, np.arange(2000) / 10000)
+        self.assertEqual(store.sample_count(), 2000)
+
+    def test_mode_switch_applies_its_limit_and_updates_diagnostics_immediately(self):
+        self.plot.clear_values()
+        store = Plotter()
+        for i in range(4000):
+            store.add_sample(i / 10000, i % 13)
+        self.plot.replace_series({'a': store}, 0.)
+        self.plot._set_time_range(0, 3999 / 10000)
+        self.assertEqual(len(self.plot._curves['a'].xData), 4000)
+        self.plot.set_series_style('a', 'dots')
+        self.assertLess(len(self.plot._curves['a'].xData), 4000)
+        self.assertNotEqual(self.plot.downsample_ratio_label.text(), 'Downsample: 1:1')
+        self.plot.set_series_style('a', 'digital')
+        self.assertEqual(len(self.plot._curves['a'].xData), 4000)
+        self.assertEqual(self.plot.downsample_ratio_label.text(), 'Downsample: 1:1')
+        self.assertEqual(store.sample_count(), 4000)
+
     def test_bulk_analog_and_digital_paths_keep_chunk_boundary_spikes_and_edges(self):
         x = np.arange(25_001, dtype=float) * .001
         for style in ('lines', 'digital'):
@@ -149,12 +215,15 @@ class PlotStylesTest(unittest.TestCase):
         self.assertTrue(self.has_curve_color(self.plot.graph.grab().toImage(), self.sample_pixel(0)))
 
     def test_switch_is_per_series_and_uses_cached_data(self):
+        self.plot.set_raw_point_limit('dots', self.plot.raw_point_limits['lines'])
+        self.plot.set_raw_point_limit('digital', self.plot.raw_point_limits['lines'])
         self.plot._series['b'] = Plotter()
         self.plot._series['b'].add_sample(9, 2)
         self.plot._rebuild_plots()
         self.plot._set_time_range(0, 10)
         with patch.object(self.plot._series['a'], 'read_visible_samples',
                           side_effect=AssertionError('mode switch must not read history')):
+            self.plot.set_series_style('a', 'digital')
             self.plot.set_series_style('a', 'dots')
         self.assertEqual(self.plot._curves['b'].style, 'lines')
         self.assertEqual(self.plot._series['a'].sample_count(), 2)
@@ -194,11 +263,28 @@ class PlotStylesTest(unittest.TestCase):
         self.plot.set_series_style('a', 'digital')
         self.plot._set_time_range(2, 6)
         self.assertTrue(self.has_curve_color(self.plot.graph.grab().toImage(), self.sample_pixel(4)))
-        # Switching inside a gap must also fetch the bounding samples.
+        # Every style retains the same boundary samples inside a sparse gap.
         self.plot.set_series_style('a', 'lines')
-        self.assertEqual(len(self.plot._curves['a'].xData), 0)
+        self.assertEqual(len(self.plot._curves['a'].xData), 2)
         self.plot.set_series_style('a', 'digital')
         self.assertTrue(self.has_curve_color(self.plot.graph.grab().toImage(), self.sample_pixel(4)))
+
+    def test_boundary_context_connects_analog_and_digital_but_does_not_invent_dots(self):
+        self.plot.clear_values()
+        store = Plotter()
+        for timestamp, value in [(0, 0), (4, 1), (8, 0)]:
+            store.add_sample(timestamp, value)
+        self.plot.replace_series({'a': store}, 0.)
+        self.plot._set_time_range(1, 3)
+        self.assertTrue(self.has_curve_color(self.plot.graph.grab().toImage(), self.value_pixel(2, .5)))
+        self.plot.set_series_style('a', 'digital')
+        self.assertTrue(self.has_curve_color(self.plot.graph.grab().toImage(), self.value_pixel(2, 0)))
+        self.plot.set_series_style('a', 'dots')
+        image = self.plot.graph.grab().toImage()
+        self.assertFalse(self.has_curve_color(image, self.value_pixel(2, .5)))
+        self.assertFalse(self.has_curve_color(image, self.value_pixel(2, 0)))
+        self.assertEqual(self.plot.visible_points_label.text(), 'Points: 0')
+        self.assertEqual(self.plot.downsample_ratio_label.text(), 'Downsample: 1:1')
 
     def test_digital_single_sample_remains_visible(self):
         self.plot.clear_values()

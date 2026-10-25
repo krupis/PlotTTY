@@ -67,6 +67,25 @@ class WorkspaceTest(unittest.TestCase):
         self.addCleanup(editor.close)
         return editor
 
+    def test_mode_raw_point_limits_menu_accept_cancel_and_persistence(self):
+        original = dict(self.window.plot.raw_point_limits)
+        for style, limit in {'lines': 8000, 'digital': 12000, 'dots': 1000}.items():
+            action = self.window._raw_point_limit_actions[style]
+            with patch('mainwindow.QInputDialog.getInt', return_value=(limit, False)):
+                action.trigger()
+            self.assertEqual(self.window.plot.raw_point_limits[style], original[style])
+            with patch('mainwindow.QInputDialog.getInt', return_value=(limit, True)) as dialog:
+                action.trigger()
+            self.assertEqual(dialog.call_args.args[3], original[style])
+            self.assertEqual(self.window.plot.raw_point_limits[style], limit)
+        expected = dict(self.window.plot.raw_point_limits)
+        self.window.close()
+        for style, limit in expected.items():
+            self.assertEqual(self.settings.value(f'rawPointLimits/{style}', type=int), limit)
+            self.window.plot.set_raw_point_limit(style, 2000)
+        self.window.restore_layout()
+        self.assertEqual(self.window.plot.raw_point_limits, expected)
+
     def test_applied_rules_are_copied_for_profiles(self):
         rules = [ExtractionRule("original", "first_number")]
         self.window.apply_rules(rules)

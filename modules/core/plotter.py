@@ -39,12 +39,17 @@ class Plotter:
         self._buckets.add_sample(timestamp, value)
 
     def read_visible_samples(
-        self, start_time: float, end_time: float, buckets: int, *, include_neighbors: bool = False,
+        self, start_time: float, end_time: float, buckets: int,
+        raw_point_limit: int = 0,
     ) -> tuple[int, np.ndarray, np.ndarray]:
-        """Read a display-sized range, optionally including neighbors for step edges."""
+        """Read the visible range plus one boundary sample on each side.
+
+        The count and raw allowance refer to samples inside the time range;
+        boundary samples provide drawing context without using that allowance.
+        """
         start_index, stop_index = self._sample_indexes_for_range(start_time, end_time)
         visible_samples = stop_index - start_index
-        if (include_neighbors and self._sample_count and start_time <= end_time
+        if (self._sample_count and start_time <= end_time
                 and end_time >= self._first_timestamp and start_time <= self._latest_timestamp):
             start_index = max(0, start_index - 1)
             stop_index = min(self._sample_count, stop_index + 1)
@@ -52,7 +57,7 @@ class Plotter:
             return 0, np.empty(0), np.empty(0)
 
         bucket_count = max(1, buckets)
-        if stop_index - start_index <= bucket_count:
+        if visible_samples <= max(bucket_count, raw_point_limit):
             x_values, y_values = self._read_raw_samples_by_index(start_index, stop_index)
             return visible_samples, x_values, y_values
 

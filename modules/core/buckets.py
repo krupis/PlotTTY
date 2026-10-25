@@ -10,6 +10,7 @@ A summary contains eight numbers in this order:
     (first_time, first_value, last_time, last_value,
      minimum_time, minimum_value, maximum_time, maximum_value)
 
+An additional size-100 cache supplies the intermediate display sizes cheaply.
 Completed summaries are packed consecutively into numeric arrays. Only the
 unfinished size-4 summary stays mutable. Reads also reconstruct unfinished
 larger groups so their newest readings remain visible. Raw samples are stored
@@ -20,7 +21,11 @@ import math
 
 import numpy as np
 
-BUCKET_SIZES = (4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192)
+_STORAGE_BUCKET_SIZES = (4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192)
+# Intermediate display sizes combine stored binary and size-100 summaries.
+BUCKET_SIZES = tuple(sorted({*_STORAGE_BUCKET_SIZES,
+                            100, 200, 300, 400, 500, 600, 700, 800, 900,
+                            1000, 2000, 4000, 8000, 16000}))
 
 
 def _merge(left, right):
@@ -46,7 +51,7 @@ class Buckets:
         _count counts all readings, including those in the pending group.
         _partial is that group's summary, or None between groups.
         """
-        self._levels = {size: array('d') for size in BUCKET_SIZES}
+        self._levels = {size: array('d') for size in (*_STORAGE_BUCKET_SIZES, 100)}
         self._count = 0
         self._partial = None
 
@@ -57,7 +62,8 @@ class Buckets:
         reading, store the completed size-4 summary and clear the pending one.
         Every eighth reading also completes a size-8 summary, every sixteenth
         a size-16 summary, and so on, by merging pairs of completed children.
-        Larger levels are updated only when their groups finish.
+        Every hundredth reading also caches a size-100 summary from binary
+        children. Larger levels are updated only when their groups finish.
         """
         # Every fourth completed reading leaves the next size-4 group empty.
         if self._count % 4 == 0:
@@ -75,13 +81,15 @@ class Buckets:
             return
         self._levels[4].extend(self._partial)
         self._partial = None
-        for size in BUCKET_SIZES[1:]:
+        for size in _STORAGE_BUCKET_SIZES[1:]:
             if self._count % size:
                 # If this group is unfinished, all larger groups are too.
                 break
             children = self._levels[size // 2]
             # Each child occupies eight numbers; merge the last two children.
             self._levels[size].extend(_merge(children[-16:-8], children[-8:]))
+        if self._count % 100 == 0:
+            self._levels[100].extend(self._summarize_from(self._count - 100))
 
     def _tail(self, size):
         """Reconstruct the unfinished final bucket at the requested size.
@@ -94,8 +102,10 @@ class Buckets:
         Return an eight-number tuple, or None if there is no unfinished bucket.
         This does not modify or store summaries, and does not read raw samples.
         """
-        # Round down to the first reading after the completed size-N buckets.
-        cursor = self._count // size * size
+        return self._summarize_from(self._count // size * size)
+
+    def _summarize_from(self, cursor):
+        """Combine aligned binary summaries through the latest reading."""
         summary = None
         while cursor < self._count:
             remaining = self._count - cursor
@@ -104,7 +114,7 @@ class Buckets:
                 cursor = self._count
             else:
                 # Alignment prevents taking a child that overlaps earlier data.
-                child_size = next(s for s in reversed(BUCKET_SIZES) if s <= remaining and cursor % s == 0)
+                child_size = next(s for s in reversed(_STORAGE_BUCKET_SIZES) if s <= remaining and cursor % s == 0)
                 offset = cursor // child_size * 8
                 part = self._levels[child_size][offset:offset + 8]
                 cursor += child_size
@@ -115,9 +125,10 @@ class Buckets:
         """Return representative timestamps and values for a sample-index range.
 
         The range is [start_index, stop_index): stop_index is exclusive. Pick
-        the smallest stored bucket size that meets the requested group budget,
-        or size 8192 when none is large enough. Include an unfinished tail and
-        merge adjacent buckets further if needed to stay within max_buckets.
+        the smallest display bucket size that meets the requested group budget,
+        or the largest size when none is large enough. Build display buckets
+        from aligned stored children and include the unfinished tail. Distribute
+        any further merges across the groups to stay within max_buckets.
         Budgets below one are treated as one.
 
         Each output group contributes up to four distinct first/last/min/max
@@ -133,21 +144,27 @@ class Buckets:
         max_buckets = max(1, max_buckets)
         samples_per_bucket = (stop_index - start_index) / max_buckets
         size = next((s for s in BUCKET_SIZES if s >= samples_per_bucket), BUCKET_SIZES[-1])
-        # Include whole buckets touching the range, even at its boundaries.
+        # Include whole display buckets touching the range, even at its boundaries.
         first_bucket = start_index // size
         stop_bucket = min((stop_index + size - 1) // size, math.ceil(self._count / size))
         if stop_bucket <= first_bucket:
             return np.empty(0), np.empty(0)
-        # Boundary buckets or the size-8192 limit can still exceed the budget.
-        group_size = max(1, math.ceil((stop_bucket - first_bucket) / max_buckets))
-        data = self._levels[size]
+        # A divisible stored size covers each display bucket exactly.
+        stored_size = max(s for s in self._levels if size % s == 0)
+        children_per_bucket = size // stored_size
+        first_child = first_bucket * children_per_bucket
+        stop_child = min(stop_bucket * children_per_bucket, math.ceil(self._count / stored_size))
+        data = self._levels[stored_size]
         completed = len(data) // 8
-        summaries = np.frombuffer(data, dtype=np.float64).reshape(-1, 8)[first_bucket:stop_bucket]
-        if stop_bucket > completed:
-            summaries = np.vstack((summaries, self._tail(size)))
-        if group_size > 1:
-            starts = np.arange(0, len(summaries), group_size)
-            ends = np.minimum(starts + group_size, len(summaries)) - 1
+        summaries = np.frombuffer(data, dtype=np.float64).reshape(-1, 8)[first_child:stop_child]
+        if stop_child > completed:
+            summaries = np.vstack((summaries, self._tail(stored_size)))
+        bucket_count = stop_bucket - first_bucket
+        if children_per_bucket > 1 or bucket_count > max_buckets:
+            group_count = min(bucket_count, max_buckets)
+            # One extra boundary bucket merges locally, rather than doubling all groups.
+            starts = (np.arange(group_count) * bucket_count // group_count) * children_per_bucket
+            ends = np.r_[starts[1:], len(summaries)] - 1
             lengths = ends - starts + 1
             minima = np.fmin.reduceat(summaries[:, 5], starts)
             maxima = np.fmax.reduceat(summaries[:, 7], starts)

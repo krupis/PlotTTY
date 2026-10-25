@@ -514,6 +514,7 @@ class PlotWidget(QWidget):
         self.setObjectName("LivePlot")
         self.setMinimumSize(320, 220)
         self._time_window = time_window
+        self.raw_point_limits = {"lines": 32_000, "digital": 16_000, "dots": 2_000}
         self._last_time_range = (0.0, time_window)
         self._series: dict[str, Plotter] = {}
         self._series_colors: dict[str, str] = {}
@@ -697,8 +698,8 @@ class PlotWidget(QWidget):
         if curve is not None:
             previous_style = curve.style
             curve.style = style
-            if "digital" in (previous_style, style):
-                self._read_curve_data(label, *self._time_range())
+            if self.raw_point_limits[previous_style] != self.raw_point_limits[style]:
+                self._update_visible_curve_data()
             else:
                 curve.set_data(curve.xData, curve.yData)
             self.graph.mode_buttons[label].set_mode(style)
@@ -767,6 +768,10 @@ class PlotWidget(QWidget):
     def _time_range(self) -> tuple[float, float]:
         return self._last_time_range
 
+    def set_raw_point_limit(self, style: str, limit: int) -> None:
+        self.raw_point_limits[style] = max(1, limit)
+        self._has_pending_refresh = True
+
     def _update_visible_curve_data(self, start_time: float | None = None, end_time: float | None = None) -> None:
         if start_time is None or end_time is None:
             start_time, end_time = self._time_range()
@@ -789,7 +794,7 @@ class PlotWidget(QWidget):
         curve = self._curves[label]
         visible_samples, x_values, y_values = self._series[label].read_visible_samples(
             start_time, end_time, self._bucket_count_for_series(label),
-            include_neighbors=curve.style == "digital",
+            raw_point_limit=self.raw_point_limits[curve.style],
         )
         curve.set_data(*_prepare_plot_arrays(x_values, y_values))
         return visible_samples
