@@ -37,6 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install Linux Qt runtime libraries
+        if: matrix.package == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libegl1 libopengl0
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
