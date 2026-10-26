@@ -2,6 +2,7 @@
 import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 import unittest
+from qt_cleanup import delete_qt_object
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor
 from PySide6.QtTest import QSignalSpy, QTest
@@ -15,6 +16,7 @@ APP = QApplication.instance() or QApplication([])
 class ConsoleThroughputTest(unittest.TestCase):
     def setUp(self):
         self.panel = QWidget()
+        self.addCleanup(delete_qt_object, self.panel)
         layout = QVBoxLayout(self.panel)
         self.editor = QPlainTextEdit()
         layout.addWidget(self.editor)

@@ -4,6 +4,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from threading import Event
 from types import SimpleNamespace
 import unittest
+from qt_cleanup import delete_qt_object
 from unittest.mock import Mock, patch
 
 from PySide6.QtTest import QTest
@@ -18,6 +19,7 @@ APP = QApplication.instance() or QApplication([])
 class RttTargetSearchTest(unittest.TestCase):
     def setUp(self):
         self.widget = RttSettingsWidget()
+        self.addCleanup(delete_qt_object, self.widget)
         self.addCleanup(self.widget.close)
 
     def test_background_catalog_preserves_draft_filters_and_caches_without_opening_probe(self):

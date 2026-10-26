@@ -3,6 +3,7 @@ import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 import unittest
+from qt_cleanup import delete_qt_object
 from unittest.mock import patch
 
 from PySide6.QtCore import QEvent, QObject, QPointF, QRect, Qt
@@ -30,6 +31,7 @@ class VisibilityEvents(QObject):
 class PlotHoverTest(unittest.TestCase):
     def setUp(self):
         self.widget = PlotWidget()
+        self.addCleanup(delete_qt_object, self.widget)
         self.widget._timer.stop()
         self.widget.resize(800, 600)
         self.addCleanup(self.widget.close)

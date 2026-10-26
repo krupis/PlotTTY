@@ -2,6 +2,7 @@
 import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 import unittest
+from qt_cleanup import delete_qt_object
 from time import sleep
 from unittest.mock import patch
 from PySide6.QtCore import QObject, QThread, Signal
@@ -63,6 +64,7 @@ class FakeSerial(QObject):
 class SerialAcquisitionTest(unittest.TestCase):
     def test_reads_during_gui_pause_and_disconnect_drains_before_teardown(self):
         session = ConnectionSession()
+        self.addCleanup(delete_qt_object, session)
         session.settings.transport = SerialSettings(port='FAKE')
         session.settings.log_to_file = False
         session.set_rules([ExtractionRule('Named', 'named_values')])

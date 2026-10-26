@@ -3,11 +3,13 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from collections import deque
+import gc
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Thread
 from types import SimpleNamespace
 import unittest
+from qt_cleanup import delete_qt_object
 from unittest.mock import patch
 
 from PySide6.QtTest import QTest
@@ -66,6 +68,9 @@ class FakeJLink:
 
 
 class TransportTest(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(patch("modules.widgets.rtt_settings_widget.RttSettingsWidget._load_targets"))
+
     def test_worker_events_are_queued_to_owner_thread_in_order(self):
         deliveries = []
         transport = SerialTransport(
@@ -77,6 +82,8 @@ class TransportTest(unittest.TestCase):
         self.addCleanup(transport.close)
 
         def worker():
+            # Worker allocations can trigger GC; earlier tests must leave no live Qt garbage.
+            gc.collect()
             transport.bytesReceived.emit(transport, b"first", 123.0)
             transport.bytesReceived.emit(transport, b"second", 124.0)
             transport.errorReceived.emit(transport, "probe error")
@@ -100,6 +107,7 @@ class TransportTest(unittest.TestCase):
         ))
         with patch("modules.widgets.serial_settings_widget.QSerialPortInfo.availablePorts", return_value=[]) as enumerate_ports:
             dialog = ConnectionSettingsDialog(settings)
+            self.addCleanup(delete_qt_object, dialog)
             self.addCleanup(dialog.close)
             self.assertFalse(enumerate_ports.called)
             dialog.show()
@@ -126,6 +134,7 @@ class TransportTest(unittest.TestCase):
 
     def test_session_selects_backend(self):
         session = ConnectionSession()
+        self.addCleanup(delete_qt_object, session)
         self.addCleanup(session.disconnect_device)
         for settings, backend in ((SerialSettings(), SerialTransport), (RttSettings(), RttTransport)):
             session.settings = ConnectionSettings(transport=settings, log_to_file=False)
@@ -142,6 +151,7 @@ class TransportTest(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         with patch.dict("sys.modules", {"pylink": pylink}):
             session = ConnectionSession()
+            self.addCleanup(delete_qt_object, session)
             self.addCleanup(session.disconnect_device)
             session.settings = ConnectionSettings(transport=RttSettings(target="test-device",
                                                   probe_serial="123", interface="JTAG",
@@ -201,6 +211,7 @@ class TransportTest(unittest.TestCase):
                 pylink = SimpleNamespace(JLink=lambda: probe,
                     enums=SimpleNamespace(JLinkInterfaces=SimpleNamespace(SWD=1, JTAG=2)))
                 session = ConnectionSession()
+                self.addCleanup(delete_qt_object, session)
                 self.addCleanup(session.disconnect_device)
                 session.settings = ConnectionSettings(transport=RttSettings(target="test-device"), log_to_file=False)
                 errors, connected = [], []
@@ -260,6 +271,7 @@ class TransportTest(unittest.TestCase):
             pass
         with patch.dict(TRANSPORT_TYPES, {OtherSettings: OtherTransport}):
             session = ConnectionSession()
+            self.addCleanup(delete_qt_object, session)
             self.addCleanup(session.disconnect_device)
             session.settings = ConnectionSettings(transport=OtherSettings(), log_to_file=False)
             status, received, errors = [], [], []

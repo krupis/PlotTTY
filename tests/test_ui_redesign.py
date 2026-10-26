@@ -5,6 +5,7 @@ import tempfile
 import json
 from threading import Event
 import unittest
+from qt_cleanup import delete_qt_object
 from pathlib import Path
 from unittest.mock import patch
 
@@ -49,6 +50,8 @@ class FakeTransport(Transport):
 
 class WorkspaceTest(unittest.TestCase):
     def setUp(self):
+        # Catalog behavior is covered separately; UI tests must not query J-Link.
+        self.enterContext(patch("modules.widgets.rtt_settings_widget.RttSettingsWidget._load_targets"))
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.settings = QSettings(str(Path(self.temp.name) / "layout.ini"), QSettings.Format.IniFormat)
@@ -56,6 +59,7 @@ class WorkspaceTest(unittest.TestCase):
         self.patch.start()
         self.addCleanup(self.patch.stop)
         self.window = MainWindow()
+        self.addCleanup(delete_qt_object, self.window)
         self.window.resize(1280, 720)
         self.window.show()
         APP.processEvents()
@@ -932,6 +936,7 @@ class WorkspaceTest(unittest.TestCase):
         w.ui.actionSidebar.setChecked(False)
         w.close()
         next_window = MainWindow()
+        self.addCleanup(delete_qt_object, next_window)
         next_window.show()
         APP.processEvents()
         self.assertTrue(next_window.ui.actionConsole.isChecked())

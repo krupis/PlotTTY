@@ -1,6 +1,7 @@
 from pathlib import Path
 import tempfile
 import unittest
+from qt_cleanup import delete_qt_object
 from unittest.mock import patch
 
 from PySide6.QtCore import QCoreApplication
@@ -20,6 +21,7 @@ class BinaryRecordingTest(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.session = ConnectionSession()
+        self.addCleanup(delete_qt_object, self.session)
         self.session._receive_rate_timer.stop()
         self.session._log_flush_timer.stop()
         self.session.settings.log_to_file = True

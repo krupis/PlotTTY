@@ -3,6 +3,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
+from qt_cleanup import delete_qt_object
 import gc
 
 import numpy as np
@@ -165,6 +166,7 @@ class PlotStylesTest(unittest.TestCase):
 
     def setUp(self):
         self.plot = PlotWidget()
+        self.addCleanup(delete_qt_object, self.plot)
         self.addCleanup(self.plot.close)
         self.plot._timer.stop()
         self.plot.resize(800, 500)
