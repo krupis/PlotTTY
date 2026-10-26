@@ -194,6 +194,11 @@ ZIPs; Linux releases are tar.gz archives. Each archive has a SHA-256 checksum.
 Recipients do not need Python installed. Keep the extracted application and its
 supporting files together.
 
+`PlotTTY.spec` collects dependency license texts into `licenses/` inside the
+support directory. Its `BUILD_INFO.txt` records installed versions and matching
+Qt/PySide6/Shiboken source archive links. This runs automatically for local and
+CI builds; there is no separate preparation command.
+
 Push a version tag matching `[project].version` in `pyproject.toml` to build and
 publish a GitHub release. For example, for version 1.0.0:
 
@@ -273,10 +278,13 @@ Publishing these sources does not constitute a license audit of a packaged
 executable. Distributing bundled dependencies requires preserving their notices
 and meeting their license requirements, including Qt/PySide6's LGPL obligations
 when using that licensing option.
-Inventory the actual shipped libraries, plugins, and Python runtime and include
-their required license texts and notices. Under the LGPL route, also provide
-compliant access to corresponding library source and a working way to replace
-or relink the libraries and run the modified application. See
+The build collects Python and installed Python-package license texts, adds the
+Qt LGPLv3/GPLv3 texts, and records matching library source links. Library
+replacement instructions are in `THIRD_PARTY_NOTICES.txt`. Keep the linked
+sources available for recipients while distributing the binaries.
+
+Before publishing, review the actual bundled Qt plugins and their embedded
+third-party notices. Python wheel metadata does not contain all of Qt's
+third-party attributions, and unused plugins may have different license terms.
+The collection step does not resolve that remaining review. See
 [Qt's LGPL guidance](https://www.qt.io/development/open-source-lgpl-obligations).
-Verify these requirements against the actual PyInstaller package; this README
-alone does not fulfill them.

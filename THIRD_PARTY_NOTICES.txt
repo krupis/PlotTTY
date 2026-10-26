@@ -11,26 +11,35 @@ Runtime dependencies are listed in requirements.txt:
   NumPy: https://github.com/numpy/numpy
   PyLink: https://github.com/square/pylink
 
+Qt, PySide6 and Shiboken are copyright The Qt Company Ltd. and other
+contributors. PlotTTY uses their open-source distributions. The Qt libraries
+used by the application and the Python bindings are available under LGPLv3;
+additional Qt plugins may have different terms, including GPLv3.
+See licenses/Qt.txt for the LGPLv3 and GPLv3 texts.
+
 The packaged Python runtime and bundled components retain their own notices.
 PyInstaller's bootloader license is described in its distribution:
 https://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt
 
-The release workflow does not generate VERSIONS.json, a consolidated licenses/
-directory, or a corresponding-library-source ZIP. Before distributing a build,
-inventory the bundled components and include their required license texts,
-notices, and matching source distribution as applicable. See README.md.
+The licenses/ directory contains the Python license and license/notice files
+provided by the installed Python packages, including NumPy's bundled-library
+notices. BUILD_INFO.txt in that directory records the actual build versions
+and source download links. In Windows/Linux packages this directory is under
+app/; in macOS bundles it is under Contents/Resources/.
+
+Matching Qt, PySide6 and Shiboken sources can be downloaded without charge
+from the version-specific archive links in licenses/BUILD_INFO.txt. PySide6
+and Shiboken share the pyside-setup source archive. These upstream archives
+include their build instructions. No source download is needed to run PlotTTY.
 
 Corresponding source and library replacement
-
-When providing a corresponding-source archive alongside the application,
-include the matching Qt/PySide/Shiboken sources, their upstream build
-instructions, and PlotTTY's source and build recipe. Sources do not need to
-be extracted to run PlotTTY.
 
 You may modify or replace the LGPL libraries and reverse-engineer the application
 to debug those modifications. Replace DLLs/extensions in their existing locations under app/
 with builds compatible with the application's platform, Python and Qt versions.
-No signature check prevents running with modified libraries. For changes needing
+On macOS, replace libraries inside the app bundle; after modification, remove
+or recreate the bundle's ad-hoc signature as needed (codesign --force --deep
+--sign - PlotTTY.app). For changes needing
 a rebuild, follow README.md in the application source, install the matching
 dependency versions (substituting your rebuilt libraries), and run PyInstaller.
 These instructions do not restrict any rights granted by the dependency licenses.

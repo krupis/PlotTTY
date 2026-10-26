@@ -1,13 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
 import sys
 import tomllib
+import runpy
 from pathlib import Path
 
 
+notices = runpy.run_path('.github/release_notices.py')['prepare_notices'](
+    Path(workpath) / 'licenses'
+)
 datas = [
     ('styles/application.qss', 'styles'),
     ('LICENSE', '.'),
     ('THIRD_PARTY_NOTICES.txt', '.'),
+    (str(notices), 'licenses'),
 ]
 
 windows_icon = 'icons/Plottty.ico' if sys.platform == 'win32' else None
