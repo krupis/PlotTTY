@@ -34,6 +34,14 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+
+# QtGui's hook collects optional plugins even when PlotTTY does not use them.
+# Filter native plugins/libraries here; Analysis.excludes only handles Python modules.
+unused_qt_components = ('qpdf', 'qtpdf', 'qt6pdf', 'qtvirtualkeyboard', 'qt6virtualkeyboard')
+a.binaries = [
+    entry for entry in a.binaries
+    if not any(component in entry[0].lower() for component in unused_qt_components)
+]
 pyz = PYZ(a.pure)
 
 exe = EXE(
