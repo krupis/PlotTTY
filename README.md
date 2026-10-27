@@ -1,16 +1,16 @@
 # PlotTTY
 
-**Serial and J-Link RTT monitoring, plotting, and capture review.**
+**Serial and J-Link RTT monitoring and plotting.**
 
-PlotTTY turns device text output into live plots. Inspect signals, measure averages
-over selected ranges, and save recordings to revisit later.
+PlotTTY displays Serial and J-Link RTT output and plots numeric values in real time.
+
 
 [**Download PlotTTY**](https://github.com/krupis/QT_PlotTTY/releases/latest)
 · [Get started](#get-started) · [Plot controls](#use-the-plots) · [Run from source](#run-from-source)
 
 [![PlotTTY showing extraction rules, three plotted signals, and a selected range with its average](docs/images/plottty-capture.png)](docs/images/plottty-capture.png)
 
-*A recorded serial capture in PlotTTY. Click the image to view it at full size.*
+
 
 | Feature | What you can do |
 | --- | --- |
@@ -19,6 +19,27 @@ over selected ranges, and save recordings to revisit later.
 | Live plots | Switch between Analog, Digital, and Dots; pan, zoom, and follow incoming samples. |
 | Range measurements | Drag across a signal to see its average, time range, and sample count. |
 | Record and review | Save console logs and `.plotty` captures, reopen captures, and export CSV. |
+
+## Data rates and plot capacity
+
+| Item | Details |
+| --- | --- |
+| Serial baud rates | 9,600, 19,200, 38,400, 57,600, 115,200, 230,400, 460,800, and 921,600. Available rates depend on the device and driver. |
+| Measured USB CDC input | About **690–720 kB/s** at **10,000 text records/s**, with five plotted values per record (**50,000 values/s**), console output, and file recording enabled. |
+| Stored points | Synthetic plotting tests covered **1,000,000 points across five series** (200,000 per series). There is no fixed point-count limit; available memory and disk space limit capture size. |
+| Plot refresh | Scheduled every **33 ms**. Actual refresh speed depends on the data, plot mode, window size, and computer. |
+| Large captures | Raw samples are stored in temporary files. Wide views draw fewer points while preserving peaks; zoom in to inspect individual samples. Averages use the original samples. |
+
+The USB measurements are from Windows tests with a physical STM32 device sending
+simulated data, a 1280 × 720 window, and repeated pan/zoom. They are measured rates,
+not a guaranteed maximum. Some console search, scroll, and copy stress tests had
+occasional missing records. The point-count tests used synthetic data separately
+from live acquisition.
+
+USB CDC throughput can exceed the selected baud rate when the device sends USB
+packets directly. For a physical UART using 8N1, 115,200 baud allows at most
+11,520 payload bytes/s; 921,600 baud allows 92,160 bytes/s. The status bar shows
+received **bytes per second**, rather than baud or extracted values per second.
 
 ## Get started
 
