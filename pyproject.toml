@@ -15,6 +15,7 @@ files = [
     "rc_resources.py",
     "ui_form.py",
     "modules/__init__.py",
+    "modules/startup.py",
     "modules/controllers/__init__.py",
     "modules/controllers/capture_job.py",
     "modules/controllers/console_controller.py",

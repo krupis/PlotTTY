@@ -1,5 +1,12 @@
 # This Python file uses the following encoding: utf-8
 import sys
+
+# Show startup feedback before importing the plotting and application modules.
+if __name__ == "__main__":
+    from modules.startup import run
+
+    sys.exit(run())
+
 from dataclasses import replace
 from pathlib import Path
 
@@ -624,14 +631,3 @@ class MainWindow(QMainWindow):
         self.console_controller.close()
         self.plot.clear_values()
         super().closeEvent(event)
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setApplicationName(APP_NAME)
-    app.setApplicationVersion(APP_VERSION)
-    app.setWindowIcon(QIcon(APP_ICON_RESOURCE))
-    apply_application_style(app)
-    widget = MainWindow()
-    widget.show()
-    sys.exit(app.exec())
