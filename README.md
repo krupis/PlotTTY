@@ -6,6 +6,7 @@ PlotTTY displays Serial and J-Link RTT output and plots numeric values in real t
 
 
 [**Download PlotTTY**](https://github.com/krupis/QT_PlotTTY/releases/latest)
+· [Changelog](CHANGELOG.md)
 · [Get started](#get-started) · [Plot controls](#use-the-plots) · [Run from source](#run-from-source)
 
 [![PlotTTY showing extraction rules, three plotted signals, and a selected range with its average](docs/images/plottty-capture.png)](docs/images/plottty-capture.png)
