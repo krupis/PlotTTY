@@ -123,6 +123,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
+
       - name: Download release files
         uses: actions/download-artifact@v5
         with:
@@ -136,6 +138,7 @@ jobs:
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" release/* --clobber
+            gh release edit "$GITHUB_REF_NAME" --notes-file CHANGELOG.md
           else
-            gh release create "$GITHUB_REF_NAME" release/* --verify-tag --generate-notes --title "PlotTTY $GITHUB_REF_NAME"
+            gh release create "$GITHUB_REF_NAME" release/* --verify-tag --notes-file CHANGELOG.md --title "PlotTTY $GITHUB_REF_NAME"
           fi
