@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QFormLayout,
     QLabel,
     QVBoxLayout,
 )
@@ -35,18 +34,16 @@ class ConnectionSettingsDialog(QDialog):
             SerialSettings: SerialSettingsWidget(self),
             RttSettings: RttSettingsWidget(self),
         }
-
-        self.encoding_combo = QComboBox()
-        for encoding in ("utf-8", "ascii", "latin-1", "cp1252"):
-            self.encoding_combo.addItem(encoding)
-
-        self.line_ending_combo = QComboBox()
-        for label, value in (("LF", "\n"), ("CR", "\r"), ("CRLF", "\r\n"), ("None", "")):
-            self.line_ending_combo.addItem(label, value)
-
-        form = QFormLayout()
-        form.addRow("Encoding", self.encoding_combo)
-        form.addRow("Line ending", self.line_ending_combo)
+        for widget in self.transport_widgets.values():
+            widget.encoding_combo = QComboBox(widget)
+            widget.encoding_combo.addItems(("utf-8", "ascii", "latin-1", "cp1252"))
+            widget.line_ending_combo = QComboBox(widget)
+            widget.line_ending_combo.addItem("LF", "\n")
+            widget.line_ending_combo.addItem("CR", "\r")
+            widget.line_ending_combo.addItem("CRLF", "\r\n")
+            widget.line_ending_combo.addItem("None", "")
+            widget.layout().addRow("Encoding", widget.encoding_combo)
+            widget.layout().addRow("Line ending", widget.line_ending_combo)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         self.buttons.button(QDialogButtonBox.StandardButton.Save).setText("Save settings")
@@ -61,7 +58,6 @@ class ConnectionSettingsDialog(QDialog):
         layout.addWidget(heading)
         for widget in self.transport_widgets.values():
             layout.addWidget(widget)
-        layout.addLayout(form)
         layout.addWidget(self.buttons)
 
         self.set_settings(settings)
@@ -70,8 +66,8 @@ class ConnectionSettingsDialog(QDialog):
         return replace(
             self._settings,
             transport=self.transport_widget.selected_settings(),
-            encoding=self.encoding_combo.currentText().strip() or "utf-8",
-            line_ending=str(self.line_ending_combo.currentData() or ""),
+            encoding=self.transport_widget.encoding_combo.currentText(),
+            line_ending=self.transport_widget.line_ending_combo.currentData(),
         )
 
     def set_settings(self, settings: ConnectionSettings) -> None:
@@ -80,8 +76,9 @@ class ConnectionSettingsDialog(QDialog):
         self.transport_widget.set_settings(settings.transport)
         for widget in self.transport_widgets.values():
             widget.setVisible(widget is self.transport_widget)
-        self.encoding_combo.setCurrentText(settings.encoding)
-        self.line_ending_combo.setCurrentIndex(self.line_ending_combo.findData(settings.line_ending))
+        self.transport_widget.encoding_combo.setCurrentText(settings.encoding)
+        self.transport_widget.line_ending_combo.setCurrentIndex(
+            self.transport_widget.line_ending_combo.findData(settings.line_ending))
 
     def show_below(self, anchor):
         self._anchor = anchor
