@@ -1,12 +1,37 @@
 # PlotTTY
 
-PlotTTY displays Serial and J-Link RTT output, plots numeric values in real time,
-measures averages over selected ranges, and records captures for later review.
+**Serial and J-Link RTT monitoring, plotting, and capture review.**
+
+PlotTTY turns device text output into live plots. Inspect signals, measure averages
+over selected ranges, and save recordings to revisit later.
+
+[**Download PlotTTY**](https://github.com/krupis/QT_PlotTTY/releases/latest)
+· [Get started](#get-started) · [Plot controls](#use-the-plots) · [Run from source](#run-from-source)
+
+[![PlotTTY showing extraction rules, three plotted signals, and a selected range with its average](docs/images/plottty-capture.png)](docs/images/plottty-capture.png)
+
+*A recorded serial capture in PlotTTY. Click the image to view it at full size.*
+
+| Feature | What you can do |
+| --- | --- |
+| Serial and J-Link RTT | Read device output and inspect incoming text in the console. |
+| Flexible extraction | Generate rules from sample output, or use named values, delimited fields, first-number matching, and regex. |
+| Live plots | Switch between Analog, Digital, and Dots; pan, zoom, and follow incoming samples. |
+| Range measurements | Drag across a signal to see its average, time range, and sample count. |
+| Record and review | Save console logs and `.plotty` captures, reopen captures, and export CSV. |
 
 ## Get started
 
-Extract the release and launch PlotTTY. Python is not required. On Windows,
-run `PlotTTY.exe` and keep the `app/` folder and supporting files beside it.
+Download the archive for your platform from the
+[latest release](https://github.com/krupis/QT_PlotTTY/releases/latest) and extract it
+before launching. Packaged releases include Python and the application dependencies.
+
+| Platform | Package | Launch |
+| --- | --- | --- |
+| Windows x64 | `windows-x64.zip` | Run `PlotTTY.exe`; keep the `app/` folder and supporting files beside it. |
+| macOS Apple silicon | `macos-arm64.zip` | Open `PlotTTY.app`. |
+| macOS Intel | `macos-x64.zip` | Open `PlotTTY.app`. |
+| Linux x64 | `linux-x64.tar.gz` | Run `./PlotTTY` from the extracted folder. |
 
 1. Choose **Serial** or **J-Link RTT** in the connection bar.
 2. Open **Settings**, configure your connection, then choose **Save settings**.
