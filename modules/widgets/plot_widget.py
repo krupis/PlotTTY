@@ -10,7 +10,7 @@ import math
 import numpy as np
 
 from PySide6.QtCore import QByteArray, QDataStream, QEvent, QIODevice, QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QColor, QGuiApplication, QIcon, QMouseEvent, QPainter, QPainterPath, QPen, QPolygonF, QTransform, QWheelEvent
+from PySide6.QtGui import QColor, QGuiApplication, QIcon, QKeySequence, QMouseEvent, QPainter, QPainterPath, QPen, QPolygonF, QShortcut, QTransform, QWheelEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
 from ..core.extraction import CapturedValue, clean_label
@@ -65,6 +65,9 @@ class _PlotCanvas(QWidget):
 
     timeRangeChanged = Signal(float, float)
     styleRequested = Signal(str, str)
+    selectionStarted = Signal()
+    rangeSelected = Signal(str, float, float)
+    selectionCancelled = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -95,6 +98,11 @@ class _PlotCanvas(QWidget):
         self._drag_range = self._time_range
         self._drag_label: str | None = None
         self._drag_y_range = (-1.0, 1.0)
+        self._selection: tuple[str, float, float] | None = None
+        self._selection_anchor: float | None = None
+        self.selection_text = ""
+        QShortcut(QKeySequence(Qt.Key.Key_Escape), self,
+                  context=Qt.ShortcutContext.WidgetShortcut, activated=self.selectionCancelled.emit)
 
     def set_curves(self, curves: dict[str, _CurveData], series_info) -> None:
         self._curves = curves
@@ -208,6 +216,26 @@ class _PlotCanvas(QWidget):
             panel, plot = self.panel_geometry(row)
             if panel.intersects(QRectF(_event.rect())):
                 self._draw_panel(painter, panel, plot, label, self._curves[label])
+                if self._selection is not None and self._selection[0] == label:
+                    self._draw_selection(painter, plot)
+
+    def _draw_selection(self, painter: QPainter, plot: QRectF) -> None:
+        _, left, right = self._selection
+        start, end = self._time_range
+        x1 = plot.left() + (left - start) / (end - start) * plot.width()
+        x2 = plot.left() + (right - start) / (end - start) * plot.width()
+        painter.save()
+        painter.setClipRect(plot)
+        painter.fillRect(QRectF(x1, plot.top(), x2 - x1, plot.height()), QColor(65, 204, 195, 45))
+        painter.setPen(QPen(QColor("#41ccc3"), 1))
+        for x in (x1, x2):
+            painter.drawLine(QPointF(x, plot.top()), QPointF(x, plot.bottom()))
+        painter.setPen(PLOT_TEXT)
+        painter.setBackground(PLOT_SURFACE)
+        painter.setBackgroundMode(Qt.BGMode.OpaqueMode)
+        painter.drawText(plot.adjusted(8, 6, -8, -6),
+                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, self.selection_text)
+        painter.restore()
 
     def _draw_panel(self, painter: QPainter, panel: QRectF, plot: QRectF, label: str, curve: _CurveData) -> None:
         if plot.width() <= 1 or plot.height() <= 1:
@@ -344,14 +372,47 @@ class _PlotCanvas(QWidget):
         self._drag_position = None
         self._drag_label = None
 
+    def clear_selection(self) -> None:
+        self._selection = None
+        self._selection_anchor = None
+        self.selection_text = ""
+        self.unsetCursor()
+        self.update()
+
+    def _selection_time_at(self, position: QPointF) -> float:
+        start, end = self._time_range
+        fraction = min(1., max(0., (position.x() - PLOT_LEFT_MARGIN) / self.plot_width()))
+        return start + fraction * (end - start)
+
+    def _extend_selection(self, position: QPointF) -> None:
+        time = self._selection_time_at(position)
+        self._selection = (self._selection[0], min(self._selection_anchor, time),
+                           max(self._selection_anchor, time))
+        self.update()
+
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton):
+            selected = self._panel_at(event.position())
+            if (event.button() == Qt.MouseButton.LeftButton
+                    and not event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+                    and selected is not None and selected[2].contains(event.position())):
+                self.setFocus(Qt.FocusReason.MouseFocusReason)
+                self._clear_hover()
+                self.setCursor(Qt.CursorShape.CrossCursor)
+                self._selection_anchor = self._selection_time_at(event.position())
+                self._selection = (selected[0], self._selection_anchor, self._selection_anchor)
+                self.selectionStarted.emit()
+                self.update()
+                event.accept()
+                return
             self.begin_drag(event.position(), adjust_y=True)
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if self._drag_position is not None:
+        if self._selection_anchor is not None:
+            self._extend_selection(event.position())
+        elif self._drag_position is not None:
             self.drag_to(event.position())
         else:
             self._hover_position = event.position()
@@ -387,7 +448,8 @@ class _PlotCanvas(QWidget):
             self._clear_hover()
             return
         label, x, y, _plot = coordinates
-        text = f"<b>{escape(label)}</b><br>X: {x:.6f} s<br>Y: {y:.8g}"
+        text = (f"<b>{escape(label)}</b><br>X: {x:.6f} s<br>Y: {y:.8g}"
+                "<br><small>Drag to average<br>Shift-drag to pan</small>")
         if text != self._hover_text:
             self._hover_text = text
             self._hover_tip.setText(text)
@@ -423,11 +485,25 @@ class _PlotCanvas(QWidget):
 
     def hideEvent(self, event):
         self._clear_hover()
+        if self._selection_anchor is not None:
+            self.clear_selection()
+            self.selectionCancelled.emit()
+        self.end_drag()
         super().hideEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.end_drag()
+        if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton):
+            if event.button() == Qt.MouseButton.LeftButton and self._selection_anchor is not None:
+                self._extend_selection(event.position())
+                self._selection_anchor = None
+                label, start, end = self._selection
+                if (end - start) / (self._time_range[1] - self._time_range[0]) * self.plot_width() >= 3:
+                    self.rangeSelected.emit(label, start, end)
+                else:
+                    self.clear_selection()
+                    self.selectionCancelled.emit()
+            else:
+                self.end_drag()
             self.unsetCursor()
             event.accept()
 
@@ -525,6 +601,9 @@ class PlotWidget(QWidget):
         self.graph = _PlotCanvas()
         self.graph.timeRangeChanged.connect(self.on_time_range_changed)
         self.graph.styleRequested.connect(self.set_series_style)
+        self.graph.selectionStarted.connect(self._on_selection_started)
+        self.graph.rangeSelected.connect(self._calculate_average)
+        self.graph.selectionCancelled.connect(self.clear_selection)
         self.visible_points_label = QLabel("Points: 0")
         self.visible_points_label.setToolTip("Maximum number of data points currently visible in any shown series.")
         self.downsample_ratio_label = QLabel("Downsample: 1:1")
@@ -588,6 +667,65 @@ class PlotWidget(QWidget):
         self._timer.setInterval(PLOT_REFRESH_INTERVAL_MS)
         self._timer.timeout.connect(self.on_refresh_pending_data)
         self._timer.start()
+        self._average_job = None
+        self._average_timer = QTimer(self)
+        self._average_timer.setInterval(5)
+        self._average_timer.timeout.connect(self._advance_average)
+
+    def clear_selection(self) -> None:
+        self._cancel_average()
+        self.graph.clear_selection()
+
+    def _cancel_average(self) -> None:
+        self._average_timer.stop()
+        self._average_job = None
+
+    def _on_selection_started(self) -> None:
+        self._cancel_average()
+        self.auto_scroll_button.setChecked(False)
+        self.fit_capture_button.setChecked(False)
+        self.graph.selection_text = "Release to calculate the average"
+
+    def _calculate_average(self, label: str, start: float, end: float) -> None:
+        self._cancel_average()
+        prefix = f"{label} · {start:.6g}–{end:.6g} s"
+        self.graph.selection_text = f"{prefix}\nCalculating average…"
+        try:
+            chunks = self._series[label].iter_range_values(start, end)
+        except (OSError, ValueError) as exc:
+            self.graph.selection_text = f"Average unavailable: {exc}"
+            return
+        self._average_job = self._average_steps(chunks, prefix)
+        self._average_timer.start()
+
+    def _advance_average(self) -> None:
+        if self._average_job is not None:
+            try:
+                next(self._average_job)
+            except StopIteration:
+                self._cancel_average()
+
+    def _average_steps(self, chunks, prefix):
+        count = skipped = 0
+        total = 0.0
+        try:
+            for values in chunks:
+                finite = values[np.isfinite(values)]
+                count += len(finite)
+                skipped += len(values) - len(finite)
+                total += float(np.sum(finite))
+                yield  # Return to Qt after each bounded read.
+            if count:
+                noun = "sample" if count == 1 else "samples"
+                result = f"Average: {total / count:.8g} · {count:,} {noun}"
+            else:
+                result = "No finite samples in this range"
+            if skipped:
+                result += f" · {skipped:,} non-finite skipped"
+        except (OSError, ValueError) as exc:
+            result = f"Average unavailable: {exc}"
+        self.graph.selection_text = f"{prefix}\n{result}"
+        self.graph.update()
 
     @Slot(list)
     def append_values(self, values: Iterable[CapturedValue]) -> None:
@@ -605,6 +743,7 @@ class PlotWidget(QWidget):
             self._rebuild_plots()
 
     def clear_values(self) -> None:
+        self.clear_selection()
         for series in self._series.values():
             series.close()
         self._series.clear()
@@ -749,6 +888,7 @@ class PlotWidget(QWidget):
         self._has_pending_refresh = True
 
     def _rebuild_plots(self) -> None:
+        self.clear_selection()
         self._curves = {
             label: _CurveData(self._series_color(label, row), self._series_styles.get(label, "lines"))
             for row, label in enumerate(self._series) if self._series_is_visible(label)
@@ -804,6 +944,7 @@ class PlotWidget(QWidget):
         super().resizeEvent(event)
 
     def closeEvent(self, event) -> None:
+        self.clear_selection()
         for series in self._series.values():
             series.close()
         self._series.clear()

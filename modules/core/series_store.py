@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import struct
 import tempfile
+from collections.abc import Iterator
 
 import numpy as np
 
@@ -69,6 +70,23 @@ class SeriesStore:
     def latest_value(self) -> float | None:
         """Exact latest captured value, independent of the viewed range."""
         return self._latest_value
+
+    def iter_range_values(
+        self, start_time: float, end_time: float, chunk_size: int = 65_536,
+    ) -> Iterator[np.ndarray]:
+        """Read exact samples inside inclusive bounds in bounded chunks.
+
+        Snapshot the indexes now so later incoming samples are excluded. Unlike
+        drawing reads, this includes neither neighboring points nor buckets.
+        Consume on the store's owning thread, yielding between chunks as needed.
+        """
+        if chunk_size < 1:
+            raise ValueError("chunk_size must be positive")
+        start, stop = self._sample_indexes_for_range(start_time, end_time)
+        return (
+            self._read_raw_samples_by_index(index, min(index + chunk_size, stop))[1]
+            for index in range(start, stop, chunk_size)
+        )
 
     def latest_timestamp(self) -> float | None:
         return self._latest_timestamp

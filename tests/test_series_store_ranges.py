@@ -95,6 +95,29 @@ class SeriesStoreRangesTest(unittest.TestCase):
     def test_empty_capture(self):
         self.assertEqual(self.read_samples(0, 1, 100), (0, [], []))
 
+    def test_statistics_reads_exact_inclusive_raw_samples_in_chunks(self):
+        times = [0, 0, 1, 2, 2, 4]
+        for i, timestamp in enumerate(times):
+            self.series_store.add_sample(timestamp, i)
+        for start, end in [(0, 0), (2, 2), (0, 2), (1.1, 1.9), (5, 6), (3, 1)]:
+            with self.subTest(start=start, end=end):
+                chunks = list(self.series_store.iter_range_values(start, end, chunk_size=2))
+                self.assertTrue(all(0 < len(chunk) <= 2 for chunk in chunks))
+                actual = [value for chunk in chunks for value in chunk]
+                self.assertEqual(actual, [i for i, t in enumerate(times) if start <= t <= end])
+
+    def test_statistics_snapshot_excludes_samples_added_before_consumption(self):
+        self.series_store.add_sample(1, 10)
+        snapshot = self.series_store.iter_range_values(0, 2, chunk_size=1)
+        self.series_store.add_sample(1, 20)
+        self.series_store.add_sample(2, 30)
+        self.assertEqual([chunk.tolist() for chunk in snapshot], [[10]])
+
+    def test_statistics_empty_store_and_invalid_chunk_size(self):
+        self.assertEqual(list(self.series_store.iter_range_values(0, 1)), [])
+        with self.assertRaises(ValueError):
+            self.series_store.iter_range_values(0, 1, chunk_size=0)
+
     def test_neighbors_span_sparse_gaps_without_changing_visible_count(self):
         for timestamp, value in [(0, 0), (4, 1), (8, 0)]:
             self.series_store.add_sample(timestamp, value)

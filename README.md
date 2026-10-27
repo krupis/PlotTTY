@@ -74,6 +74,14 @@ resources. Create a new transport for each connection.
 Recording filenames use the connection description, timestamp, and a unique ID.
 
 The app starts with no extraction rules: receiving text does not automatically create plots.
+To measure part of a signal, drag across that signal's plot and release.
+The time range, arithmetic mean, and sample count appear on the selected plot.
+This uses the captured samples, including both range endpoints,
+regardless of plot style or downsampling; non-finite values are skipped. Selection
+pauses automatic time navigation while incoming data continues to be captured.
+Press **Escape** or click the plot to dismiss it. Use **Shift + drag** or
+**middle-button drag** to pan; dragging the time axis also pans as before.
+
 The extraction sidebar contains a sample input and an editable rules table.
 Generate rules from a sample or edit the table, then
 choose **Apply rules** to update parsing for future samples. The button is teal
