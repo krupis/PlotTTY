@@ -117,7 +117,14 @@ class MainWindow(QMainWindow):
         self._log_to_file_action = QAction("Log to file", self)
         self._log_to_file_action.setCheckable(True)
         self._log_to_file_action.setChecked(self.session.settings.log_to_file)
-        self._log_to_file_action.setToolTip("Save connection text and extracted plot values to files when connecting.")
+        self._log_to_file_action.setToolTip(
+            "When checked, automatically record each connection until you disconnect.\n"
+            "Console text and sent commands are saved to a .log file.\n"
+            "Extracted plot values are saved to a .plotty capture you can load later.\n"
+            f"Files are saved in: {self.session.log_dir.resolve()}\n"
+            "Choose this option before connecting."
+        )
+        self.ui.menuFile.setToolTipsVisible(True)
         self.ui.menuFile.addAction(self._log_to_file_action)
         self.ui.menuView.addSeparator()
         raw_limits_menu = self.ui.menuView.addMenu("Raw point limits")
