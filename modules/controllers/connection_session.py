@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from pathlib import Path
-from time import monotonic
+from time import monotonic, time
 
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
@@ -30,7 +30,7 @@ TRANSPORT_TYPES = {
 
 class ConnectionSession(QObject):
     connectedChanged = Signal(bool)
-    receivedText = Signal(str)
+    receivedText = Signal(str, float)
     sentText = Signal(str)
     valuesCaptured = Signal(list)
     receiveRateChanged = Signal(float)
@@ -147,6 +147,8 @@ class ConnectionSession(QObject):
             return
         if not data:
             return
+        if received_at is None:
+            received_at = time()
         self._receive_rate_samples.append((monotonic(), len(data)))
         if self.settings.log_to_file:
             try:
@@ -154,9 +156,11 @@ class ConnectionSession(QObject):
             except (OSError, ValueError) as exc:
                 self._handle_log_error(exc)
                 return
-        self.receivedText.emit(data.decode(self._line_decoder.encoding, errors="replace"))
+        text, lines = self._line_decoder.feed(data)
+        if text:
+            self.receivedText.emit(text, received_at)
         captured_values: list[CapturedValue] = []
-        for line in self._line_decoder.feed(data):
+        for line in lines:
             captured_values.extend(self._extraction_engine.extract(line, timestamp=received_at))
 
         if captured_values:

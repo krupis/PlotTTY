@@ -119,6 +119,14 @@ limits** changes the downsampling thresholds for each mode.
 
 ## Console and layout
 
+- **View → Receive timestamps** prefixes new received lines with Unix seconds
+  to millisecond precision, for example `[1793128867.123] 136984,3,3.251200`.
+  The time comes from the host's
+  Serial or RTT read, before GUI processing. Lines in the same read share a time;
+  a line received in chunks keeps its first displayed chunk's time. The switch is
+  off by default, is remembered between launches, and affects future lines only.
+  Extraction uses the original text. Console log files retain their existing
+  timestamped RX/TX format.
 - **Ctrl+F** opens console search. Use **Previous** and **Next** to move through matches.
 - Send a command with **Enter** or **Send**. **Up/Down** recalls sent commands.
 - **View** shows or hides panels. Drag the dividers to resize them.

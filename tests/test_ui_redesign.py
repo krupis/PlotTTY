@@ -528,7 +528,7 @@ class WorkspaceTest(unittest.TestCase):
                     break
                 QTest.qWait(5)
             self.assertEqual(self.window.ui.SearchMatchLabel.text(), expected)
-        self.window.console_controller.append_received("alpha beta alpha")
+        self.window.console_controller.append_received("alpha beta alpha", 100)
         self.window.console_controller.flush()
         self.window.ui.SearchEdit.setText("alpha")
         wait_for_matches("1/2")
@@ -538,7 +538,7 @@ class WorkspaceTest(unittest.TestCase):
         wait_for_matches("1/2")
 
     def test_clear_plot_keeps_console_text(self):
-        self.window.console_controller.append_received("keep this")
+        self.window.console_controller.append_received("keep this", 100)
         self.window.console_controller.flush()
         self.window.plot.append_values([CapturedValue(1, "value", 3.3)])
         self.window.plot.clear_plot_button.click()
@@ -833,7 +833,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertTrue(dialog.apply_rules())
 
     def test_console_full_file_history_and_no_latency_monitor(self):
-        self.window.console_controller.append_received("\n".join(str(i) for i in range(50_100)))
+        self.window.console_controller.append_received("\n".join(str(i) for i in range(50_100)), 100)
         self.window.console_controller.flush()
         editor = self.window.ui.ConsoleTextEdit
         self.assertEqual(self.window.console_controller._history.count, 50_100)

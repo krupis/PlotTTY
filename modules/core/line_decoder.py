@@ -14,13 +14,14 @@ class LineDecoder:
         self._buffer = ""
         self._skip_lf = False
 
-    def feed(self, data: bytes) -> list[str]:
+    def feed(self, data: bytes) -> tuple[str, list[str]]:
+        """Return normalized decoded text and complete lines for extraction."""
         if not data:
-            return []
+            return "", []
 
         text = self._decoder.decode(data)
         if not text:
-            return []
+            return "", []
 
         # A previous chunk's CR already ended a line; consume its matching LF.
         if self._skip_lf and text.startswith("\n"):
@@ -30,4 +31,4 @@ class LineDecoder:
         text = text.replace("\r\n", "\n").replace("\r", "\n")
         lines = (self._buffer + text).split("\n")
         self._buffer = lines.pop()  # Keep the unfinished line for the next chunk.
-        return lines
+        return text, lines

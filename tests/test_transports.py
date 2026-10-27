@@ -162,7 +162,7 @@ class TransportTest(unittest.TestCase):
             session.set_rules([ExtractionRule("value", "named_values")])
             captured, text, errors = [], [], []
             session.valuesCaptured.connect(captured.extend)
-            session.receivedText.connect(text.append)
+            session.receivedText.connect(lambda value, received_at: text.append(value))
             session.errorOccurred.connect(errors.append)
             session.connect_device()
             for _ in range(100):
@@ -276,7 +276,7 @@ class TransportTest(unittest.TestCase):
             session.settings = ConnectionSettings(transport=OtherSettings(), log_to_file=False)
             status, received, errors = [], [], []
             session.consoleText.connect(status.append)
-            session.receivedText.connect(received.append)
+            session.receivedText.connect(lambda value, received_at: received.append(value))
             session.errorOccurred.connect(errors.append)
             session.connect_device()
             self.assertIsInstance(session._connection, OtherTransport)

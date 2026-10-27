@@ -28,7 +28,7 @@ class ConsoleThroughputTest(unittest.TestCase):
         self.addCleanup(self.console_controller.close)
 
     def fill(self, count):
-        self.console_controller.append_received('\n'.join(f'row-{i:05d}' for i in range(count)) + '\n')
+        self.console_controller.append_received('\n'.join(f'row-{i:05d}' for i in range(count)) + '\n', 100)
         self.console_controller.flush()
 
     def search(self, text, *, backwards=False):
@@ -61,7 +61,7 @@ class ConsoleThroughputTest(unittest.TestCase):
         self.fill(6000)
         self.console_controller.scroll_bar.setValue(1000)
         before = self.editor.toPlainText()
-        self.console_controller.append_received('newest\n')
+        self.console_controller.append_received('newest\n', 100)
         self.console_controller.flush()
         self.assertEqual(self.editor.toPlainText(), before)
         self.console_controller.scroll_bar.setValue(self.console_controller.scroll_bar.maximum())
@@ -70,7 +70,7 @@ class ConsoleThroughputTest(unittest.TestCase):
     def test_split_crlf_unicode_and_colors_preserve_plain_text(self):
         self.console_controller.append_status('status: ')
         self.console_controller.append_sent('ready\r')
-        self.console_controller.append_received('\nvoltage 🦊 į: 3.3\n')
+        self.console_controller.append_received('\nvoltage 🦊 į: 3.3\n', 100)
         self.console_controller.flush()
         self.editor.selectAll()
         self.editor.copy()

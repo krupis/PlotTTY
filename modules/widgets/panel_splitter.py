@@ -142,6 +142,13 @@ class PanelHandle(QSplitterHandle):
         cx, cy = self.width()/2, self.height()/2
         vertical = self.orientation() == Qt.Horizontal
         if vertical:
-            painter.drawLine(QPointF(cx, 0), QPointF(cx, self.height()))
+            painter.drawLine(QPointF(cx, 0), QPointF(cx, cy - 10))
+            painter.drawLine(QPointF(cx, cy + 10), QPointF(cx, self.height()))
         else:
-            painter.drawLine(QPointF(0, cy), QPointF(self.width(), cy))
+            painter.drawLine(QPointF(0, cy), QPointF(cx - 10, cy))
+            painter.drawLine(QPointF(cx + 10, cy), QPointF(self.width(), cy))
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor('#6edbd3' if active else '#a5b2ba'))
+        for offset in (-5, 0, 5):
+            center = QPointF(cx, cy + offset) if vertical else QPointF(cx + offset, cy)
+            painter.drawEllipse(center, 1.25, 1.25)

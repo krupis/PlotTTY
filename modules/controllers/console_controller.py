@@ -22,6 +22,8 @@ class ConsoleController(QObject):
         self._editor = editor
         self._history = ConsoleHistory()
         self._dirty = False
+        self.show_receive_timestamps = False
+        self._at_line_start = True
         self._window_first = 0
         self._rendering = False
         self._job = self._request = None
@@ -109,6 +111,7 @@ class ConsoleController(QObject):
         self._query = ""
         self._dirty = False
         self._history.clear()
+        self._at_line_start = True
         self._update_scrollbar(0)
         self._render()
         self.searchFinished.emit(0, 0)
@@ -158,9 +161,23 @@ class ConsoleController(QObject):
             self.searchFinished.emit(job.match[3] if job.match else 0, job.total)
         job.deleteLater()
 
-    @Slot(str)
-    def append_received(self, text: str) -> None:
+    @Slot(str, float)
+    def append_received(self, text: str, received_at: float) -> None:
+        if not text:
+            return
+        if self.show_receive_timestamps:
+            prefix = f"[{received_at:.3f}] "
+            # Prefix only new lines, including a partial line's first chunk.
+            # Don't leave a timestamp for an empty tail after a line ending.
+            stamped = text.replace("\n", "\n" + prefix)
+            if text.endswith("\n"):
+                stamped = stamped[:-len(prefix)]
+            text = (prefix if self._at_line_start else "") + stamped
         self.append_text(text, RECEIVED_TEXT_COLOR)
+
+    @Slot(bool)
+    def set_receive_timestamps_visible(self, visible: bool) -> None:
+        self.show_receive_timestamps = visible
 
     @Slot(str)
     def append_sent(self, text: str) -> None:
@@ -174,6 +191,7 @@ class ConsoleController(QObject):
         """Store text immediately; the timer batches only display updates."""
         if text:
             self._history.append(text, (color or RECEIVED_TEXT_COLOR).rgb())
+            self._at_line_start = text.endswith(("\n", "\r"))
             self._dirty = True
 
     @Slot()

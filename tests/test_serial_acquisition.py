@@ -69,7 +69,7 @@ class SerialAcquisitionTest(unittest.TestCase):
         session.settings.log_to_file = False
         session.set_rules([ExtractionRule('Named', 'named_values')])
         received, captured = [], []
-        session.receivedText.connect(received.append)
+        session.receivedText.connect(lambda text, received_at: received.append(text))
         session.valuesCaptured.connect(captured.extend)
         with patch('modules.core.serial_transport.QSerialPort', FakeSerial):
             session.connect_device()

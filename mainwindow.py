@@ -126,6 +126,15 @@ class MainWindow(QMainWindow):
         )
         self.ui.menuFile.setToolTipsVisible(True)
         self.ui.menuFile.addAction(self._log_to_file_action)
+        self._receive_timestamps_action = QAction("Receive timestamps", self)
+        self._receive_timestamps_action.setCheckable(True)
+        self._receive_timestamps_action.setToolTip(
+            "Prefix new console lines with the host receive time in Unix seconds, to milliseconds.\n"
+            "Applies to future lines; existing console text is kept."
+        )
+        self._receive_timestamps_action.toggled.connect(self.console_controller.set_receive_timestamps_visible)
+        self.ui.menuView.addAction(self._receive_timestamps_action)
+        self.ui.menuView.setToolTipsVisible(True)
         self.ui.menuView.addSeparator()
         raw_limits_menu = self.ui.menuView.addMenu("Raw point limits")
         self._raw_point_limit_actions = {}
@@ -292,6 +301,7 @@ class MainWindow(QMainWindow):
     def restore_layout(self):
         settings = self._preferences
         try:
+            self._receive_timestamps_action.setChecked(settings.value("receiveTimestamps", False, type=bool))
             for style, default in self.plot.raw_point_limits.items():
                 self.plot.set_raw_point_limit(style, settings.value(f"rawPointLimits/{style}", default, type=int))
             geometry = settings.value("geometry")
@@ -625,6 +635,7 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         settings = self._preferences
+        settings.setValue("receiveTimestamps", self._receive_timestamps_action.isChecked())
         for style, limit in self.plot.raw_point_limits.items():
             settings.setValue(f"rawPointLimits/{style}", limit)
         settings.setValue("geometry", self.saveGeometry())
