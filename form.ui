@@ -37,6 +37,7 @@
             <item>
              <layout class="QHBoxLayout" name="CommandLayout">
               <item><widget class="QLineEdit" name="CommandEdit"><property name="placeholderText"><string>Type command and press Enter</string></property></widget></item>
+              <item><widget class="QComboBox" name="CommandTerminatorCombo"><property name="sizePolicy"><sizepolicy hsizetype="Fixed" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="sizeAdjustPolicy"><enum>QComboBox::AdjustToContents</enum></property><property name="toolTip"><string>Command terminator appended when sending: \n (LF), \r (CR), \r\n (CRLF), or None.</string></property><property name="accessibleName"><string>Command terminator</string></property></widget></item>
               <item><widget class="QPushButton" name="SendButton"><property name="text"><string>Send</string></property></widget></item>
               <item><widget class="QPushButton" name="ClearConsoleButton"><property name="text"><string>Clear</string></property><property name="toolTip"><string>Clear console text</string></property><property name="accessibleName"><string>Clear console</string></property></widget></item>
              </layout>

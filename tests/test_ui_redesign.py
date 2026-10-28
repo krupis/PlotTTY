@@ -349,6 +349,45 @@ class WorkspaceTest(unittest.TestCase):
         window.ui.actionClearCapturedData.trigger()
         self.assertEqual(window.plot.series_info(), [])
 
+    def test_command_terminator_applies_to_send_and_enter_while_connected(self):
+        window = self.window
+        combo = window.ui.CommandTerminatorCombo
+        self.assertTrue(combo.isEnabled())
+        self.assertEqual(combo.currentData(), "\n")
+        window.session.settings.transport.port = "TEST"
+        window._log_to_file_action.setChecked(False)
+        window.ui.actionConsole.setChecked(True)
+        with patch.dict(TRANSPORT_TYPES, {type(window.session.settings.transport): FakeTransport}):
+            window.on_toggle_connection()
+            self.assertTrue(window.session.is_connected)
+            self.assertTrue(combo.isEnabled())
+            for ending in ("\n", "\r", "\r\n", ""):
+                with self.subTest(ending=ending):
+                    combo.setCurrentIndex(combo.findData(ending))
+                    window.ui.CommandEdit.setText("READ")
+                    window.ui.SendButton.click()
+                    window.ui.CommandEdit.setText("STATUS")
+                    QTest.keyClick(window.ui.CommandEdit, Qt.Key.Key_Return)
+                    self.assertEqual(
+                        window.session._connection.commands[-2:],
+                        [("READ" + ending).encode(), ("STATUS" + ending).encode()],
+                    )
+            window.on_toggle_connection()
+
+    def test_command_terminator_is_restored_in_a_new_window(self):
+        window = self.window
+        for ending in ("\r", "\r\n", "", "\n"):
+            with self.subTest(ending=ending):
+                combo = window.ui.CommandTerminatorCombo
+                combo.setCurrentIndex(combo.findData(ending))
+                window.close()
+                window = MainWindow()
+                self.addCleanup(delete_qt_object, window)
+                self.addCleanup(window.close)
+                APP.processEvents()
+                self.assertEqual(window.ui.CommandTerminatorCombo.currentData(), ending)
+                self.assertEqual(window.session.settings.line_ending, ending)
+
     def test_command_history_recall_boundaries_draft_and_resend(self):
         window = self.window
         window.on_connected_changed(True)
@@ -592,9 +631,11 @@ class WorkspaceTest(unittest.TestCase):
         from modules.core.connection_settings import ConnectionSettings
         w = self.window
         w._log_to_file_action.setChecked(False)
+        combo = w.ui.CommandTerminatorCombo
+        combo.setCurrentIndex(combo.findData("\r\n"))
         w._connection_settings.set_settings(ConnectionSettings(
             transport=SerialSettings(port="COM123", baudrate=230400),
-            encoding="latin-1", line_ending="\r\n", log_to_file=False,
+            encoding="latin-1", log_to_file=False,
         ))
         w._connection_settings.accept()
         QTest.keyClick(w.connection_type_combo, Qt.Key.Key_Down)

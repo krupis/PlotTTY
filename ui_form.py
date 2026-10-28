@@ -16,10 +16,10 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMenu, QMenuBar, QPlainTextEdit,
-    QPushButton, QSizePolicy, QSpacerItem, QStatusBar,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
+    QLineEdit, QMainWindow, QMenu, QMenuBar,
+    QPlainTextEdit, QPushButton, QSizePolicy, QSpacerItem,
+    QStatusBar, QVBoxLayout, QWidget)
 
 from modules.widgets.panel_splitter import PanelSplitter
 from modules.widgets.plot_widget import PlotWidget
@@ -132,6 +132,17 @@ class Ui_MainWindow(object):
 
         self.CommandLayout.addWidget(self.CommandEdit)
 
+        self.CommandTerminatorCombo = QComboBox(self.ConsolePanel)
+        self.CommandTerminatorCombo.setObjectName(u"CommandTerminatorCombo")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.CommandTerminatorCombo.sizePolicy().hasHeightForWidth())
+        self.CommandTerminatorCombo.setSizePolicy(sizePolicy)
+        self.CommandTerminatorCombo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+
+        self.CommandLayout.addWidget(self.CommandTerminatorCombo)
+
         self.SendButton = QPushButton(self.ConsolePanel)
         self.SendButton.setObjectName(u"SendButton")
 
@@ -198,6 +209,12 @@ class Ui_MainWindow(object):
         self.SearchPreviousButton.setText(QCoreApplication.translate("MainWindow", u"Previous", None))
         self.SearchNextButton.setText(QCoreApplication.translate("MainWindow", u"Next", None))
         self.CommandEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type command and press Enter", None))
+#if QT_CONFIG(tooltip)
+        self.CommandTerminatorCombo.setToolTip(QCoreApplication.translate("MainWindow", u"Command terminator appended when sending: \\n (LF), \\r (CR), \\r\\n (CRLF), or None.", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.CommandTerminatorCombo.setAccessibleName(QCoreApplication.translate("MainWindow", u"Command terminator", None))
+#endif // QT_CONFIG(accessibility)
         self.SendButton.setText(QCoreApplication.translate("MainWindow", u"Send", None))
         self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear", None))
 #if QT_CONFIG(tooltip)

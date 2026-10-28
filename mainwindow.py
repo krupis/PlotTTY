@@ -104,6 +104,10 @@ class MainWindow(QMainWindow):
         self._command_draft = ""
         self.ui.CommandEdit.installEventFilter(self)
         self.ui.CommandEdit.setToolTip("Up/Down recalls sent commands. Down past the newest restores your draft.")
+        self.ui.CommandTerminatorCombo.addItem("\\n", "\n")
+        self.ui.CommandTerminatorCombo.addItem("\\r", "\r")
+        self.ui.CommandTerminatorCombo.addItem("\\r\\n", "\r\n")
+        self.ui.CommandTerminatorCombo.addItem("None", "")
 
         self.plot = self.ui.Plot
         self.console_controller = ConsoleController(self.ui.ConsoleTextEdit, self)
@@ -301,6 +305,10 @@ class MainWindow(QMainWindow):
     def restore_layout(self):
         settings = self._preferences
         try:
+            terminator = settings.value("commandTerminator", "\n", type=str)
+            index = self.ui.CommandTerminatorCombo.findData(terminator)
+            if index >= 0:
+                self.ui.CommandTerminatorCombo.setCurrentIndex(index)
             self._receive_timestamps_action.setChecked(settings.value("receiveTimestamps", False, type=bool))
             for style, default in self.plot.raw_point_limits.items():
                 self.plot.set_raw_point_limit(style, settings.value(f"rawPointLimits/{style}", default, type=int))
@@ -335,6 +343,7 @@ class MainWindow(QMainWindow):
         self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
         self.ui.CommandEdit.textEdited.connect(self.on_command_edited)
         self.ui.SendButton.clicked.connect(self.on_send_command)
+        self.ui.CommandTerminatorCombo.currentIndexChanged.connect(self.on_command_terminator_changed)
 
         self.ui.SearchEdit.textChanged.connect(self.on_console_search_changed)
         self.ui.SearchEdit.returnPressed.connect(self.on_console_search_next)
@@ -520,10 +529,15 @@ class MainWindow(QMainWindow):
         self.session.settings = replace(
             self._connection_settings.selected_settings(),
             log_to_file=self.session.settings.log_to_file,
+            line_ending=self.session.settings.line_ending,
         )
         index = self.connection_type_combo.currentIndex()
         self.connection_type_combo.setItemData(index, self.session.settings.transport)
         self._update_connection_target()
+
+    @Slot(int)
+    def on_command_terminator_changed(self, index: int) -> None:
+        self.session.settings.line_ending = self.ui.CommandTerminatorCombo.itemData(index)
 
     @Slot()
     def on_toggle_connection(self) -> None:
@@ -635,6 +649,7 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         settings = self._preferences
+        settings.setValue("commandTerminator", self.session.settings.line_ending)
         settings.setValue("receiveTimestamps", self._receive_timestamps_action.isChecked())
         for style, limit in self.plot.raw_point_limits.items():
             settings.setValue(f"rawPointLimits/{style}", limit)
