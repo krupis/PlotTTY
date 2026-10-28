@@ -4,6 +4,8 @@ This application is pre-release. For all changes, do not preserve backwards comp
 
 Prefer the simplest current implementation. Do not add compatibility shims, legacy fallbacks, migration layers, or duplicate implementations solely to support previous behavior or formats.
 
+For readability, never return a function or method call directly, including chained calls. Assign the result to a descriptively named local variable first, then return that variable.
+
 When replacing a workflow, remove its superseded UI, code paths, shims, and tests. Prefer a smaller single implementation over dual-mode compatibility layers.
 
 Prioritize plotting performance and UI responsiveness when designing any change that could meaningfully affect them. Only run performance benchmarks and latency tests for such changes; skip them for simple cosmetic changes such as icons, labels, or styling that have no meaningful performance impact. For changes that could meaningfully affect performance, measure a baseline and test the changed implementation with comparable data, window size, and workload before declaring the work complete. Check both plot refresh/pan/zoom timings and UI event-loop latency under load, including the feature's own interactions where relevant.

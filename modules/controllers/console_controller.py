@@ -167,12 +167,16 @@ class ConsoleController(QObject):
             return
         if self.show_receive_timestamps:
             prefix = f"[{received_at:.3f}] "
-            # Prefix only new lines, including a partial line's first chunk.
-            # Don't leave a timestamp for an empty tail after a line ending.
-            stamped = text.replace("\n", "\n" + prefix)
-            if text.endswith("\n"):
-                stamped = stamped[:-len(prefix)]
-            text = (prefix if self._at_line_start else "") + stamped
+            at_line_start = self._at_line_start
+            stamped_lines = []
+            for line in text.splitlines(keepends=True):
+                # If line starts, prepend the timestamp prefix; otherwise, leave it as-is. This ensures that multi-line messages are stamped correctly.
+                if at_line_start:
+                    stamped_lines.append(prefix + line)
+                else:
+                    stamped_lines.append(line)
+                at_line_start = line.endswith("\n")
+            text = "".join(stamped_lines)
         self.append_text(text, RECEIVED_TEXT_COLOR)
 
     @Slot(bool)

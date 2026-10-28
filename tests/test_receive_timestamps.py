@@ -62,6 +62,17 @@ class ReceiveTimestampTest(unittest.TestCase):
         self.assertEqual(captured[0].value, 3.25)
         self.assertEqual(captured[0].raw_text, "į: 3.25 🦊")
 
+    def test_blank_lines_get_timestamps_but_empty_tail_waits_for_next_chunk(self):
+        self.session.on_receive(None, b"\n\n", 100)
+        self.assertEqual(self.text(), "[100.000] \n[100.000] \n")
+        self.session.on_receive(None, b"hello world\n\npartial", 101)
+        self.session.on_receive(None, b" end\n", 102)
+        self.assertEqual(
+            self.text(),
+            "[100.000] \n[100.000] \n[101.000] hello world\n"
+            "[101.000] \n[101.000] partial end\n",
+        )
+
     def test_prefix_never_changes_extracted_fields_receive_time_or_device_time(self):
         self.session.set_rules([ExtractionRule("First", "first_number")])
         captured = []

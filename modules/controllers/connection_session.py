@@ -156,11 +156,12 @@ class ConnectionSession(QObject):
             except (OSError, ValueError) as exc:
                 self._handle_log_error(exc)
                 return
-        text, lines = self._line_decoder.feed(data)
-        if text:
-            self.receivedText.emit(text, received_at)
+        received_text = self._line_decoder.decode(data)
+        complete_lines = self._line_decoder.split_lines(received_text)
+        if received_text:
+            self.receivedText.emit(received_text, received_at)
         captured_values: list[CapturedValue] = []
-        for line in lines:
+        for line in complete_lines:
             captured_values.extend(self._extraction_engine.extract(line, timestamp=received_at))
 
         if captured_values:
