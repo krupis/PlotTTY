@@ -156,10 +156,15 @@ class ConnectionSession(QObject):
             except (OSError, ValueError) as exc:
                 self._handle_log_error(exc)
                 return
+        # Decode incrementally so characters split across byte chunks stay intact.
         received_text = self._line_decoder.decode(data)
+        # Return only complete lines; the decoder stores the unfinished tail in
+        # its _partial_line buffer and prepends it to the next chunk's text.
         complete_lines = self._line_decoder.split_lines(received_text)
+        # Display decoded text immediately, even before a full line arrives.
         if received_text:
             self.receivedText.emit(received_text, received_at)
+        # Extract plot values only from complete lines, using this chunk's receive time.
         captured_values: list[CapturedValue] = []
         for line in complete_lines:
             captured_values.extend(self._extraction_engine.extract(line, timestamp=received_at))

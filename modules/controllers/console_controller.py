@@ -167,14 +167,17 @@ class ConsoleController(QObject):
             return
         if self.show_receive_timestamps:
             prefix = f"[{received_at:.3f}] "
+            # The previous chunk may have left a line unfinished.
             at_line_start = self._at_line_start
             stamped_lines = []
+            # Preserve newlines so we can track where each new line begins.
             for line in text.splitlines(keepends=True):
-                # If line starts, prepend the timestamp prefix; otherwise, leave it as-is. This ensures that multi-line messages are stamped correctly.
+                # Stamp new lines once; continuations keep their existing timestamp.
                 if at_line_start:
                     stamped_lines.append(prefix + line)
                 else:
                     stamped_lines.append(line)
+                # An unfinished final line continues without a prefix in the next chunk.
                 at_line_start = line.endswith("\n")
             text = "".join(stamped_lines)
         self.append_text(text, RECEIVED_TEXT_COLOR)
