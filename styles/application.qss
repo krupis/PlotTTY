@@ -8,7 +8,7 @@ QLabel#PanelHeading { color: #a6b5bc; font-size: 10pt; font-weight: 400; padding
 QLabel#ConnectionHeading { font-size: 11pt; font-weight: 600; }
 QLabel#CaptureTitle { color: #bac5cb; }
 QLabel#ValidationError { color: #ffadb7; }
-QDialog#ConnectionPopover { border: 1px solid #56636b; background: #20292d; }
+QDialog#ConnectionSettingsDialog { border: 1px solid #56636b; background: #20292d; }
 QPushButton, QToolButton { background: #2b363b; border: 1px solid #56636b;
     border-radius: 5px; padding: 5px 12px; min-height: 22px; }
 QPushButton:hover, QToolButton:hover { background: #3b474c; border-color: #8d9da5; }

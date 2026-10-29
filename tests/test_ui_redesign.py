@@ -1033,7 +1033,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(next_window.plot.series_info(), [])
         next_window.close()
 
-    def test_connection_popover_drafts_and_styled_dropdown(self):
+    def test_connection_dialog_keeps_drafts_on_outside_click_and_supports_cancel_save(self):
         apply_application_style(APP)
         self.addCleanup(lambda: APP.setStyleSheet(""))
         w = self.window
@@ -1046,6 +1046,12 @@ class WorkspaceTest(unittest.TestCase):
         self.assertTrue(dialog.transport_widget.parity_combo.isVisible())
         dialog.transport_widget.baud_combo.setCurrentText("230400")
         dialog.transport_widget.parity_combo.setCurrentIndex(dialog.transport_widget.parity_combo.findData("E"))
+        self.assertEqual(dialog.windowType(), Qt.WindowType.Dialog)
+        QTest.mouseClick(w.centralWidget(), Qt.MouseButton.LeftButton, pos=QPoint(10, 10))
+        APP.processEvents()
+        self.assertTrue(dialog.isVisible())
+        self.assertEqual(dialog.transport_widget.baud_combo.currentText(), "230400")
+        self.assertEqual(w.session.settings.transport.baudrate, 115200)
         QTest.keyClick(dialog, Qt.Key.Key_Escape)
         self.assertFalse(dialog.isVisible())
         self.assertEqual(w.session.settings.transport.baudrate, 115200)

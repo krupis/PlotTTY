@@ -1,5 +1,5 @@
 """TCP client and UDP endpoint connection fields."""
-from PySide6.QtWidgets import QFormLayout, QLabel, QLineEdit, QSpinBox, QWidget
+from PySide6.QtWidgets import QFormLayout, QLineEdit, QSpinBox, QWidget
 
 from ..core.network_transport import TcpSettings, UdpSettings
 
@@ -25,12 +25,6 @@ class NetworkSettingsWidget(QWidget):
             self.remote_port_spin.setRange(1, 65535)
             form.addRow("Destination host", self.remote_host_edit)
             form.addRow("Destination port", self.remote_port_spin)
-        help_text = ("Receives datagrams on the local port. Send newline-terminated text records. "
-                     "UDP delivery and ordering are not guaranteed." if udp else
-                     "Connects to a TCP server. Send newline-terminated text records to plot values.")
-        hint = QLabel(help_text)
-        hint.setWordWrap(True)
-        form.addRow(hint)
         self.setFocusProxy(self.host_edit)
         self.set_settings(settings_type())
 

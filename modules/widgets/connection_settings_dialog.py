@@ -1,10 +1,9 @@
-"""Connection settings popover with an explicit Save boundary."""
+"""Connection settings dialog with an explicit Save boundary."""
 
 from __future__ import annotations
 
 from dataclasses import replace
 
-from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -23,14 +22,13 @@ from .rtt_settings_widget import RttSettingsWidget
 
 
 class ConnectionSettingsDialog(QDialog):
-    """Edit a draft; Escape or clicking outside dismisses it without saving."""
+    """Edit a draft; Save applies it, while Cancel, Escape, or closing discards it."""
 
     def __init__(self, settings: ConnectionSettings, parent=None):
-        super().__init__(parent, Qt.WindowType.Popup)
-        self.setObjectName("ConnectionPopover")
+        super().__init__(parent)
+        self.setObjectName("ConnectionSettingsDialog")
         self.setWindowTitle("Connection settings")
         self.setFixedWidth(390)
-        self._anchor = None
 
         self.transport_widgets = {
             SerialSettings: SerialSettingsWidget(self),
@@ -75,19 +73,4 @@ class ConnectionSettingsDialog(QDialog):
         for widget in self.transport_widgets.values():
             widget.setVisible(widget is self.transport_widget)
         self.transport_widget.encoding_combo.setCurrentText(settings.encoding)
-
-    def show_below(self, anchor):
-        self._anchor = anchor
         self.adjustSize()
-        self._position()
-        self.show()
-        self.transport_widget.setFocus()
-
-    def _position(self):
-        if self._anchor is None:
-            return
-        origin = self._anchor.mapToGlobal(QPoint(0, self._anchor.height() + 4))
-        available = self._anchor.screen().availableGeometry()
-        x = max(available.left(), min(origin.x(), available.right() - self.width() + 1))
-        y = max(available.top(), min(origin.y(), available.bottom() - self.height() + 1))
-        self.move(x, y)

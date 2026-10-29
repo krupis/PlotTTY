@@ -100,7 +100,7 @@ class TransportTest(unittest.TestCase):
             ("error", "probe error", APP.thread()),
         ])
 
-    def test_popover_selects_transport_widget_without_scanning_ports_for_rtt(self):
+    def test_dialog_selects_transport_widget_without_scanning_ports_for_rtt(self):
         settings = ConnectionSettings(transport=RttSettings(
             target="test-device", probe_serial="123", interface="JTAG", speed_khz=2000,
             control_block="0x20001000", up_channel=1, down_channel=2,

@@ -527,7 +527,7 @@ class MainWindow(QMainWindow):
     def on_open_connection_settings(self) -> None:
         if self.session.state is ConnectionState.DISCONNECTED:
             self._connection_settings.set_settings(self.session.settings)
-            self._connection_settings.show_below(self.ui.ConnectionSettingsButton)
+            self._connection_settings.open()
 
     @Slot(bool)
     def on_log_to_file_toggled(self, enabled: bool) -> None:
