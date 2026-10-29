@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
 from ui_form import Ui_MainWindow
 
 from modules.core.profiles import AppProfile, load_profile, save_profile
-from modules.controllers.connection_session import ConnectionSession
+from modules.controllers.connection_session import ConnectionSession, ConnectionState
 from modules.core.extraction import clean_label, validate_rules
 from modules.controllers.capture_job import CaptureJob
 from modules.controllers.console_controller import ConsoleController
@@ -40,6 +40,7 @@ from modules.widgets.connection_settings_dialog import ConnectionSettingsDialog
 from modules.widgets.plot_mode_button import PLOT_STYLES
 from modules.core.rtt_transport import RttSettings
 from modules.core.serial_transport import SerialSettings
+from modules.core.network_transport import TcpSettings, UdpSettings
 import rc_resources  # noqa: F401
 
 
@@ -151,7 +152,7 @@ class MainWindow(QMainWindow):
         self.statusBar().addPermanentWidget(self.plot.visible_points_label)
         self.statusBar().addPermanentWidget(self.plot.downsample_ratio_label)
         self.set_diagnostics_visible(False)
-        self.on_connected_changed(False)
+        self.on_connection_state_changed(self.session.state)
         QTimer.singleShot(0, self.restore_layout)
 
     def _configure_workspace(self):
@@ -170,6 +171,8 @@ class MainWindow(QMainWindow):
         self.connection_type_combo.setObjectName("ConnectionTypeCombo")
         self.connection_type_combo.addItem("Serial", self.session.settings.transport)
         self.connection_type_combo.addItem("J-Link RTT", RttSettings())
+        self.connection_type_combo.addItem("TCP/IP", TcpSettings())
+        self.connection_type_combo.addItem("UDP", UdpSettings())
         self.ui.ConnectionSettingsButton.setText("Settings")
         self.ui.ConnectionSettingsButton.setIcon(QIcon(":/icons/settings.svg"))
         self.ui.ConnectionSettingsButton.setAccessibleName("Connection settings")
@@ -238,7 +241,7 @@ class MainWindow(QMainWindow):
 
     @Slot(int)
     def _connection_type_changed(self, index):
-        if self.session.is_connected:
+        if self.session.state is not ConnectionState.DISCONNECTED:
             return
         self.session.settings.transport = self.connection_type_combo.itemData(index)
         self._update_connection_target()
@@ -255,6 +258,15 @@ class MainWindow(QMainWindow):
                 description = ports.itemText(index).partition(" — ")[2]
                 if description:
                     details += f" · {description}"
+        elif isinstance(settings, TcpSettings):
+            target = settings.host.strip()
+            title = f"{target}:{settings.port}" if target else "No TCP host selected"
+            details = "TCP client" if target else "Choose a host in Settings"
+        elif isinstance(settings, UdpSettings):
+            target = settings.bind_address.strip()
+            title = f"{target}:{settings.local_port}"
+            details = (f"Send to {settings.remote_host}:{settings.remote_port}" if settings.remote_host.strip()
+                       else "UDP listener · receive only")
         else:
             target = settings.target.strip()
             title = target or "No RTT target selected"
@@ -265,7 +277,7 @@ class MainWindow(QMainWindow):
         self.connection_target.setToolTip(f"{title}\n{details}")
         for label, text in ((self.connection_target_label, title), (self.connection_details_label, details)):
             label.setText(label.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, 220))
-        self.ui.ConnectButton.setEnabled(bool(target) or self.session.is_connected)
+        self.ui.ConnectButton.setEnabled(bool(target) or self.session.state is not ConnectionState.DISCONNECTED)
 
     def focus_console_search(self):
         self.ui.actionConsole.setChecked(True)
@@ -361,7 +373,7 @@ class MainWindow(QMainWindow):
         self._export_csv_action.triggered.connect(self.on_export_csv)
         self._log_to_file_action.toggled.connect(self.on_log_to_file_toggled)
 
-        self.session.connectedChanged.connect(self.on_connected_changed)
+        self.session.stateChanged.connect(self.on_connection_state_changed)
         self.session.receivedText.connect(self.console_controller.append_received)
         self.session.sentText.connect(self.console_controller.append_sent)
         self.session.consoleText.connect(self.console_controller.append_status)
@@ -513,18 +525,18 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_open_connection_settings(self) -> None:
-        if not self.session.is_connected:
+        if self.session.state is ConnectionState.DISCONNECTED:
             self._connection_settings.set_settings(self.session.settings)
             self._connection_settings.show_below(self.ui.ConnectionSettingsButton)
 
     @Slot(bool)
     def on_log_to_file_toggled(self, enabled: bool) -> None:
-        if not self.session.is_connected:
+        if self.session.state is ConnectionState.DISCONNECTED:
             self.session.settings.log_to_file = enabled
 
     @Slot()
     def on_save_connection_settings(self) -> None:
-        if self.session.is_connected:
+        if self.session.state is not ConnectionState.DISCONNECTED:
             return
         self.session.settings = replace(
             self._connection_settings.selected_settings(),
@@ -541,7 +553,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_toggle_connection(self) -> None:
-        if self.session.is_connected:
+        if self.session.state is not ConnectionState.DISCONNECTED:
             self.session.disconnect_device()
         else:
             try:
@@ -604,24 +616,28 @@ class MainWindow(QMainWindow):
             return True
         return super().eventFilter(watched, event)
 
-    @Slot(bool)
-    def on_connected_changed(self, connected: bool) -> None:
-        self.ui.ConnectButton.setText("Disconnect" if connected else "Connect")
-        self.ui.ConnectButton.setToolTip("Connected — click to disconnect" if connected else "Disconnected — click to connect")
-        self.ui.ConnectionSettingsButton.setEnabled(not connected)
+    @Slot(object)
+    def on_connection_state_changed(self, state: ConnectionState) -> None:
+        connected = state is ConnectionState.CONNECTED
+        connecting = state is ConnectionState.CONNECTING
+        active = state is not ConnectionState.DISCONNECTED
+        self.ui.ConnectButton.setText("Cancel" if connecting else "Disconnect" if connected else "Connect")
+        self.ui.ConnectButton.setToolTip("Cancel connection" if connecting else
+                                        "Connected — click to disconnect" if connected else "Disconnected — click to connect")
+        self.ui.ConnectionSettingsButton.setEnabled(not active)
         self._log_to_file_action.setChecked(self.session.settings.log_to_file)
-        self._log_to_file_action.setEnabled(not connected)
-        self.connection_type_combo.setEnabled(not connected)
+        self._log_to_file_action.setEnabled(not active)
+        self.connection_type_combo.setEnabled(not active)
         self.ui.ConnectButton.setProperty("connected", connected)
         self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
         self.ui.ConnectButton.style().polish(self.ui.ConnectButton)
-        self.connection_status_label.setText("Connected" if connected else "Disconnected")
+        self.connection_status_label.setText("Connecting…" if connecting else "Connected" if connected else "Disconnected")
         for widget in (self.connection_status_dot, self.connection_status_label):
             widget.setProperty("connected", connected)
             widget.style().unpolish(widget)
             widget.style().polish(widget)
         self._update_connection_target()
-        if connected:
+        if active:
             self.ui.ConnectButton.setEnabled(True)
             self._connection_settings.reject()
         self.ui.CommandEdit.setEnabled(connected)

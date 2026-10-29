@@ -16,7 +16,7 @@ from PySide6.QtWidgets import QApplication, QCheckBox, QDialogButtonBox, QPushBu
 
 from mainwindow import MainWindow, apply_application_style
 from modules.controllers.capture_job import CaptureJob
-from modules.controllers.connection_session import TRANSPORT_TYPES
+from modules.controllers.connection_session import ConnectionState, TRANSPORT_TYPES
 from modules.core.binary_logging import BinaryCaptureWriter
 from modules.core.extraction import CapturedValue, ExtractionEngine, ExtractionRule
 from modules.core.rule_suggestions import suggest_rules
@@ -39,6 +39,7 @@ class FakeTransport(Transport):
 
     def open(self):
         self.is_open = True
+        self.opened.emit(self)
 
     def close(self):
         super().close()
@@ -70,6 +71,51 @@ class WorkspaceTest(unittest.TestCase):
         editor.rulesApplied.connect(self.window.apply_rules)
         self.addCleanup(editor.close)
         return editor
+
+    def test_network_connection_settings_survive_switching_types(self):
+        from modules.core.network_transport import TcpSettings, UdpSettings
+        window = self.window
+        combo = window.connection_type_combo
+        for index, expected_type in ((2, TcpSettings), (3, UdpSettings)):
+            combo.setCurrentIndex(index)
+            window._connection_type_changed(index)
+            window.on_open_connection_settings()
+            dialog = window._connection_settings
+            dialog.transport_widget.host_edit.setText("127.0.0.1")
+            dialog.transport_widget.port_spin.setValue(1234 + index)
+            dialog.buttons.button(QDialogButtonBox.StandardButton.Save).click()
+            self.assertIsInstance(window.session.settings.transport, expected_type)
+        for index, port in ((2, 1236), (3, 1237)):
+            combo.setCurrentIndex(index)
+            window._connection_type_changed(index)
+            self.assertIn(str(port), window.connection_target_label.text())
+            window.on_open_connection_settings()
+            self.assertEqual(window._connection_settings.transport_widget.port_spin.value(), port)
+            window._connection_settings.reject()
+
+    def test_pending_tcp_connection_is_responsive_and_can_be_cancelled(self):
+        from PySide6.QtCore import QTimer
+        window = self.window
+        window.connection_type_combo.setCurrentIndex(2)
+        window._connection_type_changed(2)
+        with patch("modules.core.network_transport.QTcpSocket.connectToHost"):
+            window.ui.ConnectButton.click()
+        self.assertTrue(window.session.is_connecting)
+        self.assertFalse(window.session.is_connected)
+        self.assertEqual(window.ui.ConnectButton.text(), "Cancel")
+        self.assertEqual(window.connection_status_label.text(), "Connecting…")
+        self.assertFalse(window.ui.ConnectionSettingsButton.isEnabled())
+        self.assertFalse(window.connection_type_combo.isEnabled())
+        self.assertFalse(window.ui.SendButton.isEnabled())
+        ticks = []
+        QTimer.singleShot(0, lambda: ticks.append(True))
+        QTest.qWait(20)
+        self.assertTrue(ticks)
+        window.ui.ConnectButton.click()
+        self.assertFalse(window.session.is_connecting)
+        self.assertEqual(window.ui.ConnectButton.text(), "Connect")
+        self.assertTrue(window.ui.ConnectionSettingsButton.isEnabled())
+        self.assertTrue(window.connection_type_combo.isEnabled())
 
     def test_mode_raw_point_limits_menu_accept_cancel_and_persistence(self):
         original = dict(self.window.plot.raw_point_limits)
@@ -339,7 +385,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(window.ui.ConsoleTextEdit.toPlainText(), "")
         self.assertEqual(window.plot._series["Voltage"].sample_count(), 1)
         self.assertFalse(window.ui.SendButton.isEnabled())
-        window.on_connected_changed(True)
+        window.on_connection_state_changed(ConnectionState.CONNECTED)
         with patch.object(window.session, "send_command") as send:
             window.ui.CommandEdit.setText("first")
             QTest.keyClick(window.ui.CommandEdit, Qt.Key.Key_Return)
@@ -390,7 +436,7 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_command_history_recall_boundaries_draft_and_resend(self):
         window = self.window
-        window.on_connected_changed(True)
+        window.on_connection_state_changed(ConnectionState.CONNECTED)
         edit = window.ui.CommandEdit
         edit.setText("draft")
         QTest.keyClick(edit, Qt.Key.Key_Up)
@@ -415,7 +461,7 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_command_history_edit_failure_limit_and_session_lifetime(self):
         window = self.window
-        window.on_connected_changed(True)
+        window.on_connection_state_changed(ConnectionState.CONNECTED)
         edit = window.ui.CommandEdit
         with patch.object(window.session, "send_command"):
             for i in range(105):
@@ -430,13 +476,13 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(edit.text(), "cmd104")
         QTest.keyClick(edit, Qt.Key.Key_Down)
         self.assertEqual(edit.text(), edited)
-        window.on_connected_changed(False)
+        window.on_connection_state_changed(ConnectionState.DISCONNECTED)
         edit.setText("failed")
         with patch.object(window.session, "send_command", side_effect=RuntimeError("disconnected")):
             window.on_send_command()
         self.assertEqual(edit.text(), "failed")
         window.console_controller.clear()
-        window.on_connected_changed(True)
+        window.on_connection_state_changed(ConnectionState.CONNECTED)
         QTest.keyClick(edit, Qt.Key.Key_Up)
         self.assertEqual(edit.text(), "cmd104")
         QTest.keyClick(edit, Qt.Key.Key_Down)
@@ -969,7 +1015,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(w.connection_target_label.text(), "test-port")
         self.assertIn("230400 baud", w.connection_details_label.text())
         self.assertEqual(w.connection_status_label.text(), "Disconnected")
-        w.on_connected_changed(True)
+        w.on_connection_state_changed(ConnectionState.CONNECTED)
         self.assertFalse(w.ui.ConnectionSettingsButton.isEnabled())
         self.assertEqual(w.connection_status_label.text(), "Connected")
         w.ui.actionConsole.setChecked(True)

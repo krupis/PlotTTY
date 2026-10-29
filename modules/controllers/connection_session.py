@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
+from enum import Enum
 from pathlib import Path
 from time import monotonic, time
 
@@ -16,6 +17,7 @@ from ..core.connection_settings import ConnectionSettings
 from ..core.transport import Transport
 from ..core.serial_transport import SerialSettings, SerialTransport
 from ..core.rtt_transport import RttSettings, RttTransport
+from ..core.network_transport import TcpSettings, TcpTransport, UdpSettings, UdpTransport
 
 
 RECEIVE_RATE_REFRESH_INTERVAL_MS = 100
@@ -25,11 +27,19 @@ RECEIVE_RATE_WINDOW_SECONDS = 1.0
 TRANSPORT_TYPES = {
     SerialSettings: SerialTransport,
     RttSettings: RttTransport,
+    TcpSettings: TcpTransport,
+    UdpSettings: UdpTransport,
 }
 
 
+class ConnectionState(Enum):
+    DISCONNECTED = "disconnected"
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+
+
 class ConnectionSession(QObject):
-    connectedChanged = Signal(bool)
+    stateChanged = Signal(object)
     receivedText = Signal(str, float)
     sentText = Signal(str)
     valuesCaptured = Signal(list)
@@ -41,6 +51,7 @@ class ConnectionSession(QObject):
         super().__init__(parent)
         self.settings = ConnectionSettings()
         self._connection: Transport | None = None
+        self._state = ConnectionState.DISCONNECTED
         self._line_decoder = LineDecoder()
         self._extraction_engine = ExtractionEngine()
         self._serial_log = SerialSessionLog()
@@ -57,8 +68,23 @@ class ConnectionSession(QObject):
         self._log_flush_timer.start()
 
     @property
+    def state(self) -> ConnectionState:
+        return self._state
+
+    def _set_state(self, state: ConnectionState) -> None:
+        if state is not self._state:
+            self._state = state
+            self.stateChanged.emit(state)
+
+    @property
     def is_connected(self) -> bool:
-        return bool(self._connection and self._connection.is_open)
+        connected = self._state is ConnectionState.CONNECTED
+        return connected
+
+    @property
+    def is_connecting(self) -> bool:
+        connecting = self._state is ConnectionState.CONNECTING
+        return connecting
 
     @property
     def log_dir(self) -> Path:
@@ -73,7 +99,7 @@ class ConnectionSession(QObject):
         self._extraction_engine = ExtractionEngine(rules)
 
     def connect_device(self) -> None:
-        if self.is_connected:
+        if self._connection is not None:
             return
         backend = TRANSPORT_TYPES[type(self.settings.transport)]
         transport = backend(
@@ -82,23 +108,33 @@ class ConnectionSession(QObject):
             on_error=self.on_transport_error,
             parent=self,
         )
-        message = f"[connected to {transport.connection_description}]"
+        transport.opened.connect(self._on_opened)
+        self._connection = transport
         try:
             self._line_decoder = LineDecoder(self.settings.encoding)
-            transport.open()
+            self._set_state(ConnectionState.CONNECTING)
+            if transport is self._connection:
+                transport.open()
+        except Exception:
+            self._close_connection()
+            self._close_logs()
+            raise
+
+    @Slot(object)
+    def _on_opened(self, transport):
+        if transport is not self._connection or not self.is_connecting:
+            return
+        message = f"[connected to {transport.connection_description}]"
+        try:
             if self.settings.log_to_file:
                 self._serial_log.start(transport.connection_description)
                 self._plot_log.start(transport.connection_description)
                 self._serial_log.write_status(message)
-        except Exception:
-            transport.close()
-            transport.deleteLater()
-            self._close_logs()
-            raise
-
-        self._connection = transport
+        except (OSError, ValueError) as exc:
+            self._handle_log_error(exc)
+            return
         self.reset_receive_rate()
-        self.connectedChanged.emit(True)
+        self._set_state(ConnectionState.CONNECTED)
         self.consoleText.emit(f"{message}\n")
 
     def disconnect_device(self) -> None:
@@ -121,11 +157,11 @@ class ConnectionSession(QObject):
             self._connection.close()
             self._connection.deleteLater()
             self._connection = None
-        self.connectedChanged.emit(False)
+        self._set_state(ConnectionState.DISCONNECTED)
         return was_connected
 
     def send_command(self, command: str) -> None:
-        if not self._connection or not self._connection.is_open:
+        if not self.is_connected:
             raise RuntimeError("Connect before sending commands")
 
         data = f"{command}{self.settings.line_ending}".encode(self.settings.encoding)

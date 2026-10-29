@@ -32,17 +32,18 @@ QLabel#ConnectionStatus[connected="true"] { color: #85e0b4; }
 QLabel#ConnectionStatusDot { background: #ffadb7; border-radius: 4px; }
 QLabel#ConnectionStatusDot[connected="true"] { background: #85e0b4; }
 QPushButton:disabled, QToolButton:disabled { color: #8b989f; background: #20292d; border-color: #3b454b; }
-QLineEdit, QComboBox, QPlainTextEdit, QTableWidget {
+QLineEdit, QComboBox, QAbstractSpinBox, QPlainTextEdit, QTableWidget {
     background: #0f1417; border: 1px solid #56636b; border-radius: 5px; }
 QLineEdit, QComboBox { min-height: 24px; padding: 3px 8px; }
+QAbstractSpinBox { min-height: 24px; max-height: 24px; padding: 3px 8px; }
 QComboBox { padding-right: 26px; combobox-popup: 0; }
 QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: top right;
     width: 22px; border: none; background: transparent; }
 QComboBox::down-arrow { image: url(:/icons/combo-chevron.svg); width: 12px; height: 8px; }
 QComboBox::down-arrow:disabled { image: none; }
 QCheckBox:disabled { color: #8b989f; }
-QLineEdit:disabled, QComboBox:disabled { color: #8b989f; background: #20292d; }
-QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTableWidget:focus { border-color: #41ccc3; }
+QLineEdit:disabled, QComboBox:disabled, QAbstractSpinBox:disabled { color: #8b989f; background: #20292d; }
+QLineEdit:focus, QComboBox:focus, QAbstractSpinBox:focus, QPlainTextEdit:focus, QTableWidget:focus { border-color: #41ccc3; }
 QComboBox QAbstractItemView { background: #20292d; selection-background-color: #41ccc3; selection-color: #102823; }
 QPlainTextEdit { padding: 8px; }
 QPlainTextEdit#ConsoleTextEdit, QPlainTextEdit#SampleOutput { font-family: "Consolas", "Menlo"; background: #0f1417; }

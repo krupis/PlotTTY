@@ -35,6 +35,7 @@ files = [
     "modules/core/serial_transport.py",
     "modules/core/rtt_transport.py",
     "modules/core/transport.py",
+    "modules/core/network_transport.py",
     "modules/widgets/__init__.py",
     "modules/widgets/plot_widget.py",
     "modules/widgets/plot_mode_button.py",
@@ -44,5 +45,6 @@ files = [
     "modules/widgets/connection_settings_dialog.py",
     "modules/widgets/serial_settings_widget.py",
     "modules/widgets/rtt_settings_widget.py",
+    "modules/widgets/network_settings_widget.py",
     "styles/application.qss",
 ]

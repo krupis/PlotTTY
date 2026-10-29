@@ -9,6 +9,7 @@ class Transport(QObject):
 
     bytesReceived = Signal(object, bytes, float)
     errorReceived = Signal(object, str)
+    opened = Signal(object)
 
     def __init__(self, settings, *, on_bytes_received, on_error, parent=None):
         super().__init__(parent)
@@ -17,6 +18,7 @@ class Transport(QObject):
         self.errorReceived.connect(on_error, Qt.ConnectionType.QueuedConnection)
 
     def open(self) -> None:
+        """Begin opening; emit opened(self) when ready, immediately or later."""
         raise NotImplementedError
 
     def write(self, data: bytes) -> None:

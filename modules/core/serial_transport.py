@@ -129,6 +129,7 @@ class SerialTransport(Transport):
             message = self._reader.open_error
             self.close()
             raise RuntimeError(message)
+        self.opened.emit(self)
 
     def close(self) -> None:
         if self._closing:

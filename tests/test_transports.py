@@ -16,7 +16,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication
 
-from modules.controllers.connection_session import ConnectionSession, TRANSPORT_TYPES
+from modules.controllers.connection_session import ConnectionSession, ConnectionState, TRANSPORT_TYPES
 from modules.core.extraction import ExtractionRule
 from modules.core.rtt_transport import RttSettings, RttTransport
 from modules.core.serial_transport import SerialSettings, SerialTransport
@@ -143,6 +143,27 @@ class TransportTest(unittest.TestCase):
                 self.assertIsInstance(session._connection, backend)
                 session.disconnect_device()
 
+    def test_connecting_notification_can_cancel_before_backend_opens(self):
+        session = ConnectionSession()
+        self.addCleanup(delete_qt_object, session)
+        self.addCleanup(session.disconnect_device)
+        session.settings.log_to_file = False
+        states = []
+
+        def cancel_when_connecting(state):
+            states.append(state)
+            if state is ConnectionState.CONNECTING:
+                session.disconnect_device()
+
+        session.stateChanged.connect(cancel_when_connecting)
+        with patch.object(SerialTransport, "open") as open_backend:
+            session.connect_device()
+            open_backend.assert_not_called()
+        self.assertEqual(states, [ConnectionState.CONNECTING, ConnectionState.DISCONNECTED])
+        self.assertIsNone(session._connection)
+        self.assertFalse(session.is_connected)
+        self.assertFalse(session.is_connecting)
+
     def test_rtt_without_serial_port_receives_extracts_records_sends_and_reconnects(self):
         probe = FakeJLink()
         pylink = SimpleNamespace(JLink=lambda: probe,
@@ -214,9 +235,9 @@ class TransportTest(unittest.TestCase):
                 self.addCleanup(delete_qt_object, session)
                 self.addCleanup(session.disconnect_device)
                 session.settings = ConnectionSettings(transport=RttSettings(target="test-device"), log_to_file=False)
-                errors, connected = [], []
+                errors, states = [], []
                 session.errorOccurred.connect(errors.append)
-                session.connectedChanged.connect(connected.append)
+                session.stateChanged.connect(states.append)
                 with patch.dict("sys.modules", {"pylink": pylink}):
                     session.connect_device()
                     previous = session._connection
@@ -229,7 +250,8 @@ class TransportTest(unittest.TestCase):
                     self.assertIsNone(session._connection)
                     self.assertFalse(session.is_connected)
                     self.assertEqual(errors, ["original RTT error"])
-                    self.assertEqual(connected, [True, False])
+                    self.assertEqual(states, [ConnectionState.CONNECTING, ConnectionState.CONNECTED,
+                                              ConnectionState.DISCONNECTED])
                     previous.close()
                     session.connect_device()
                     current = session._connection
@@ -262,6 +284,7 @@ class TransportTest(unittest.TestCase):
             def open(self):
                 self.is_open = True
                 self.bytesReceived.emit(self, b"startup\n", 123.0)
+                self.opened.emit(self)
 
             def close(self):
                 super().close()

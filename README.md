@@ -1,8 +1,8 @@
 # PlotTTY
 
-**Serial and J-Link RTT monitoring and plotting.**
+**Serial, J-Link RTT, TCP/IP, and UDP monitoring and plotting.**
 
-PlotTTY displays Serial and J-Link RTT output and plots numeric values in real time.
+PlotTTY displays device output over Serial, J-Link RTT, TCP/IP, and UDP and plots numeric values in real time.
 
 
 [**Download PlotTTY**](https://github.com/krupis/QT_PlotTTY/releases/latest)
@@ -15,7 +15,7 @@ PlotTTY displays Serial and J-Link RTT output and plots numeric values in real t
 
 | Feature | What you can do |
 | --- | --- |
-| Serial and J-Link RTT | Read device output and inspect incoming text in the console. |
+| Serial, J-Link RTT, TCP/IP, and UDP | Read device output and inspect incoming text in the console. |
 | Flexible extraction | Generate rules from sample output, or use named values, delimited fields, first-number matching, and regex. |
 | Live plots | Switch between Analog, Digital, and Dots; pan, zoom, and follow incoming samples. |
 | Range measurements | Drag across a signal to see its average, time range, and sample count. |
@@ -55,7 +55,7 @@ before launching. Packaged releases include Python and the application dependenc
 | macOS Intel | `macos-x64.zip` | Open `PlotTTY.app`. |
 | Linux x64 | `linux-x64.tar.gz` | Run `./PlotTTY` from the extracted folder. |
 
-1. Choose **Serial** or **J-Link RTT** in the connection bar.
+1. Choose **Serial**, **J-Link RTT**, **TCP/IP**, or **UDP** in the connection bar.
 2. Open **Settings**, configure your connection, then choose **Save settings**.
 3. Enable **File → Log to file** if you want a permanent recording.
 4. Click **Connect**. Open **View → Console** to see incoming text.
@@ -68,6 +68,20 @@ Settings also include encoding and the line ending used when sending commands.
 For RTT, install SEGGER's J-Link Software and Documentation Pack, make its library
 available (`JLinkARM.dll` on Windows), and enter the target device in Settings.
 Close other software using the probe before connecting.
+
+For TCP/IP, enter the server hostname or IP address and port. PlotTTY acts as a
+TCP client. Connecting is asynchronous; **Cancel** stops a pending connection.
+
+For UDP, choose the local bind IP address and port (`0.0.0.0` listens on all IPv4
+interfaces; `::` listens on IPv6). An optional destination host and port lets you
+send commands; each command is sent as one datagram. The destination must use the
+same IP family as the bind address. Without a destination, UDP receives only.
+UDP can lose, duplicate, or reorder datagrams. No TCP server or UDP multicast mode
+is provided.
+
+Both network connections use the same encoding, command line endings, extraction
+rules, console, and recording as Serial and RTT. Incoming text records must end
+with a newline to produce plot values. UDP datagram boundaries do not add newlines.
 
 ## Extract values
 
@@ -122,7 +136,7 @@ limits** changes the downsampling thresholds for each mode.
 - **View → Receive timestamps** prefixes new received lines with Unix seconds
   to millisecond precision, for example `[1793128867.123] 136984,3,3.251200`.
   The time comes from the host's
-  Serial or RTT read, before GUI processing. Lines in the same read share a time;
+  transport read, before text processing. Lines in the same read share a time;
   a line received in chunks keeps its first displayed chunk's time. The switch is
   off by default, is remembered between launches, and affects future lines only.
   Extraction uses the original text. Console log files retain their existing

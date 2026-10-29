@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
 from ..core.connection_settings import ConnectionSettings
 from ..core.serial_transport import SerialSettings
 from ..core.rtt_transport import RttSettings
+from ..core.network_transport import TcpSettings, UdpSettings
+from .network_settings_widget import NetworkSettingsWidget
 from .serial_settings_widget import SerialSettingsWidget
 from .rtt_settings_widget import RttSettingsWidget
 
@@ -33,6 +35,8 @@ class ConnectionSettingsDialog(QDialog):
         self.transport_widgets = {
             SerialSettings: SerialSettingsWidget(self),
             RttSettings: RttSettingsWidget(self),
+            TcpSettings: NetworkSettingsWidget(TcpSettings, self),
+            UdpSettings: NetworkSettingsWidget(UdpSettings, self),
         }
         for widget in self.transport_widgets.values():
             widget.encoding_combo = QComboBox(widget)

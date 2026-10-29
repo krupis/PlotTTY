@@ -63,6 +63,7 @@ class RttTransport(Transport):
         self._jlink = jlink
         self._thread = Thread(target=self._poll, name="PlotTTY-RTT", daemon=True)
         self._thread.start()
+        self.opened.emit(self)
 
     def _poll(self) -> None:
         while not self._stop.is_set():

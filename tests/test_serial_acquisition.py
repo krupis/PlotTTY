@@ -89,17 +89,22 @@ class SerialAcquisitionTest(unittest.TestCase):
     def test_failed_open_write_errors_and_reopen(self):
         deliveries = []
         errors = []
+        opened = []
         with patch('modules.core.serial_transport.QSerialPort', FakeSerial):
             backend = SerialTransport(SerialSettings(port='FAKE'),
                 on_bytes_received=lambda _, data, __: deliveries.append(data),
                 on_error=lambda _, message: errors.append(message))
+            backend.opened.connect(opened.append)
             with patch.object(FakeSerial, 'fail_open', True):
                 with self.assertRaisesRegex(RuntimeError, 'fake failure'):
                     backend.open()
             with patch.object(FakeSerial, 'fail_clear', True):
                 with self.assertRaisesRegex(RuntimeError, 'fake failure'):
                     backend.open()
+            self.assertEqual(opened, [])
             backend.open()
+            backend.open()
+            self.assertEqual(opened, [backend])
             serial = backend._reader.serial
             backend.write(b'CMD,ping\n')
             backend.close()
@@ -118,6 +123,7 @@ class SerialAcquisitionTest(unittest.TestCase):
             APP.processEvents()
             self.assertEqual(deliveries, [b'reopened\n'])
             backend.close()
+            self.assertEqual(opened, [backend, backend, backend])
 
     def test_open_discards_stale_input_and_preserves_new_input(self):
         deliveries = []
