@@ -1,0 +1,651 @@
+"""One independent connection, console, extraction editor, and plot workspace."""
+from dataclasses import replace
+from pathlib import Path
+
+from PySide6.QtGui import QAction, QIcon
+from PySide6.QtCore import QEvent, QSettings, QTimer, Qt, Signal, Slot
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFileDialog,
+    QInputDialog,
+    QLabel,
+    QMessageBox,
+    QProgressDialog,
+    QSizePolicy,
+    QHBoxLayout,
+    QVBoxLayout,
+    QWidget,
+)
+
+# Regenerate after editing form.ui: pyside6-uic form.ui -o ui_form.py
+from ui_form import Ui_ConnectionWorkspace
+import rc_resources  # noqa: F401
+
+from ..core.profiles import AppProfile, load_profile, save_profile
+from ..controllers.connection_session import ConnectionSession, ConnectionState
+from ..core.extraction import clean_label, validate_rules
+from ..controllers.capture_job import CaptureJob
+from ..controllers.console_controller import ConsoleController
+from .rules_editor import RulesEditor
+from .connection_settings_dialog import ConnectionSettingsDialog
+from .plot_mode_button import PLOT_STYLES
+from ..core.rtt_transport import RttSettings
+from ..core.serial_transport import SerialSettings
+from ..core.network_transport import TcpSettings, UdpSettings
+
+MAX_COMMAND_HISTORY = 100
+
+
+class ConnectionWorkspace(QWidget):
+    presentationChanged = Signal(object)
+    closed = Signal(object)
+
+    def __init__(self, parent=None, *, name="Connection"):
+        super().__init__(parent)
+        self.ui = Ui_ConnectionWorkspace()
+        self.ui.setupUi(self)
+        self.ui.menubar.setNativeMenuBar(False)
+        self.name = name
+        self.display_name = name
+        self._closed = False
+
+        self._capture_job: CaptureJob | None = None
+        self._loading_dialog: QProgressDialog | None = None
+        self._close_after_capture = False
+        self.session = ConnectionSession(self)
+        self._connection_settings = ConnectionSettingsDialog(self.session.settings, self)
+        self.profile_path = Path("profile.json")
+        self._command_history: list[str] = []
+        self._command_history_index = 0
+        self._command_draft = ""
+        self.ui.CommandEdit.installEventFilter(self)
+        self.ui.CommandEdit.setToolTip("Up/Down recalls sent commands. Down past the newest restores your draft.")
+        self.ui.CommandTerminatorCombo.addItem("\\n", "\n")
+        self.ui.CommandTerminatorCombo.addItem("\\r", "\r")
+        self.ui.CommandTerminatorCombo.addItem("\\r\\n", "\r\n")
+        self.ui.CommandTerminatorCombo.addItem("None", "")
+
+        self.plot = self.ui.Plot
+        self.console_controller = ConsoleController(self.ui.ConsoleTextEdit, self)
+        self.console_controller.searchFinished.connect(self.on_console_search_finished)
+        self.applied_rules = []
+
+        self._configure_workspace()
+        self._export_csv_action = QAction("Export capture as CSV...", self)
+        self.ui.menuFile.addAction(self._export_csv_action)
+        self.ui.menuFile.addSeparator()
+        self._log_to_file_action = QAction("Log to file", self)
+        self._log_to_file_action.setCheckable(True)
+        self._log_to_file_action.setChecked(self.session.settings.log_to_file)
+        self._log_to_file_action.setToolTip(
+            "When checked, automatically record each connection until you disconnect.\n"
+            "Console text and sent commands are saved to a .log file.\n"
+            "Extracted plot values are saved to a .plotty capture you can load later.\n"
+            f"Files are saved in: {self.session.log_dir.resolve()}\n"
+            "Choose this option before connecting."
+        )
+        self.ui.menuFile.setToolTipsVisible(True)
+        self.ui.menuFile.addAction(self._log_to_file_action)
+        self._receive_timestamps_action = QAction("Receive timestamps", self)
+        self._receive_timestamps_action.setCheckable(True)
+        self._receive_timestamps_action.setToolTip(
+            "Prefix new console lines with the host receive time in Unix seconds, to milliseconds.\n"
+            "Applies to future lines; existing console text is kept."
+        )
+        self._receive_timestamps_action.toggled.connect(self.console_controller.set_receive_timestamps_visible)
+        self.ui.menuView.addAction(self._receive_timestamps_action)
+        self.ui.menuView.setToolTipsVisible(True)
+        self.ui.menuView.addSeparator()
+        raw_limits_menu = self.ui.menuView.addMenu("Raw point limits")
+        self._raw_point_limit_actions = {}
+        for style, label in PLOT_STYLES.items():
+            action = raw_limits_menu.addAction(label + "...")
+            action.triggered.connect(lambda checked=False, style=style: self.on_set_raw_point_limit(style))
+            self._raw_point_limit_actions[style] = action
+        self._connect_signals()
+        self.apply_rules([])
+        self.ui.statusbar.addPermanentWidget(self.plot.visible_points_label)
+        self.ui.statusbar.addPermanentWidget(self.plot.downsample_ratio_label)
+        self.set_diagnostics_visible(False)
+        self.on_connection_state_changed(self.session.state)
+        self._restore_timer = QTimer(self)
+        self._restore_timer.setSingleShot(True)
+        self._restore_timer.timeout.connect(self.restore_layout)
+        self._restore_timer.start(0)
+
+    def _configure_workspace(self):
+        self.ui.MainLayout.removeItem(self.ui.ConnectionLayout)
+        self.connection_bar = QWidget(self.ui.centralwidget)
+        self.connection_bar.setObjectName("ConnectionBar")
+        self.connection_bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.connection_bar.setLayout(self.ui.ConnectionLayout)
+        self.ui.MainLayout.insertWidget(0, self.connection_bar)
+        self.ui.MainLayout.setStretch(1, 1)
+        self.ui.ConnectionLayout.setContentsMargins(12, 10, 12, 10)
+        self.plot.layout().removeItem(self.plot.controls_layout)
+        self.ui.ConnectionLayout.addLayout(self.plot.controls_layout)
+        self.ui.ConnectionLayout.setSpacing(12)
+        self.connection_type_combo = QComboBox(self.connection_bar)
+        self.connection_type_combo.setObjectName("ConnectionTypeCombo")
+        self.connection_type_combo.addItem("Serial", self.session.settings.transport)
+        self.connection_type_combo.addItem("J-Link RTT", RttSettings())
+        self.connection_type_combo.addItem("TCP/IP", TcpSettings())
+        self.connection_type_combo.addItem("UDP", UdpSettings())
+        self.ui.ConnectionSettingsButton.setText("Settings")
+        self.ui.ConnectionSettingsButton.setIcon(QIcon(":/icons/settings.svg"))
+        self.ui.ConnectionSettingsButton.setAccessibleName("Connection settings")
+        self.ui.ConnectionLayout.insertWidget(0, self.connection_type_combo)
+        self.connection_target = QWidget(self.connection_bar)
+        self.connection_target.setFixedWidth(220)
+        target_layout = QVBoxLayout(self.connection_target)
+        target_layout.setContentsMargins(0, 0, 0, 0)
+        target_layout.setSpacing(2)
+        self.connection_target_label = QLabel()
+        self.connection_target_label.setObjectName("ConnectionTarget")
+        self.connection_details_label = QLabel()
+        self.connection_details_label.setObjectName("ConnectionDetails")
+        for label in (self.connection_target_label, self.connection_details_label):
+            label.setTextFormat(Qt.TextFormat.PlainText)
+            target_layout.addWidget(label)
+        self.ui.ConnectionLayout.insertWidget(1, self.connection_target)
+        self.connection_status = QWidget(self.connection_bar)
+        self.connection_status.setFixedWidth(104)
+        status_layout = QHBoxLayout(self.connection_status)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(6)
+        self.connection_status_dot = QLabel()
+        self.connection_status_dot.setObjectName("ConnectionStatusDot")
+        self.connection_status_dot.setFixedSize(8, 8)
+        self.connection_status_label = QLabel("Disconnected")
+        self.connection_status_label.setObjectName("ConnectionStatus")
+        status_layout.addWidget(self.connection_status_dot)
+        status_layout.addWidget(self.connection_status_label)
+        self.ui.ConnectionLayout.insertWidget(2, self.connection_status)
+        self.plot.controls_layout.setSpacing(8)
+        self.ui.MainLayout.setContentsMargins(12, 10, 12, 10)
+        self.ui.SeriesLayout.setContentsMargins(16, 14, 16, 14)
+        self.ui.SeriesLayout.setSpacing(12)
+        self.ui.SeriesSidebar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        self.ui.ConsolePanel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        self.ui.ConsoleLayout.setContentsMargins(12, 14, 12, 12)
+        self.plot.layout().setContentsMargins(0, 14, 0, 0)
+        self.ui.ConsoleLayout.setSpacing(8)
+        heading = QLabel("Plot", self.plot)
+        heading.setObjectName("PanelHeading")
+        self.plot.layout().insertWidget(0, heading)
+        self.ui.SearchLayout.setSpacing(8)
+        self.ui.SendButton.setProperty("primary", True)
+        self.ui.SendButton.setIcon(QIcon(":/icons/send.svg"))
+        self.ui.ClearConsoleButton.setIcon(QIcon(":/icons/clear.svg"))
+        self.ui.SendButton.style().unpolish(self.ui.SendButton)
+        self.ui.SendButton.style().polish(self.ui.SendButton)
+        self.ui.WorkspaceLayout.setContentsMargins(0, 0, 0, 0)
+        self._recording_label = QLabel("Not recording")
+        self._rate_label = QLabel("0 B/s")
+        self.ui.statusbar.addWidget(self._recording_label, 1)
+        self.ui.statusbar.addPermanentWidget(self._rate_label)
+        self.ui.SeriesSidebar.setMinimumWidth(420)
+        self.ui.MainSplitter.setSizes([500, 1000])
+        self.ui.MainSplitter.setStretchFactor(0, 0)
+        self.ui.MainSplitter.setStretchFactor(1, 1)
+        self.rules_editor = RulesEditor([], self.ui.SeriesSidebar)
+        self.ui.SeriesLayout.addWidget(self.rules_editor, 1)
+        self.ui.MainSplitter.configure_panel("Extraction", 0, self.ui.actionSidebar, 500)
+        self.ui.WorkspaceSplitter.configure_panel("Console", 1, self.ui.actionConsole, 180)
+        self.ui.WorkspaceSplitter.set_panel_expanded(False)
+        self.ui.actionSidebar.setChecked(True)
+        self._preferences = QSettings("PlotTTY", "PlotTTY")
+
+    @Slot(int)
+    def _connection_type_changed(self, index):
+        if self.session.state is not ConnectionState.DISCONNECTED:
+            return
+        self.session.settings.transport = self.connection_type_combo.itemData(index)
+        self._update_connection_target()
+
+    def _update_connection_target(self):
+        settings = self.session.settings.transport
+        if isinstance(settings, SerialSettings):
+            target = settings.port.strip()
+            title = target or "No port selected"
+            details = f"{settings.baudrate} baud" if target else "Choose a port in Settings"
+            ports = self._connection_settings.transport_widgets[SerialSettings].port_combo
+            index = ports.findData(settings.port)
+            if target and index >= 0:
+                description = ports.itemText(index).partition(" — ")[2]
+                if description:
+                    details += f" · {description}"
+        elif isinstance(settings, TcpSettings):
+            target = settings.host.strip()
+            title = f"{target}:{settings.port}" if target else "No TCP host selected"
+            details = "TCP client" if target else "Choose a host in Settings"
+        elif isinstance(settings, UdpSettings):
+            target = settings.bind_address.strip()
+            title = f"{target}:{settings.local_port}"
+            details = (f"Send to {settings.remote_host}:{settings.remote_port}" if settings.remote_host.strip()
+                       else "UDP listener · receive only")
+        else:
+            target = settings.target.strip()
+            title = target or "No RTT target selected"
+            probe = f"Probe {settings.probe_serial.strip()}" if settings.probe_serial.strip() else "Automatic probe"
+            details = f"{probe} · {settings.interface} · RTT channel {settings.up_channel}" if target else "Choose a target in Settings"
+        self.connection_target_label.setToolTip(title)
+        self.connection_details_label.setToolTip(details)
+        self.connection_target.setToolTip(f"{title}\n{details}")
+        for label, text in ((self.connection_target_label, title), (self.connection_details_label, details)):
+            label.setText(label.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, 220))
+        self.ui.ConnectButton.setEnabled(bool(target) or self.session.state is not ConnectionState.DISCONNECTED)
+        self.display_name = title if target else self.name
+        self.presentationChanged.emit(self)
+
+    def focus_console_search(self):
+        self.ui.actionConsole.setChecked(True)
+        self.ui.SearchEdit.setFocus()
+        self.ui.SearchEdit.selectAll()
+
+    def on_console_search_changed(self, text):
+        self._update_console_search(text)
+
+    def on_console_search_next(self):
+        self._update_console_search(self.ui.SearchEdit.text())
+
+    def on_console_search_previous(self):
+        self._update_console_search(self.ui.SearchEdit.text(), backwards=True)
+
+    def _update_console_search(self, text, *, backwards=False):
+        self.ui.SearchMatchLabel.setText("…" if text else "")
+        self.console_controller.find_text(text, backwards=backwards)
+
+    def on_console_search_finished(self, current, total):
+        self.ui.SearchMatchLabel.setText(f"{current}/{total}" if total else "")
+
+    def set_diagnostics_visible(self, visible):
+        self.plot.visible_points_label.setVisible(visible)
+        self.plot.downsample_ratio_label.setVisible(visible)
+
+    def on_set_raw_point_limit(self, style):
+        limit, accepted = QInputDialog.getInt(
+            self, f"{PLOT_STYLES[style]} raw point limit",
+            f"Raw points per {PLOT_STYLES[style]} series before downsampling:\n"
+            "Higher values keep more detail but can slow updates.",
+            self.plot.raw_point_limits[style], 1, 2_147_483_647,
+        )
+        if accepted:
+            self.plot.set_raw_point_limit(style, limit)
+
+    def restore_layout(self):
+        settings = self._preferences
+        try:
+            terminator = settings.value("commandTerminator", "\n", type=str)
+            index = self.ui.CommandTerminatorCombo.findData(terminator)
+            if index >= 0:
+                self.ui.CommandTerminatorCombo.setCurrentIndex(index)
+            self._receive_timestamps_action.setChecked(settings.value("receiveTimestamps", False, type=bool))
+            for style, default in self.plot.raw_point_limits.items():
+                self.plot.set_raw_point_limit(style, settings.value(f"rawPointLimits/{style}", default, type=int))
+            for name in ("MainSplitter", "WorkspaceSplitter"):
+                state = settings.value(name)
+                if state:
+                    getattr(self.ui, name).restoreState(state)
+            for name, default in (("Console", False), ("Sidebar", True), ("Diagnostics", False)):
+                getattr(self.ui, "action" + name).setChecked(settings.value(name, default, type=bool))
+            for splitter, action, key, default in (
+                (self.ui.MainSplitter, self.ui.actionSidebar, "sidebarWidth", 500),
+                (self.ui.WorkspaceSplitter, self.ui.actionConsole, "consoleHeight", 180),
+            ):
+                splitter.expanded_size = max(80, int(settings.value(key, default)))
+                splitter.set_panel_expanded(action.isChecked())
+        except (TypeError, ValueError):
+            self.resize(1280, 800)
+
+    def _connect_signals(self) -> None:
+        """Connect controls and session signals after window setup."""
+        self.connection_type_combo.activated.connect(self._connection_type_changed)
+        self._connection_settings.accepted.connect(self.on_save_connection_settings)
+        self.ui.ConnectButton.clicked.connect(self.on_toggle_connection)
+        self.ui.ConnectionSettingsButton.clicked.connect(self.on_open_connection_settings)
+        self.ui.ClearConsoleButton.clicked.connect(self.console_controller.clear)
+        self.ui.CommandEdit.returnPressed.connect(self.on_send_command)
+        self.ui.CommandEdit.textEdited.connect(self.on_command_edited)
+        self.ui.SendButton.clicked.connect(self.on_send_command)
+        self.ui.CommandTerminatorCombo.currentIndexChanged.connect(self.on_command_terminator_changed)
+
+        self.ui.SearchEdit.textChanged.connect(self.on_console_search_changed)
+        self.ui.SearchEdit.returnPressed.connect(self.on_console_search_next)
+        self.ui.SearchNextButton.clicked.connect(self.on_console_search_next)
+        self.ui.SearchPreviousButton.clicked.connect(self.on_console_search_previous)
+
+        self.rules_editor.rulesApplied.connect(self.apply_rules)
+        self.plot.clearPlotRequested.connect(self.on_clear_plot)
+        self.ui.actionDiagnostics.toggled.connect(self.set_diagnostics_visible)
+        self.ui.actionClearCapturedData.triggered.connect(self.on_clear_console_and_plot)
+        self.ui.actionSave_profile.triggered.connect(self.on_save_profile_as)
+        self.ui.actionOpen_profile.triggered.connect(self.on_open_profile)
+        self.ui.actionLoad_log.triggered.connect(self.on_load_log)
+        self._export_csv_action.triggered.connect(self.on_export_csv)
+        self._log_to_file_action.toggled.connect(self.on_log_to_file_toggled)
+
+        self.session.stateChanged.connect(self.on_connection_state_changed)
+        self.session.receivedText.connect(self.console_controller.append_received)
+        self.session.sentText.connect(self.console_controller.append_sent)
+        self.session.consoleText.connect(self.console_controller.append_status)
+        self.session.valuesCaptured.connect(self.plot.append_values)
+        self.session.receiveRateChanged.connect(self.on_receive_rate_changed)
+        self.session.errorOccurred.connect(self.on_transport_error)
+
+    def apply_rules(self, rules):
+        validate_rules(rules)
+        renamed_series = {
+            clean_label(previous.label): clean_label(current.label)
+            for previous, current in zip(self.applied_rules, rules)
+            # Named values ruleuse the incoming name, not their rule label.
+            if previous.method != "named_values" and current.method != "named_values"
+        }
+        self.plot.update_series_labels(renamed_series)
+        self.applied_rules = [replace(rule) for rule in rules]
+        self.plot.set_rules(self.applied_rules)
+        self.session.set_rules([replace(rule) for rule in self.applied_rules])
+        if self.rules_editor.rules_table.rules() == self.applied_rules:
+            self.rules_editor.mark_applied()
+
+    @Slot()
+    def on_open_profile(self) -> None:
+        path, _selected_filter = QFileDialog.getOpenFileName(self, "Open Profile", "", "PlotTTY Profile (*.json)")
+        if not path:
+            return
+
+        try:
+            profile = load_profile(path)
+        except Exception as exc:
+            QMessageBox.warning(self, "Open Profile Failed", str(exc))
+            return
+
+        self.rules_editor.rules_table.set_rules(profile.rules)
+        self.apply_rules(profile.rules)
+        self.profile_path = Path(path)
+        self.ui.statusbar.showMessage(f"Loaded {self.profile_path.name}")
+
+    @Slot()
+    def on_save_profile_as(self) -> None:
+        default_path = str(self.profile_path)
+        path, _selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Save Profile",
+            default_path,
+            "PlotTTY Profile (*.json)",
+        )
+        if not path:
+            return
+
+        try:
+            save_profile(AppProfile(Path(path).stem, self.applied_rules), path)
+        except Exception as exc:
+            QMessageBox.warning(self, "Save Profile Failed", str(exc))
+            return
+
+        self.profile_path = Path(path)
+        self.ui.statusbar.showMessage(f"Saved {self.profile_path.name}")
+
+    @Slot()
+    def on_load_log(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load Plot Data", str(self.session.log_dir), "PlotTTY capture (*.plotty)",
+        )
+        if path:
+            self._start_capture_job(path)
+
+    @Slot()
+    def on_export_csv(self) -> None:
+        source, _ = QFileDialog.getOpenFileName(
+            self, "Choose capture to export", str(self.session.log_dir), "PlotTTY capture (*.plotty)",
+        )
+        if not source:
+            return
+        destination, _ = QFileDialog.getSaveFileName(
+            self, "Export capture as CSV", str(Path(source).with_suffix(".csv")), "CSV (*.csv)",
+        )
+        if destination:
+            self._start_capture_job(source, destination)
+
+    def _start_capture_job(self, path: str, destination: str | None = None) -> None:
+        if self._capture_job is not None:
+            return
+        if destination is None:
+            self.session.disconnect_device()  # Do not mix live samples into an imported time base.
+        job = self._capture_job = CaptureJob(path, destination, parent=self)
+        message = f"{'Exporting' if destination else 'Loading'} {Path(path).name}..."
+        dialog = self._loading_dialog = QProgressDialog(message, "Cancel", 0, 0, self)
+        dialog.setWindowTitle("Export capture" if destination else "Load capture")
+        dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        dialog.setMinimumDuration(0)
+        self.ui.actionLoad_log.setEnabled(False)
+        self._export_csv_action.setEnabled(False)
+        # These signals belong to this job and its temporary progress dialog.
+        job.progress.connect(self._on_capture_progress)
+        job.finished.connect(self._finish_capture_job)
+        dialog.canceled.connect(job.requestInterruption)
+        self.ui.statusbar.showMessage(message)
+        dialog.show()
+        job.start()
+
+    @Slot(int)
+    def _on_capture_progress(self, count: int) -> None:
+        job = self._capture_job
+        if job is not None and not job.isInterruptionRequested():
+            verb = "Exported" if job.destination is not None else "Prepared"
+            message = f"{verb} {count:,} values"
+            self._loading_dialog.setLabelText(message)
+            self.ui.statusbar.showMessage(message)
+
+    @Slot()
+    def _finish_capture_job(self) -> None:
+        job = self._capture_job
+        if job is None:
+            return
+        self._loading_dialog.reset()
+        operation = "CSV export" if job.destination is not None else "Log import"
+        try:
+            if job.error:
+                raise RuntimeError(job.error)
+            if job.cancelled or self._close_after_capture or (
+                job.destination is None and job.isInterruptionRequested()
+            ):
+                self.ui.statusbar.showMessage(f"{operation} cancelled")
+            elif job.destination is not None:
+                self.ui.statusbar.showMessage(f"Saved {job.row_count:,} values to {job.destination}")
+            else:
+                self.plot.replace_series(job.take_series(), job.start_time)
+                self.plot.capture_title.setText(job.path.name)
+                self.plot.capture_title.setToolTip(str(job.path))
+                self.plot.capture_title.show()
+                self.console_controller.clear()
+                self.console_controller.append_status(f"[loaded plot data from {job.path.name}]\n")
+                self.ui.statusbar.showMessage(f"Loaded {job.path.name}: {job.row_count:,} values")
+        except Exception as exc:
+            self.ui.statusbar.showMessage(f"{operation} failed")
+            QMessageBox.warning(self, f"{operation} failed", str(exc))
+        finally:
+            job.discard_series()
+            job.deleteLater()
+            self._loading_dialog.deleteLater()
+            self._loading_dialog = None
+            self._capture_job = None
+            self.ui.actionLoad_log.setEnabled(True)
+            self._export_csv_action.setEnabled(True)
+        if self._close_after_capture:
+            self.close()
+
+    @Slot()
+    def on_open_connection_settings(self) -> None:
+        if self.session.state is ConnectionState.DISCONNECTED:
+            self._connection_settings.set_settings(self.session.settings)
+            self._connection_settings.open()
+
+    @Slot(bool)
+    def on_log_to_file_toggled(self, enabled: bool) -> None:
+        if self.session.state is ConnectionState.DISCONNECTED:
+            self.session.settings.log_to_file = enabled
+
+    @Slot()
+    def on_save_connection_settings(self) -> None:
+        if self.session.state is not ConnectionState.DISCONNECTED:
+            return
+        self.session.settings = replace(
+            self._connection_settings.selected_settings(),
+            log_to_file=self.session.settings.log_to_file,
+            line_ending=self.session.settings.line_ending,
+        )
+        index = self.connection_type_combo.currentIndex()
+        self.connection_type_combo.setItemData(index, self.session.settings.transport)
+        self._update_connection_target()
+
+    @Slot(int)
+    def on_command_terminator_changed(self, index: int) -> None:
+        self.session.settings.line_ending = self.ui.CommandTerminatorCombo.itemData(index)
+
+    @Slot()
+    def on_toggle_connection(self) -> None:
+        if self.session.state is not ConnectionState.DISCONNECTED:
+            self.session.disconnect_device()
+        else:
+            try:
+                self.session.connect_device()
+            except Exception as exc:
+                QMessageBox.warning(self, "Connection Failed", str(exc))
+
+    @Slot()
+    def on_clear_plot(self) -> None:
+        self.plot.clear_values()
+        self.session.reset_receive_rate()
+        self.ui.statusbar.showMessage("Cleared plot data")
+
+    @Slot()
+    def on_clear_console_and_plot(self) -> None:
+        self.console_controller.clear()
+        self.on_clear_plot()
+        self.ui.statusbar.showMessage("Cleared console and plot data")
+
+    @Slot(str)
+    def on_transport_error(self, message: str) -> None:
+        QMessageBox.warning(self, f"Connection Error — {self.display_name}", message)
+
+    @Slot()
+    def on_send_command(self) -> None:
+        command = self.ui.CommandEdit.text().strip()
+        if not command:
+            return
+
+        try:
+            self.session.send_command(command)
+        except Exception as exc:
+            if self.session.is_connected:
+                QMessageBox.warning(self, "Send Command Failed", str(exc))
+            else:
+                self.ui.statusbar.showMessage(str(exc))
+            return
+
+        if not self._command_history or self._command_history[-1] != command:
+            self._command_history.append(command)
+            del self._command_history[:-MAX_COMMAND_HISTORY]
+        self._command_history_index = len(self._command_history)
+        self._command_draft = ""
+        self.ui.CommandEdit.clear()
+
+    @Slot(str)
+    def on_command_edited(self, _text: str) -> None:
+        self._command_history_index = len(self._command_history)
+
+    def eventFilter(self, watched, event):
+        if (watched is self.ui.CommandEdit and event.type() == QEvent.Type.KeyPress
+                and event.modifiers() == Qt.KeyboardModifier.NoModifier
+                and event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down) and self._command_history):
+            if self._command_history_index == len(self._command_history):
+                self._command_draft = self.ui.CommandEdit.text()
+            step = -1 if event.key() == Qt.Key.Key_Up else 1
+            self._command_history_index = max(0, min(len(self._command_history), self._command_history_index + step))
+            self.ui.CommandEdit.setText(self._command_history[self._command_history_index]
+                                       if self._command_history_index < len(self._command_history) else self._command_draft)
+            return True
+        handled = super().eventFilter(watched, event)
+        return handled
+
+    @Slot(object)
+    def on_connection_state_changed(self, state: ConnectionState) -> None:
+        connected = state is ConnectionState.CONNECTED
+        connecting = state is ConnectionState.CONNECTING
+        active = state is not ConnectionState.DISCONNECTED
+        self.ui.ConnectButton.setText("Cancel" if connecting else "Disconnect" if connected else "Connect")
+        self.ui.ConnectButton.setToolTip("Cancel connection" if connecting else
+                                        "Connected — click to disconnect" if connected else "Disconnected — click to connect")
+        self.ui.ConnectionSettingsButton.setEnabled(not active)
+        self._log_to_file_action.setChecked(self.session.settings.log_to_file)
+        self._log_to_file_action.setEnabled(not active)
+        self.connection_type_combo.setEnabled(not active)
+        self.ui.ConnectButton.setProperty("connected", connected)
+        self.ui.ConnectButton.style().unpolish(self.ui.ConnectButton)
+        self.ui.ConnectButton.style().polish(self.ui.ConnectButton)
+        self.connection_status_label.setText("Connecting…" if connecting else "Connected" if connected else "Disconnected")
+        for widget in (self.connection_status_dot, self.connection_status_label):
+            widget.setProperty("connected", connected)
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+        self._update_connection_target()
+        if active:
+            self.ui.ConnectButton.setEnabled(True)
+            self._connection_settings.reject()
+        self.ui.CommandEdit.setEnabled(connected)
+        self.ui.SendButton.setEnabled(connected)
+        self.update_recording_status()
+
+    def update_recording_status(self):
+        self.ui.statusbar.clearMessage()
+        paths = self.session.recording_paths
+        recording = self.session.is_connected and self.session.settings.log_to_file
+        self._recording_label.setText(f"Recording · {paths[-1].name}" if recording and paths else "Not recording")
+        self._recording_label.setToolTip("\n".join(str(path) for path in paths))
+        self._recording_label.setProperty("recording", recording and bool(paths))
+        self._recording_label.style().unpolish(self._recording_label)
+        self._recording_label.style().polish(self._recording_label)
+
+    @Slot(float)
+    def on_receive_rate_changed(self, bytes_per_second: float) -> None:
+        self._rate_label.setText(f"{bytes_per_second:,.0f} B/s")
+
+    def closeEvent(self, event) -> None:
+        self._restore_timer.stop()
+        if self._closed:
+            event.accept()
+            return
+        if self._capture_job is not None:
+            self._close_after_capture = True
+            self._capture_job.requestInterruption()
+            event.ignore()
+            return
+        settings = self._preferences
+        settings.setValue("commandTerminator", self.session.settings.line_ending)
+        settings.setValue("receiveTimestamps", self._receive_timestamps_action.isChecked())
+        for style, limit in self.plot.raw_point_limits.items():
+            settings.setValue(f"rawPointLimits/{style}", limit)
+        for name in ("MainSplitter", "WorkspaceSplitter"):
+            settings.setValue(name, getattr(self.ui, name).saveState())
+        settings.setValue("consoleHeight", self.ui.WorkspaceSplitter.expanded_size)
+        settings.setValue("sidebarWidth", self.ui.MainSplitter.expanded_size)
+        for name in ("Console", "Sidebar", "Diagnostics"):
+            settings.setValue(name, getattr(self.ui, "action" + name).isChecked())
+        self.session.disconnect_device()
+        self.console_controller.close()
+        self.plot.clear_values()
+        self._closed = True
+        super().closeEvent(event)
+        self.closed.emit(self)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._closed:
+            self.plot.set_refresh_enabled(True)
+            self.console_controller.set_display_active(True)
+
+    def hideEvent(self, event) -> None:
+        self.plot.set_refresh_enabled(False)
+        self.console_controller.set_display_active(False)
+        super().hideEvent(event)

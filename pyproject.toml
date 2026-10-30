@@ -43,6 +43,7 @@ files = [
     "modules/widgets/rules_table.py",
     "modules/widgets/rules_editor.py",
     "modules/widgets/connection_settings_dialog.py",
+    "modules/widgets/connection_workspace.py",
     "modules/widgets/serial_settings_widget.py",
     "modules/widgets/rtt_settings_widget.py",
     "modules/widgets/network_settings_widget.py",

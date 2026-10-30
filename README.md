@@ -62,6 +62,14 @@ before launching. Packaged releases include Python and the application dependenc
 5. Paste a sample line into the extraction sidebar, click **Generate rules**,
    review the fields, then click **Apply rules** to start plotting.
 
+Use **+** or **Ctrl+T** to add another connection tab. For example, configure
+COM14 in one tab and COM15 in another, then connect each one. Tabs have independent
+connection settings, extraction rules, plots, console history, commands, and
+recordings. Background tabs continue receiving and recording data; display
+refreshes resume when you return to the tab. File and View actions apply to the
+selected connection. Closing a tab (**Ctrl+W** or its close button) disconnects
+that connection and finishes its recordings. Closing PlotTTY disconnects all tabs.
+
 For Serial, select a port and baud rate. Use **Rescan** if the port is missing.
 Settings also include encoding and the line ending used when sending commands.
 

@@ -17,40 +17,54 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
-    QLineEdit, QMainWindow, QMenu, QMenuBar,
-    QPlainTextEdit, QPushButton, QSizePolicy, QSpacerItem,
-    QStatusBar, QVBoxLayout, QWidget)
+    QLineEdit, QMenu, QMenuBar, QPlainTextEdit,
+    QPushButton, QSizePolicy, QSpacerItem, QStatusBar,
+    QVBoxLayout, QWidget)
 
 from modules.widgets.panel_splitter import PanelSplitter
 from modules.widgets.plot_widget import PlotWidget
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        if not MainWindow.objectName():
-            MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1280, 800)
-        self.actionSave_profile = QAction(MainWindow)
+class Ui_ConnectionWorkspace(object):
+    def setupUi(self, ConnectionWorkspace):
+        if not ConnectionWorkspace.objectName():
+            ConnectionWorkspace.setObjectName(u"ConnectionWorkspace")
+        ConnectionWorkspace.resize(1280, 800)
+        self.actionSave_profile = QAction(ConnectionWorkspace)
         self.actionSave_profile.setObjectName(u"actionSave_profile")
-        self.actionOpen_profile = QAction(MainWindow)
+        self.actionOpen_profile = QAction(ConnectionWorkspace)
         self.actionOpen_profile.setObjectName(u"actionOpen_profile")
-        self.actionLoad_log = QAction(MainWindow)
+        self.actionLoad_log = QAction(ConnectionWorkspace)
         self.actionLoad_log.setObjectName(u"actionLoad_log")
-        self.actionClearCapturedData = QAction(MainWindow)
+        self.actionClearCapturedData = QAction(ConnectionWorkspace)
         self.actionClearCapturedData.setObjectName(u"actionClearCapturedData")
-        self.actionConsole = QAction(MainWindow)
+        self.actionConsole = QAction(ConnectionWorkspace)
         self.actionConsole.setObjectName(u"actionConsole")
         self.actionConsole.setCheckable(True)
-        self.actionSidebar = QAction(MainWindow)
+        self.actionSidebar = QAction(ConnectionWorkspace)
         self.actionSidebar.setObjectName(u"actionSidebar")
         self.actionSidebar.setCheckable(True)
-        self.actionDiagnostics = QAction(MainWindow)
+        self.actionDiagnostics = QAction(ConnectionWorkspace)
         self.actionDiagnostics.setObjectName(u"actionDiagnostics")
         self.actionDiagnostics.setCheckable(True)
-        self.centralwidget = QWidget(MainWindow)
+        self.RootLayout = QVBoxLayout(ConnectionWorkspace)
+        self.RootLayout.setSpacing(0)
+        self.RootLayout.setObjectName(u"RootLayout")
+        self.RootLayout.setContentsMargins(0, 0, 0, 0)
+        self.menubar = QMenuBar(ConnectionWorkspace)
+        self.menubar.setObjectName(u"menubar")
+        self.menuFile = QMenu(self.menubar)
+        self.menuFile.setObjectName(u"menuFile")
+        self.menuView = QMenu(self.menubar)
+        self.menuView.setObjectName(u"menuView")
+
+        self.RootLayout.addWidget(self.menubar)
+
+        self.centralwidget = QWidget(ConnectionWorkspace)
         self.centralwidget.setObjectName(u"centralwidget")
         self.MainLayout = QVBoxLayout(self.centralwidget)
         self.MainLayout.setSpacing(12)
         self.MainLayout.setObjectName(u"MainLayout")
+        self.MainLayout.setContentsMargins(0, 0, 0, 0)
         self.ConnectionLayout = QHBoxLayout()
         self.ConnectionLayout.setObjectName(u"ConnectionLayout")
         self.ConnectionSettingsButton = QPushButton(self.centralwidget)
@@ -164,17 +178,14 @@ class Ui_MainWindow(object):
 
         self.MainLayout.addWidget(self.MainSplitter)
 
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QMenuBar(MainWindow)
-        self.menubar.setObjectName(u"menubar")
-        self.menuFile = QMenu(self.menubar)
-        self.menuFile.setObjectName(u"menuFile")
-        self.menuView = QMenu(self.menubar)
-        self.menuView.setObjectName(u"menuView")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QStatusBar(MainWindow)
+
+        self.RootLayout.addWidget(self.centralwidget)
+
+        self.statusbar = QStatusBar(ConnectionWorkspace)
         self.statusbar.setObjectName(u"statusbar")
-        MainWindow.setStatusBar(self.statusbar)
+
+        self.RootLayout.addWidget(self.statusbar)
+
 
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
@@ -186,45 +197,45 @@ class Ui_MainWindow(object):
         self.menuView.addAction(self.actionSidebar)
         self.menuView.addAction(self.actionDiagnostics)
 
-        self.retranslateUi(MainWindow)
+        self.retranslateUi(ConnectionWorkspace)
 
-        QMetaObject.connectSlotsByName(MainWindow)
+        QMetaObject.connectSlotsByName(ConnectionWorkspace)
     # setupUi
 
-    def retranslateUi(self, MainWindow):
-        self.actionSave_profile.setText(QCoreApplication.translate("MainWindow", u"Save profile...", None))
-        self.actionOpen_profile.setText(QCoreApplication.translate("MainWindow", u"Open profile...", None))
-        self.actionLoad_log.setText(QCoreApplication.translate("MainWindow", u"Load capture...", None))
-        self.actionClearCapturedData.setText(QCoreApplication.translate("MainWindow", u"Clear captured data", None))
-        self.actionConsole.setText(QCoreApplication.translate("MainWindow", u"Console", None))
-        self.actionSidebar.setText(QCoreApplication.translate("MainWindow", u"Extraction sidebar", None))
-        self.actionDiagnostics.setText(QCoreApplication.translate("MainWindow", u"Diagnostics", None))
-        self.ConnectionSettingsButton.setText(QCoreApplication.translate("MainWindow", u"Settings", None))
+    def retranslateUi(self, ConnectionWorkspace):
+        self.actionSave_profile.setText(QCoreApplication.translate("ConnectionWorkspace", u"Save profile...", None))
+        self.actionOpen_profile.setText(QCoreApplication.translate("ConnectionWorkspace", u"Open profile...", None))
+        self.actionLoad_log.setText(QCoreApplication.translate("ConnectionWorkspace", u"Load capture...", None))
+        self.actionClearCapturedData.setText(QCoreApplication.translate("ConnectionWorkspace", u"Clear captured data", None))
+        self.actionConsole.setText(QCoreApplication.translate("ConnectionWorkspace", u"Console", None))
+        self.actionSidebar.setText(QCoreApplication.translate("ConnectionWorkspace", u"Extraction sidebar", None))
+        self.actionDiagnostics.setText(QCoreApplication.translate("ConnectionWorkspace", u"Diagnostics", None))
+        self.menuFile.setTitle(QCoreApplication.translate("ConnectionWorkspace", u"File", None))
+        self.menuView.setTitle(QCoreApplication.translate("ConnectionWorkspace", u"View", None))
+        self.ConnectionSettingsButton.setText(QCoreApplication.translate("ConnectionWorkspace", u"Settings", None))
 #if QT_CONFIG(tooltip)
-        self.ConnectionSettingsButton.setToolTip(QCoreApplication.translate("MainWindow", u"Connection settings", None))
+        self.ConnectionSettingsButton.setToolTip(QCoreApplication.translate("ConnectionWorkspace", u"Connection settings", None))
 #endif // QT_CONFIG(tooltip)
-        self.ConnectButton.setText(QCoreApplication.translate("MainWindow", u"Connect", None))
-        self.SearchEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Search console", None))
+        self.ConnectButton.setText(QCoreApplication.translate("ConnectionWorkspace", u"Connect", None))
+        self.SearchEdit.setPlaceholderText(QCoreApplication.translate("ConnectionWorkspace", u"Search console", None))
         self.SearchMatchLabel.setText("")
-        self.SearchPreviousButton.setText(QCoreApplication.translate("MainWindow", u"Previous", None))
-        self.SearchNextButton.setText(QCoreApplication.translate("MainWindow", u"Next", None))
-        self.CommandEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type command and press Enter", None))
+        self.SearchPreviousButton.setText(QCoreApplication.translate("ConnectionWorkspace", u"Previous", None))
+        self.SearchNextButton.setText(QCoreApplication.translate("ConnectionWorkspace", u"Next", None))
+        self.CommandEdit.setPlaceholderText(QCoreApplication.translate("ConnectionWorkspace", u"Type command and press Enter", None))
 #if QT_CONFIG(tooltip)
-        self.CommandTerminatorCombo.setToolTip(QCoreApplication.translate("MainWindow", u"Command terminator appended when sending: \\n (LF), \\r (CR), \\r\\n (CRLF), or None.", None))
+        self.CommandTerminatorCombo.setToolTip(QCoreApplication.translate("ConnectionWorkspace", u"Command terminator appended when sending: \\n (LF), \\r (CR), \\r\\n (CRLF), or None.", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(accessibility)
-        self.CommandTerminatorCombo.setAccessibleName(QCoreApplication.translate("MainWindow", u"Command terminator", None))
+        self.CommandTerminatorCombo.setAccessibleName(QCoreApplication.translate("ConnectionWorkspace", u"Command terminator", None))
 #endif // QT_CONFIG(accessibility)
-        self.SendButton.setText(QCoreApplication.translate("MainWindow", u"Send", None))
-        self.ClearConsoleButton.setText(QCoreApplication.translate("MainWindow", u"Clear", None))
+        self.SendButton.setText(QCoreApplication.translate("ConnectionWorkspace", u"Send", None))
+        self.ClearConsoleButton.setText(QCoreApplication.translate("ConnectionWorkspace", u"Clear", None))
 #if QT_CONFIG(tooltip)
-        self.ClearConsoleButton.setToolTip(QCoreApplication.translate("MainWindow", u"Clear console text", None))
+        self.ClearConsoleButton.setToolTip(QCoreApplication.translate("ConnectionWorkspace", u"Clear console text", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(accessibility)
-        self.ClearConsoleButton.setAccessibleName(QCoreApplication.translate("MainWindow", u"Clear console", None))
+        self.ClearConsoleButton.setAccessibleName(QCoreApplication.translate("ConnectionWorkspace", u"Clear console", None))
 #endif // QT_CONFIG(accessibility)
-        self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
-        self.menuView.setTitle(QCoreApplication.translate("MainWindow", u"View", None))
         pass
     # retranslateUi
 

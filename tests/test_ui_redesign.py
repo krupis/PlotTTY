@@ -14,7 +14,8 @@ from PySide6.QtGui import QColor, QPalette, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QCheckBox, QDialogButtonBox, QPushButton
 
-from mainwindow import MainWindow, apply_application_style
+from mainwindow import apply_application_style
+from modules.widgets.connection_workspace import ConnectionWorkspace
 from modules.controllers.capture_job import CaptureJob
 from modules.controllers.connection_session import ConnectionState, TRANSPORT_TYPES
 from modules.core.binary_logging import BinaryCaptureWriter
@@ -56,10 +57,10 @@ class WorkspaceTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.settings = QSettings(str(Path(self.temp.name) / "layout.ini"), QSettings.Format.IniFormat)
-        self.patch = patch("mainwindow.QSettings", return_value=self.settings)
+        self.patch = patch("modules.widgets.connection_workspace.QSettings", return_value=self.settings)
         self.patch.start()
         self.addCleanup(self.patch.stop)
-        self.window = MainWindow()
+        self.window = ConnectionWorkspace()
         self.addCleanup(delete_qt_object, self.window)
         self.window.resize(1280, 720)
         self.window.show()
@@ -121,10 +122,10 @@ class WorkspaceTest(unittest.TestCase):
         original = dict(self.window.plot.raw_point_limits)
         for style, limit in {'lines': 8000, 'digital': 12000, 'dots': 1000}.items():
             action = self.window._raw_point_limit_actions[style]
-            with patch('mainwindow.QInputDialog.getInt', return_value=(limit, False)):
+            with patch('modules.widgets.connection_workspace.QInputDialog.getInt', return_value=(limit, False)):
                 action.trigger()
             self.assertEqual(self.window.plot.raw_point_limits[style], original[style])
-            with patch('mainwindow.QInputDialog.getInt', return_value=(limit, True)) as dialog:
+            with patch('modules.widgets.connection_workspace.QInputDialog.getInt', return_value=(limit, True)) as dialog:
                 action.trigger()
             self.assertEqual(dialog.call_args.args[3], original[style])
             self.assertEqual(self.window.plot.raw_point_limits[style], limit)
@@ -427,7 +428,7 @@ class WorkspaceTest(unittest.TestCase):
                 combo = window.ui.CommandTerminatorCombo
                 combo.setCurrentIndex(combo.findData(ending))
                 window.close()
-                window = MainWindow()
+                window = ConnectionWorkspace()
                 self.addCleanup(delete_qt_object, window)
                 self.addCleanup(window.close)
                 APP.processEvents()
@@ -572,7 +573,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertTrue(splitter.collapse_button.isVisible())
         self.assertFalse(self.window.rules_editor.isVisible())
         self.window.close()
-        restored = MainWindow()
+        restored = ConnectionWorkspace()
         self.addCleanup(restored.close)
         restored.show()
         APP.processEvents()
@@ -591,7 +592,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertTrue(window.ui.WorkspaceSplitter.collapse_button.isVisible())
         self.assertFalse(window.ui.ConsoleTextEdit.isVisible())
         window.close()
-        restored = MainWindow()
+        restored = ConnectionWorkspace()
         self.addCleanup(restored.close)
         restored.show()
         APP.processEvents()
@@ -738,7 +739,7 @@ class WorkspaceTest(unittest.TestCase):
             APP.processEvents()
             self.assertEqual(w.plot.series_info(), [])
             with patch.object(session._plot_log, "flush", side_effect=OSError("disk full")), \
-                    patch("mainwindow.QMessageBox.warning") as warning:
+                    patch("modules.widgets.connection_workspace.QMessageBox.warning") as warning:
                 session.flush_logs()
                 self.assertIn("Recording stopped", warning.call_args.args[2])
             self.assertFalse(session.is_connected)
@@ -875,10 +876,10 @@ class WorkspaceTest(unittest.TestCase):
         source = Path(self.temp.name) / "source.json"
         target = Path(self.temp.name) / "saved.json"
         save_profile(AppProfile("source", [ExtractionRule("value", "first_number")]), source)
-        with patch("mainwindow.QFileDialog.getOpenFileName", return_value=(str(source), "")):
+        with patch("modules.widgets.connection_workspace.QFileDialog.getOpenFileName", return_value=(str(source), "")):
             self.window.on_open_profile()
         self.assertEqual(self.window.profile_path, source)
-        with patch("mainwindow.QFileDialog.getSaveFileName", return_value=(str(target), "")):
+        with patch("modules.widgets.connection_workspace.QFileDialog.getSaveFileName", return_value=(str(target), "")):
             self.window.on_save_profile_as()
         self.assertEqual(self.window.profile_path, target)
         self.assertEqual(load_profile(target).rules[0].label, "value")
@@ -894,8 +895,8 @@ class WorkspaceTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_profile(path)
         previous = self.window.applied_rules
-        with patch("mainwindow.QFileDialog.getOpenFileName", return_value=(str(path), "")), \
-                patch("mainwindow.QMessageBox.warning"):
+        with patch("modules.widgets.connection_workspace.QFileDialog.getOpenFileName", return_value=(str(path), "")), \
+                patch("modules.widgets.connection_workspace.QMessageBox.warning"):
             self.window.on_open_profile()
         self.assertIs(self.window.applied_rules, previous)
         path.write_text(json.dumps({"rules": [{"label": "old", "pattern": "(.*)"}]}))
@@ -1022,7 +1023,7 @@ class WorkspaceTest(unittest.TestCase):
         w.ui.actionDiagnostics.setChecked(True)
         w.ui.actionSidebar.setChecked(False)
         w.close()
-        next_window = MainWindow()
+        next_window = ConnectionWorkspace()
         self.addCleanup(delete_qt_object, next_window)
         next_window.show()
         APP.processEvents()
@@ -1047,7 +1048,7 @@ class WorkspaceTest(unittest.TestCase):
         dialog.transport_widget.baud_combo.setCurrentText("230400")
         dialog.transport_widget.parity_combo.setCurrentIndex(dialog.transport_widget.parity_combo.findData("E"))
         self.assertEqual(dialog.windowType(), Qt.WindowType.Dialog)
-        QTest.mouseClick(w.centralWidget(), Qt.MouseButton.LeftButton, pos=QPoint(10, 10))
+        QTest.mouseClick(w.ui.centralwidget, Qt.MouseButton.LeftButton, pos=QPoint(10, 10))
         APP.processEvents()
         self.assertTrue(dialog.isVisible())
         self.assertEqual(dialog.transport_widget.baud_combo.currentText(), "230400")

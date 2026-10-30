@@ -10,7 +10,7 @@ from PySide6.QtCore import QSettings
 from PySide6.QtTest import QSignalSpy
 from PySide6.QtWidgets import QApplication, QPlainTextEdit
 from qt_cleanup import delete_qt_object
-from mainwindow import MainWindow
+from modules.widgets.connection_workspace import ConnectionWorkspace
 from modules.controllers.connection_session import ConnectionSession
 from modules.controllers.console_controller import ConsoleController
 from modules.core.extraction import ExtractionRule
@@ -143,10 +143,10 @@ class ReceiveTimestampPreferenceTest(unittest.TestCase):
     def test_view_switch_defaults_off_and_is_remembered(self):
         with TemporaryDirectory() as folder:
             settings = QSettings(str(Path(folder) / "layout.ini"), QSettings.Format.IniFormat)
-            with patch("mainwindow.QSettings", return_value=settings), \
+            with patch("modules.widgets.connection_workspace.QSettings", return_value=settings), \
                  patch("modules.widgets.rtt_settings_widget.RttSettingsWidget._load_targets"):
                 for expected in (False, True):
-                    window = MainWindow()
+                    window = ConnectionWorkspace()
                     try:
                         APP.processEvents()
                         self.assertEqual(window._receive_timestamps_action.isChecked(), expected)

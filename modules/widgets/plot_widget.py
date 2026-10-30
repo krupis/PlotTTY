@@ -783,6 +783,14 @@ class PlotWidget(QWidget):
         else:
             self._update_visible_curve_data()
 
+    def set_refresh_enabled(self, enabled: bool) -> None:
+        """Hidden connection tabs collect samples without refreshing plots."""
+        if enabled:
+            self._timer.start()
+            self.on_refresh_pending_data()
+        else:
+            self._timer.stop()
+
     @Slot(bool)
     def on_toggle_auto_scroll(self, enabled: bool) -> None:
         self.auto_scroll_button.setChecked(enabled)

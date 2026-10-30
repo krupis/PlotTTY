@@ -221,3 +221,11 @@ class ConsoleController(QObject):
         self._stop_search()
         self.flush()
         self._history.close()
+
+    def set_display_active(self, active: bool) -> None:
+        """Keep storing background traffic; render the latest window on return."""
+        if active:
+            self._flush_timer.start()
+            self.flush()
+        else:
+            self._flush_timer.stop()
