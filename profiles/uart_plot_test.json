@@ -1,9 +1,0 @@
-{
-  "name": "UART analog and digital test",
-  "rules": [
-    {"label": "Device time (s)", "method": "delimited_values", "is_time": true, "extra_setting": "2", "delimiter": ","},
-    {"label": "Triangle", "method": "delimited_values", "is_time": false, "extra_setting": "3", "delimiter": ","},
-    {"label": "Random analog", "method": "delimited_values", "is_time": false, "extra_setting": "4", "delimiter": ","},
-    {"label": "Digital", "method": "delimited_values", "is_time": false, "extra_setting": "5", "delimiter": ","}
-  ]
-}

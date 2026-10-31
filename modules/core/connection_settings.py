@@ -10,4 +10,4 @@ class ConnectionSettings:
     transport: SerialSettings | RttSettings | TcpSettings | UdpSettings = field(default_factory=SerialSettings)
     encoding: str = "utf-8"
     line_ending: str = "\n"
-    log_to_file: bool = True
+    log_to_file: bool = False

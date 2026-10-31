@@ -711,6 +711,7 @@ class WorkspaceTest(unittest.TestCase):
     def test_connection_recording_and_error_status(self):
         w = self.window
         session = w.session
+        w._log_to_file_action.setChecked(True)
         session.settings.transport.port = "TEST"
         w._update_connection_target()
         session._serial_log.log_dir = Path(self.temp.name)
@@ -1057,7 +1058,7 @@ class WorkspaceTest(unittest.TestCase):
         self.assertFalse(dialog.isVisible())
         self.assertEqual(w.session.settings.transport.baudrate, 115200)
         self.assertEqual(w.session.settings.transport.parity, "N")
-        self.assertTrue(w.session.settings.log_to_file)
+        self.assertFalse(w.session.settings.log_to_file)
         w.on_open_connection_settings()
         self.assertEqual(dialog.transport_widget.baud_combo.currentText(), "115200")
         dialog.transport_widget.baud_combo.showPopup()
@@ -1070,7 +1071,7 @@ class WorkspaceTest(unittest.TestCase):
         dialog.transport_widget.parity_combo.setCurrentIndex(dialog.transport_widget.parity_combo.findData("E"))
         dialog.buttons.button(QDialogButtonBox.StandardButton.Save).click()
         self.assertEqual(w.session.settings.transport.parity, "E")
-        self.assertTrue(w.session.settings.log_to_file)
+        self.assertFalse(w.session.settings.log_to_file)
 
     def test_file_logging_choice_survives_connection_settings_and_controls_recording(self):
         w = self.window
@@ -1078,8 +1079,7 @@ class WorkspaceTest(unittest.TestCase):
         action = w._log_to_file_action
         self.assertIn(action, w.ui.menuFile.actions())
         self.assertEqual(action.text(), "Log to file")
-        self.assertTrue(action.isChecked())
-        action.trigger()
+        self.assertFalse(action.isChecked())
         self.assertFalse(session.settings.log_to_file)
         session.settings.transport.port = "TEST"
         w.on_open_connection_settings()
