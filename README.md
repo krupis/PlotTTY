@@ -9,15 +9,18 @@ Serial, J-Link RTT, TCP/IP, or UDP, then choose the values you want to follow.
 
 [![PlotTTY showing extraction rules, three plotted signals, and a selected range with its average](docs/images/plottty-capture.png)](docs/images/plottty-capture.png)
 
-## What you can do
+## Features
 
-- Read device output in the console. Open a tab for each connection.
-- Paste a sample line and let PlotTTY suggest which numbers to plot, or
-  [write the extraction rules yourself](#extract-values).
-- Follow live data or scroll back and zoom in. Draw signals as lines, steps,
-  or dots.
-- Select part of a signal to see its average, time range, and sample count.
-- Record a session, reopen it later, or export the values as CSV.
+- **Connections:** Serial, J-Link RTT, TCP/IP, and UDP. Each connection gets its
+  own tab with separate settings, plots, and console.
+- **Extraction rules:** Named values, delimited fields, first-number matching,
+  and regex. Generate rules from sample text or [set them up manually](#extract-values).
+- **Plots:** Analog, Digital, and Dots modes, with pan, zoom, and auto scroll.
+- **Measurements:** Select a time range for its average and sample count,
+  calculated from the original samples.
+- **Console:** Text search, receive timestamps, and command history.
+- **Recordings:** Save console logs and `.plotty` captures. Reopen captures
+  or export their values as CSV.
 
 ## Get started
 
@@ -90,12 +93,118 @@ Extraction rules tell PlotTTY which numbers to take from each line. Paste a samp
 line and click **Generate rules** to get started, or use **Add** and **Remove** to
 set up rules yourself.
 
-| Method | What it reads |
+To create a rule manually:
+
+1. Click **Add** in the extraction sidebar.
+2. Leave **Function** set to **Plot** and choose a **Method**.
+3. Fill in the settings shown in an example below. Keep **Show** checked.
+4. Click **Apply rules**. New matching lines will add points to the plots.
+
+Each example below shows a line your device might send and the settings to read it.
+The line must end with a newline for PlotTTY to process it.
+
+<details>
+<summary><strong>Named values: plot every name/value pair in a line</strong></summary>
+
+Device output:
+
+```text
+Voltage: 3.31, Current: 0.12, Temperature: 24.5
+```
+
+Add **one rule** with **Function → Plot** and **Method → Named values**.
+This method takes the labels from the line, so the rule's **Label** doesn't
+rename them. No delimiter or field number is needed.
+
+That one rule creates three signals:
+
+| Signal | Value |
 | --- | --- |
-| Named values | Pairs such as `Voltage: 3.31, Current: 0.12`. Each name gets its own signal. |
-| Delimited values | A field from CSV or similar text. Choose the separator and field number; **0 is the first field**. |
-| First number | The first numeric value on each line. |
-| Regex pattern | A number matched by a regular expression. The first capture group supplies the value. |
+| Voltage | 3.31 |
+| Current | 0.12 |
+| Temperature | 24.5 |
+
+Both `Voltage: 3.31` and `Voltage=3.31` work. You don't need a Named values rule
+for each pair; adding more would read the same values again.
+
+</details>
+
+<details>
+<summary><strong>Delimited values: pick columns from CSV or similar text</strong></summary>
+
+Device output:
+
+```text
+12.5,3.31,0.12
+```
+
+Here the fields are device time in seconds, voltage, and current. Field numbers
+start at **0**, so add these rules:
+
+| Function | Label | Method | Delimiter | Field |
+| --- | --- | --- | --- | --- |
+| Time | Device time | Delimited values | `,` | `0` |
+| Plot | Voltage | Delimited values | `,` | `1` |
+| Plot | Current | Delimited values | `,` | `2` |
+
+This plots Voltage = **3.31** and Current = **0.12**, both with a timestamp of
+**12.5 seconds**. The Time rule sets the timestamp; it doesn't create a plot.
+Leave it out if you want to use the computer's receive time instead.
+
+For `12.5;3.31;0.12`, use `;` as the delimiter. For tab-separated output, enter
+`\t`. Add one Plot rule for each field you want to see.
+
+</details>
+
+<details>
+<summary><strong>First number: read a single measurement from each line</strong></summary>
+
+Device output:
+
+```text
+Voltage: 3.31 V
+```
+
+| Function | Label | Method |
+| --- | --- | --- |
+| Plot | Voltage | First number |
+
+This plots **3.31** under the label **Voltage**. No other settings are needed.
+
+It always reads the first number, even if that number is a counter or timestamp.
+For example, `Sample 42: Voltage 3.31 V` would give **42**. Use a field rule or
+regex when you need a later number in the line.
+
+</details>
+
+<details>
+<summary><strong>Regex pattern: pick a number out of custom text</strong></summary>
+
+Device output:
+
+```text
+sensor 2 | temp -4.5 C | status OK
+```
+
+Add a rule with **Function → Plot**, **Label → Temperature**, and
+**Method → Regex pattern**. Enter this in **Pattern** (or **Pattern / delim.**
+if you also have delimited rules):
+
+```regex
+temp\s+([-+]?\d+(?:\.\d+)?)
+```
+
+This plots **-4.5** as **Temperature**, skipping the sensor number **2**.
+
+The pattern looks for `temp`, followed by whitespace and a number.
+The first capture group—the outer parentheses around the number—chooses the
+value to plot. `[-+]?` allows a sign, and `(?:\.\d+)?` allows a decimal part
+without creating another capture group.
+
+A line without a matching temperature adds no point for this rule. Paste the
+pattern as shown, without quotes or extra backslashes.
+
+</details>
 
 Choose **Plot** for a signal or **Time** for a device timestamp in seconds.
 Without a Time rule, PlotTTY timestamps samples when it receives them. If you use
