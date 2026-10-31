@@ -79,7 +79,7 @@ class CaptureFileTest(unittest.TestCase):
         self.write([CapturedValue(1, "a", 2)])
         data = self.path.read_bytes()
         damaged = bytearray(data); damaged[len(MAGIC) + BLOCK_HEADER.size + 3] ^= 255
-        variants = [data[:-1], data[:-8], data[:12], data[:7] + b'\x01' + data[8:],
+        variants = [data[:-1], data[:-8], data[:12], data[:7] + b'\xff' + data[8:],
                     bytes(damaged), data + b'extra', MAGIC + BLOCK_HEADER.pack(MAX_BLOCK + 1, 10)]
         for value in variants:
             with self.subTest(value=value[:16]):

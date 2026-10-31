@@ -17,7 +17,7 @@ from .extraction import CapturedValue
 from .serial_log import create_log_path
 
 
-MAGIC = b"PLOTTY\x00\x02"
+MAGIC = b"PLOTTY\x00\x01"
 BLOCK_HEADER = struct.Struct("<II")
 UINT = struct.Struct("<I")
 SAMPLE_HEADER = struct.Struct("<dII")  # timestamp, raw-text bytes, value count

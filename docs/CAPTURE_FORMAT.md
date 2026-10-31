@@ -1,39 +1,46 @@
 # PlotTTY capture format
 
-The `.plotty` format stores numeric samples and their original serial text.
-The reader accepts only version 2; there are no older-format readers or migrations.
-All integers and IEEE-754 doubles use little-endian byte order. Text is UTF-8.
+Each `.plotty` capture saves four things: timestamp, series label, numeric value,
+and original serial text. PlotTTY can reopen the capture or export it as CSV.
 
-## File structure
-
-The file starts with the eight bytes `PLOTTY\x00\x02`. Each subsequent block has
-two unsigned 32-bit lengths: the uncompressed size and the compressed size,
-followed by a zlib stream containing complete records. Both lengths being zero
-marks the end of a completed recording. Trailing bytes and incomplete recordings
-are rejected.
-
-Writers target 256 KiB uncompressed blocks, with a 16 MiB maximum record/block
-size. Readers allow up to 16 MiB + 64 KiB compressed bytes per block and validate
-the decompressed length and stream termination.
-
-## Records
-
-A series definition starts with the byte `S`, followed by an unsigned 32-bit
-series ID, an unsigned 32-bit label byte length, and the label bytes. IDs begin
-at zero and increase consecutively. Series identity is the label. At most
-100,000 series definitions are allowed.
-
-A sample group starts with the byte `R`, followed by a double timestamp, an
-unsigned 32-bit raw-text byte length, and an unsigned 32-bit value count. Raw-text
-bytes follow, then that many values. Each value consists of an unsigned 32-bit
-series ID and a double numeric value. Every referenced series must already be
-defined, and groups contain between 1 and 1,000 values.
-
-Consecutive values with the same timestamp and raw text share a group. Numeric
-values retain double precision, including signed zero and non-finite values.
+To save space, labels are stored once and assigned IDs. Values from the same
+timestamp and serial text are grouped together. These records are then compressed
+in blocks.
 
 ## CSV export
 
-CSV contains the columns `timestamp`, `label`, `value`, and `raw_text`, with one
-row per numeric value. Standard CSV quoting preserves commas, quotes, and
-newlines in labels and raw text.
+CSV has one row per numeric value, with columns `timestamp`, `label`, `value`,
+and `raw_text`. Standard CSV quoting preserves commas, quotes, and newlines.
+
+## Binary layout
+
+This section is for implementing a reader or writer.
+Integers and IEEE-754 doubles are little-endian; text is UTF-8. Text lengths count
+bytes, not characters.
+
+```text
+File  = magic + blocks + end marker
+Magic = PLOTTY\x00\x01 (8 bytes; final byte is the format version)
+Block = uncompressed size (uint32) + compressed size (uint32) + zlib data
+End   = two zero uint32s
+```
+
+Each block decompresses to complete records in either of these layouts:
+
+| Record | Fields, in order |
+| --- | --- |
+| Series | `S` byte, ID (uint32), label length (uint32), label bytes |
+| Sample group | `R` byte, timestamp (double), raw-text length (uint32), value count (uint32), raw-text bytes, values |
+| Each value in a group | Series ID (uint32), numeric value (double) |
+
+Series IDs start at zero and increase by one. The label identifies the series;
+define it before using its ID. Consecutive values with the same timestamp and raw
+text share a sample group. Doubles preserve signed zero and non-finite values.
+
+Writers target 256 KiB of uncompressed data per block. Format limits are:
+
+- 16 MiB per record or uncompressed block; 16 MiB + 64 KiB per compressed block.
+- 100,000 series definitions per file; 1–1,000 values per sample group.
+
+Readers validate decompressed sizes and zlib stream termination. Missing end
+markers, truncated or damaged data, and bytes after the end marker are rejected.
