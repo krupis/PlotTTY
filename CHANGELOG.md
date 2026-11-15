@@ -1,16 +1,13 @@
 # Changelog
 
-## Unreleased
-
-- Added **View → Receive timestamps** to prefix new console lines with the host
-  receive time in Unix seconds to millisecond precision. The setting is remembered
-  between launches. Saved log files keep their existing format.
-
 ## 1.0.0
 
 Initial release.
 
 - Serial and J-Link RTT connections with a searchable text console and command sending.
+- Added **View → Receive timestamps** to prefix new console lines with the host
+  receive time in Unix seconds to millisecond precision. The setting is remembered
+  between launches. Saved log files keep their existing format.
 - Numeric extraction from named values, delimited fields, the first number, or regex.
 - Extraction rules generated from sample output, with optional device timestamps.
 - Analog, Digital, and Dots plots with pan, zoom, auto scroll, and fit capture.
