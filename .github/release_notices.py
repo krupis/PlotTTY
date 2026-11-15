@@ -10,6 +10,35 @@ import sysconfig
 import tomllib
 
 from PySide6.QtCore import qVersion
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
+
+
+def notice_packages():
+    """Resolve the installed dependencies used by this release build."""
+    pending = [Requirement(line) for line in Path("requirements.txt").read_text().splitlines()
+               if line.strip() and not line.lstrip().startswith("#")]
+    pending.append(Requirement("PyInstaller"))
+    packages = {}
+    visited = set()
+    while pending:
+        requirement = pending.pop(0)
+        name = canonicalize_name(requirement.name)
+        extras = frozenset(requirement.extras)
+        key = (name, extras)
+        if key in visited:
+            continue
+        visited.add(key)
+        package = distribution(name)
+        packages[name] = package
+        for dependency in package.requires or ():
+            child = Requirement(dependency)
+            if child.marker is None or any(
+                child.marker.evaluate({"extra": extra}) for extra in extras | {""}
+            ):
+                pending.append(child)
+    resolved_packages = [packages[name] for name in sorted(packages)]
+    return resolved_packages
 
 
 def prepare_notices(destination: Path) -> Path:
@@ -27,11 +56,8 @@ def prepare_notices(destination: Path) -> Path:
         f"https://www.python.org/ftp/python/{platform.python_version()}/Python-{platform.python_version()}.tar.xz",
         "",
     ]
-    for name in (
-        "PySide6", "PySide6-Essentials", "PySide6-Addons", "shiboken6",
-        "numpy", "pylink-square", "psutil", "six", "PyInstaller",
-    ):
-        package = distribution(name)
+    for package in notice_packages():
+        name = package.metadata["Name"]
         lines.extend([
             f"{package.metadata['Name']} {package.version}",
             f"https://pypi.org/project/{name}/{package.version}/#files",
