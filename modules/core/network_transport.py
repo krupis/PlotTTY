@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from time import time
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer, Qt, Slot, SLOT
 from PySide6.QtNetwork import QAbstractSocket, QHostAddress, QHostInfo, QTcpSocket, QUdpSocket
 
 from .transport import Transport
@@ -149,19 +149,29 @@ class UdpTransport(NetworkTransport):
         socket.setSocketOption(QAbstractSocket.SocketOption.ReceiveBufferSizeSocketOption, 1024 * 1024)
         remote = self.settings.remote_host.strip()
         if remote:
-            self._lookup_id = QHostInfo.lookupHost(remote, self._resolved)
+            destination = QHostAddress(remote)
+            if destination.isNull():
+                self._lookup_id = QHostInfo.lookupHost(remote, self, SLOT("_resolved(QHostInfo)"))
+            else:
+                self._set_destination([destination])
         else:
             self._mark_ready()
 
+    @Slot(QHostInfo)
     def _resolved(self, info):
         self._lookup_id = None
         if self._socket is None:
             return
+        if info.error() != QHostInfo.HostInfoError.NoError:
+            self.errorReceived.emit(self, f"Could not resolve UDP destination: {info.errorString()}")
+            return
+        self._set_destination(info.addresses())
+
+    def _set_destination(self, candidates):
         protocol = self._socket.localAddress().protocol()
-        addresses = [address for address in info.addresses() if address.protocol() == protocol]
-        if info.error() != QHostInfo.HostInfoError.NoError or not addresses:
-            reason = info.errorString() if info.error() != QHostInfo.HostInfoError.NoError else "No address matches the bind address IP family."
-            self.errorReceived.emit(self, f"Could not resolve UDP destination: {reason}")
+        addresses = [address for address in candidates if address.protocol() == protocol]
+        if not addresses:
+            self.errorReceived.emit(self, "Could not resolve UDP destination: No address matches the bind address IP family.")
             return
         self._remote_address = addresses[0]
         self._mark_ready()

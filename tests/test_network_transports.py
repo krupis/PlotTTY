@@ -278,13 +278,15 @@ class NetworkTransportTest(unittest.TestCase):
         remote = self.socket(socket.SOCK_DGRAM)
         settings = self.udp_settings(remote_host="127.0.0.1", remote_port=remote.getsockname()[1])
         session = self.session(settings)
-        session.connect_device()
+        with patch("modules.core.network_transport.QHostInfo.lookupHost", side_effect=RuntimeError("DNS unavailable")):
+            session.connect_device()
         self.wait_for(lambda: session.is_connected)
         with self.assertRaisesRegex(ValueError, "one datagram"):
             session.send_command("x" * 65507)
         session.disconnect_device()
         session.settings.transport.remote_host = "::1"
-        session.connect_device()
+        with patch("modules.core.network_transport.QHostInfo.lookupHost", side_effect=RuntimeError("DNS unavailable")):
+            session.connect_device()
         self.wait_for(lambda: bool(session.test_errors))
         self.assertIn("IP family", session.test_errors[0])
         self.assertFalse(session.is_connected)
