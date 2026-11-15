@@ -55,6 +55,8 @@ class MultipleConnectionsTest(unittest.TestCase):
         second = self.window.add_connection()
         self.configure(first, "COM14")
         self.configure(second, "COM15")
+        first._log_to_file_action.setChecked(True)
+        second._log_to_file_action.setChecked(True)
         self.assertEqual([self.window.tabs.tabText(i) for i in range(2)], ["COM14", "COM15"])
         with patch("modules.core.serial_transport.QSerialPort", FakeSerial), \
                 patch("modules.widgets.connection_workspace.QMessageBox.warning"):
